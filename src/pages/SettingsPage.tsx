@@ -14,15 +14,15 @@ export const SettingsPage: React.FC = () => {
       <Card className="space-y-4 border-cyan-500/30">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-cyan-400" /> Edge AI Detection Thresholds
+            <Sliders className="w-4 h-4 text-cyan-400" /> AI Detection Sensitivity & Thresholds
           </h3>
-          <Badge variant="cyan">YOLOv8 + BYTETRACK</Badge>
+          <Badge variant="cyan">3-GATE PIPELINE</Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <div className="flex items-center justify-between mb-1 text-xs">
-              <label className="font-mono text-slate-300">Human Confidence Threshold (YOLOv8)</label>
+              <label className="text-slate-300">Human Detection Sensitivity</label>
               <span className="font-bold text-cyan-400">{Math.round(settings.humanConfidenceThreshold * 100)}%</span>
             </div>
             <input
@@ -34,12 +34,12 @@ export const SettingsPage: React.FC = () => {
               onChange={e => updateSettings({ humanConfidenceThreshold: Number(e.target.value) })}
               className="w-full accent-cyan-500 cursor-pointer"
             />
-            <p className="text-[11px] text-slate-500 mt-1">Minimum probability to register object as human silhouette.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Minimum confidence required to detect human presence.</p>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1 text-xs">
-              <label className="font-mono text-slate-300">Loitering Dwell Threshold (Seconds)</label>
+              <label className="text-slate-300">Loitering Duration Threshold (Seconds)</label>
               <span className="font-bold text-amber-400">{settings.dwellThresholdSeconds} Seconds</span>
             </div>
             <input
@@ -55,7 +55,7 @@ export const SettingsPage: React.FC = () => {
 
           <div>
             <div className="flex items-center justify-between mb-1 text-xs">
-              <label className="font-mono text-slate-300">Face Match Confidence (InsightFace)</label>
+              <label className="text-slate-300">Resident Recognition Sensitivity</label>
               <span className="font-bold text-emerald-400">{Math.round(settings.faceConfidenceThreshold * 100)}%</span>
             </div>
             <input
@@ -67,12 +67,12 @@ export const SettingsPage: React.FC = () => {
               onChange={e => updateSettings({ faceConfidenceThreshold: Number(e.target.value) })}
               className="w-full accent-emerald-500 cursor-pointer"
             />
-            <p className="text-[11px] text-slate-500 mt-1">Cosine similarity threshold for whitelisted residents.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Accuracy threshold required to verify approved residents.</p>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1 text-xs">
-              <label className="font-mono text-slate-300">Target Inference Frame Rate</label>
+              <label className="text-slate-300">Video Processing Frame Rate</label>
               <span className="font-bold text-slate-200">{settings.targetFps} FPS</span>
             </div>
             <input
@@ -83,7 +83,7 @@ export const SettingsPage: React.FC = () => {
               onChange={e => updateSettings({ targetFps: Number(e.target.value) })}
               className="w-full accent-cyan-500 cursor-pointer"
             />
-            <p className="text-[11px] text-slate-500 mt-1">5–10 FPS reduces edge SoC hardware load by ~60%.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Optimizes hardware performance and minimizes power usage.</p>
           </div>
         </div>
       </Card>
@@ -92,9 +92,11 @@ export const SettingsPage: React.FC = () => {
       <Card className="space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Bell className="w-4 h-4 text-cyan-400" /> Telegram &amp; Notification Channels
+            <Bell className="w-4 h-4 text-cyan-400" /> Telegram &amp; Mobile Notifications
           </h3>
-          <Badge variant="emerald">CONNECTED</Badge>
+          <Badge variant={settings.telegramEnabled ? 'emerald' : 'slate'}>
+            {settings.telegramEnabled ? 'ACTIVE' : 'NOT CONFIGURED'}
+          </Badge>
         </div>
 
         <div className="space-y-4 text-xs">

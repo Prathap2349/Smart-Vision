@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
               Smart Vision <span className="text-[10px] text-indigo-400 font-mono font-bold">v1.0</span>
             </h1>
             <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-              Edge Security Console
+              Smart Home Security
             </p>
           </div>
         </div>
@@ -112,8 +112,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-indigo-400" />
             <div>
-              <p className="text-[11px] font-bold text-slate-200">Edge AI: {metrics.edgeStatus}</p>
-              <p className="text-[10px] text-slate-400 font-mono">10 FPS • INT8 Quantized</p>
+              <p className="text-[11px] font-bold text-slate-200">System: {metrics.edgeStatus}</p>
+              <p className="text-[10px] text-slate-400">Real-Time Threat Shield</p>
             </div>
           </div>
           <Badge variant="emerald" pulse>ONLINE</Badge>

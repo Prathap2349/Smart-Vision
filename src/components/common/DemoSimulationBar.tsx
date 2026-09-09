@@ -21,7 +21,7 @@ export const DemoSimulationBar: React.FC = () => {
       <div className="flex items-center gap-3">
         {isRealCameraMode ? (
           <Badge variant="emerald" pulse>
-            REAL HIKVISION CAMERA ONLINE
+            LIVE CAMERA ONLINE
           </Badge>
         ) : (
           <Badge variant="amber" pulse>
@@ -29,10 +29,10 @@ export const DemoSimulationBar: React.FC = () => {
           </Badge>
         )}
 
-        <span className="text-slate-400 font-mono hidden md:inline">
+        <span className="text-slate-400 hidden md:inline">
           {isRealCameraMode
-            ? 'Hikvision RTSP Stream: 1920x1080 @ 10 FPS • Local Edge AI Processing'
-            : 'Live CCTV Telemetry Emulator • 3-Gate Evaluation Active'}
+            ? 'Live Camera Stream: 1080p • Real-Time AI Security Active'
+            : 'Interactive Security Demo • Real-Time Threat Evaluation Active'}
         </span>
       </div>
 

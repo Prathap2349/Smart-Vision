@@ -55,8 +55,8 @@ export const AnalyticsPage: React.FC = () => {
         <MetricCard
           title="Detection Accuracy"
           value="98.6%"
-          subtitle="YOLOv8-Nano INT8"
-          statusText="Semantic Precision"
+          subtitle="Smart AI Model"
+          statusText="High Precision"
           statusVariant="emerald"
           icon={<ShieldCheck className="w-5 h-5 text-emerald-400" />}
         />
@@ -64,7 +64,7 @@ export const AnalyticsPage: React.FC = () => {
         <MetricCard
           title="Resident Recognition"
           value="99.1%"
-          subtitle="InsightFace 512-d"
+          subtitle="Face Matcher Engine"
           statusText="Zero False Hits"
           statusVariant="emerald"
           icon={<Zap className="w-5 h-5 text-cyan-400" />}
@@ -73,7 +73,7 @@ export const AnalyticsPage: React.FC = () => {
         <MetricCard
           title="Avg Alert Latency"
           value="1.4s"
-          subtitle="Telegram Bot API"
+          subtitle="Instant Mobile Delivery"
           statusText="Target < 2.0s"
           statusVariant="emerald"
           icon={<Clock className="w-5 h-5 text-cyan-400" />}
@@ -82,7 +82,7 @@ export const AnalyticsPage: React.FC = () => {
         <MetricCard
           title="System Uptime"
           value="99.98%"
-          subtitle="Edge AI Processing"
+          subtitle="Real-Time Protection"
           statusText="High Availability"
           statusVariant="cyan"
           icon={<Activity className="w-5 h-5 text-cyan-400" />}
@@ -93,9 +93,9 @@ export const AnalyticsPage: React.FC = () => {
       <Card className="border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-slate-900 p-6 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-cyan-400" /> Grounded Presentation Benchmarks
+            <BarChart2 className="w-5 h-5 text-cyan-400" /> Security Performance Impact
           </h3>
-          <Badge variant="cyan">SOURCE OF TRUTH</Badge>
+          <Badge variant="cyan">SYSTEM RESULTS</Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

@@ -40,7 +40,7 @@ export const DecisionPipelineWidget: React.FC = () => {
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">YOLOv8-Nano semantic silhouette classification</p>
+            <p className="text-[11px] text-slate-400 mt-1">High-accuracy AI human presence detection</p>
           </div>
 
           {/* Gate 2 */}
@@ -56,12 +56,12 @@ export const DecisionPipelineWidget: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4" /> PASS ({simulatedPerson.dwellSeconds}s)
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-amber-400 font-mono">
+                <span className="flex items-center gap-1 text-amber-400">
                   {simulatedPerson.dwellSeconds}s / {settings.dwellThresholdSeconds}s
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">ByteTrack temporal trajectory dwell counter</p>
+            <p className="text-[11px] text-slate-400 mt-1">Real-time loitering duration counter</p>
           </div>
 
           {/* Gate 3 */}
@@ -80,7 +80,7 @@ export const DecisionPipelineWidget: React.FC = () => {
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">InsightFace biometric feature embedding vector match</p>
+            <p className="text-[11px] text-slate-400 mt-1">Resident facial whitelist check</p>
           </div>
         </div>
       </div>

@@ -44,30 +44,30 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
         <p className="text-xs text-slate-400 font-medium">{subtitle}</p>
       </div>
 
-      <div className="flex items-center gap-4 text-xs font-mono">
+      <div className="flex items-center gap-3 text-xs">
         {/* Emergency/Security Status Indicator */}
         {hasThreat ? (
           <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-300 animate-pulse shadow-lg shadow-rose-600/20">
             <AlertTriangle className="w-4 h-4 text-rose-400" />
-            <span className="font-bold">🚨 ACTIVE THREAT DETECTED</span>
+            <span className="font-bold">Security Alert Active</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-300">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span className="font-bold">ALL SYSTEMS NOMINAL</span>
+            <span className="font-bold">System Status: Secure</span>
           </div>
         )}
 
         {/* System Status */}
         <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
           <Cpu className="w-4 h-4 text-indigo-400" />
-          <span>EDGE AI ONLINE</span>
+          <span>AI Protection Active</span>
         </div>
 
         {/* Cameras Status */}
         <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
           <Wifi className="w-4 h-4 text-emerald-400" />
-          <span>{activeCameras}/{cameras.length} CAMERAS</span>
+          <span>{activeCameras} / {cameras.length} Cameras Active</span>
         </div>
 
         {/* Clock */}

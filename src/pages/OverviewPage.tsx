@@ -85,7 +85,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
         <MetricCard
           title="Humans Detected"
           value={18}
-          subtitle="Semantic YOLOv8"
+          subtitle="Smart AI Detection"
           statusText="Today"
           statusVariant="cyan"
           icon={<Users className="w-5 h-5 text-cyan-400" />}
@@ -94,7 +94,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
         <MetricCard
           title="Residents Recognized"
           value={14}
-          subtitle="InsightFace Vector"
+          subtitle="Face Recognition"
           statusText="Whitelisted"
           statusVariant="emerald"
           icon={<UserCheck className="w-5 h-5 text-emerald-400" />}
@@ -113,7 +113,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
           title="Edge AI Status"
           value="ONLINE"
           subtitle={`CPU ${metrics.cpuUsage}% | GPU ${metrics.gpuUsage}%`}
-          statusText="Local INT8"
+          statusText="Active Protection"
           statusVariant="cyan"
           icon={<Cpu className="w-5 h-5 text-cyan-400" />}
         />
@@ -147,9 +147,9 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
       <Card className="border-cyan-500/30 bg-gradient-to-r from-[#0d1628] to-[#0a1120]">
         <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-800 mb-4 gap-2">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-cyan-400" /> Architecture Paradigm Shift
+            <TrendingUp className="w-4 h-4 text-cyan-400" /> How Smart Vision Eliminates False Alarms
           </h3>
-          <Badge variant="cyan">WHY SMART VISION SENTRY WORKS</Badge>
+          <Badge variant="cyan">TRIPLE-GATE PROTECTION</Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -162,7 +162,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
             <p className="text-xs text-slate-400">
               Basic pixel-difference motion sensors evaluate &ldquo;Did pixels change?&rdquo; Wind, foliage, shadows, and lighting constantly trigger false alerts.
             </p>
-            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
               <span>Pixel Motion</span>
               <span>→</span>
               <span>Raw Push Ping</span>
@@ -180,12 +180,12 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
             <p className="text-xs text-slate-400">
               Semantic AI filters environmental noise. Requires 3 simultaneous conditions: <span className="text-cyan-300 font-bold">Human + Dwell &gt; 20s + Unknown Face</span>.
             </p>
-            <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-slate-800">
-              <span className="text-cyan-400 font-bold">YOLOv8</span>
+            <div className="flex items-center justify-between text-[11px] text-slate-300 pt-2 border-t border-slate-800">
+              <span className="text-cyan-400 font-bold">1. Human Detect</span>
               <span>→</span>
-              <span className="text-blue-400 font-bold">ByteTrack</span>
+              <span className="text-blue-400 font-bold">2. Dwell Track</span>
               <span>→</span>
-              <span className="text-emerald-400 font-bold">InsightFace</span>
+              <span className="text-emerald-400 font-bold">3. Resident Check</span>
               <span>→</span>
               <span className="text-emerald-400 font-bold">&lt;2s Alert</span>
             </div>
