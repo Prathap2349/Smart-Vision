@@ -197,9 +197,9 @@ export const ZoneCanvasEditor: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs transition shadow-cyan-glow"
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-indigo-600/20"
             >
-              Create Zone & Draw ROI
+              Create Zone &amp; Draw ROI
             </button>
           </form>
         </Card>

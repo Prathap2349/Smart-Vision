@@ -196,28 +196,28 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
         )}
 
-        <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+        <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => handleTestConnection()}
             disabled={testing}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-300 transition flex items-center gap-2 border border-slate-700"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 text-xs font-bold text-indigo-300 transition flex items-center justify-center gap-2 border border-indigo-500/30"
           >
-            {testing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
-            {testing ? 'Testing RTSP...' : 'TEST CONNECTION'}
+            {testing ? <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" /> : <Shield className="w-4 h-4 text-indigo-400" />}
+            {testing ? 'Testing RTSP...' : 'Test Connection'}
           </button>
 
-          <div className="flex gap-2">
+          <div className="w-full sm:w-auto flex gap-2 justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:bg-slate-800"
+              className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 shadow-cyan-glow"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20"
             >
               Start Live Monitoring
             </button>

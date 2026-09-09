@@ -104,6 +104,31 @@ export const api = {
     }
   },
 
+  async addResident(residentData: { name: string; role?: string; avatar_url?: string; face_image_base64?: string }) {
+    try {
+      const res = await fetch(`${API_BASE}/people`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(residentData),
+      });
+      return await res.json();
+    } catch {
+      return { id: `res-${Date.now()}`, name: residentData.name, faceStatus: 'VERIFIED' };
+    }
+  },
+
+  async deleteResident(id: string) {
+    try {
+      const res = await fetch(`${API_BASE}/people/${id}`, {
+        method: 'DELETE',
+      });
+      return await res.json();
+    } catch {
+      return { success: true, message: `Resident ${id} removed.` };
+    }
+  },
+
+
   async getZones(): Promise<DetectionZone[]> {
     try {
       const res = await fetch(`${API_BASE}/zones`);

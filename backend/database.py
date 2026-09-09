@@ -110,17 +110,8 @@ def init_db():
         VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'admin', 'admin123', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE');
         """)
 
-    # Seed Default Residents if empty
-    cursor.execute("SELECT COUNT(*) FROM residents;")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("""
-        INSERT INTO residents (id, name, resident_id, role, face_status, avatar_url, added_date, detection_count)
-        VALUES 
-        ('res-01', 'Arun Kumar', 'RES-8821', 'Primary Resident', 'VERIFIED', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80', '2025-01-10', 142),
-        ('res-02', 'Priya S', 'RES-8822', 'Primary Resident', 'VERIFIED', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=250&q=80', '2025-01-10', 118),
-        ('res-03', 'Family Member 03', 'RES-8823', 'Family Member', 'VERIFIED', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=250&q=80', '2025-01-15', 64),
-        ('res-04', 'Family Member 04', 'RES-8824', 'Family Member', 'VERIFIED', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=250&q=80', '2025-01-20', 39);
-        """)
+    # No fake default residents seeded — starts 100% clean for real enrollment
+
 
     # Seed Default Detection Zones if empty
     cursor.execute("SELECT COUNT(*) FROM detection_zones;")

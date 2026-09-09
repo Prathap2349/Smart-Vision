@@ -55,7 +55,8 @@ interface SecurityContextType {
   markAlertFalsePositive: (id: string, reason: string) => void;
   confirmAlertThreat: (id: string) => void;
   resolveAlert: (id: string) => void;
-  addResident: (resident: Omit<ResidentPerson, 'id' | 'addedDate'>) => void;
+  addResident: (resData: { name: string; role?: string; avatarUrl?: string; faceImageBase64?: string }) => Promise<void>;
+  deleteResident: (id: string) => Promise<void>;
   addCamera: (camera: Omit<CameraDevice, 'id'>) => void;
   addZone: (zone: Omit<DetectionZone, 'id'>) => void;
   updateZone: (id: string, updated: Partial<DetectionZone>) => void;
@@ -309,15 +310,26 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setFeedbackToastMessage(`Alert ${id} marked as RESOLVED.`);
   };
 
-  const addResident = (res: Omit<ResidentPerson, 'id' | 'addedDate'>) => {
-    const newRes: ResidentPerson = {
-      ...res,
-      id: `res-${Date.now()}`,
-      addedDate: new Date().toISOString().split('T')[0],
-    };
-    setResidents(prev => [...prev, newRes]);
-    setFeedbackToastMessage(`New resident ${res.name} whitelisted for InsightFace biometrics.`);
+  const addResident = async (resData: { name: string; role?: string; avatarUrl?: string; faceImageBase64?: string }) => {
+    const resp = await api.addResident({
+      name: resData.name,
+      role: resData.role || 'Family Member',
+      avatar_url: resData.avatarUrl,
+      face_image_base64: resData.faceImageBase64,
+    });
+    
+    // Refresh residents list from backend
+    const people = await api.getPeople();
+    setResidents(people.residents);
+    setFeedbackToastMessage(`Resident ${resData.name} added with face status: ${resp.faceStatus || 'ENROLLED'}.`);
   };
+
+  const deleteResident = async (id: string) => {
+    await api.deleteResident(id);
+    setResidents(prev => prev.filter(r => r.id !== id));
+    setFeedbackToastMessage(`Resident removed from biometric whitelist.`);
+  };
+
 
   const addCamera = (cam: Omit<CameraDevice, 'id'>) => {
     const newCam: CameraDevice = { ...cam, id: `cam-0${cameras.length + 1}` };
@@ -371,6 +383,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         confirmAlertThreat,
         resolveAlert,
         addResident,
+        deleteResident,
         addCamera,
         addZone,
         updateZone,

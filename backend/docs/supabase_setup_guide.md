@@ -1,25 +1,25 @@
 # Supabase Integration & Database Setup Guide
 ## Smart Vision Sentry — Cloud Database Guide
 
-This guide explains how to connect **Smart Vision Sentry** to **Supabase** (PostgreSQL) as an optional cloud database setting.
+This guide explains how to connect **Smart Vision Sentry** to **Supabase** (PostgreSQL) as a cloud database setting.
 
 ---
 
 ## 1. Environment Configuration
 
-Add the following environment variables to your system environment or `.env` file:
+Add the following environment variables to your system environment or `backend/.env` file:
 
 ```bash
 # Supabase Configuration
-SUPABASE_URL="https://YOUR_PROJECT_ID.supabase.co"
+SUPABASE_URL="https://phiboawjlfnzlrdcsddv.supabase.co"
 SUPABASE_KEY="YOUR_SUPABASE_ANON_OR_SERVICE_ROLE_KEY"
 ```
 
 ---
 
-## 2. Supabase SQL Migration Script
+## 2. Supabase SQL Migration Script (with RLS Policies)
 
-Copy and paste the following SQL script directly into your **Supabase SQL Editor** (`https://supabase.com/dashboard/project/YOUR_PROJECT_ID/sql/new`):
+Copy and paste the following SQL script directly into your **Supabase SQL Editor** (`https://supabase.com/dashboard/project/phiboawjlfnzlrdcsddv/sql/new`):
 
 ```sql
 -- 1. Cameras Table
@@ -101,27 +101,21 @@ CREATE TABLE IF NOT EXISTS public.events (
     status TEXT NOT NULL
 );
 
--- Seed Default Camera if empty
+-- Enable RLS and Create Open Access Policies for Backend API
+ALTER TABLE public.cameras ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.residents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.detection_zones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public access to cameras" ON public.cameras FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public access to residents" ON public.residents FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public access to detection_zones" ON public.detection_zones FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public access to alerts" ON public.alerts FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public access to events" ON public.events FOR ALL USING (true) WITH CHECK (true);
+
+-- Seed Default Camera
 INSERT INTO public.cameras (id, name, host, port, username, password, channel, stream_type, resolution, fps, enabled, status)
 VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'admin', 'admin123', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE')
 ON CONFLICT (id) DO NOTHING;
 ```
-
----
-
-## 3. Python SDK Setup (Optional)
-
-To enable automatic sync from the backend to Supabase:
-
-1. Install the Supabase Python SDK:
-   ```bash
-   .venv/bin/pip install supabase
-   ```
-
-2. When `SUPABASE_URL` and `SUPABASE_KEY` are provided in `config.py`, the system can perform real-time row replication to Supabase via:
-   ```python
-   from supabase import create_client
-   from config import SUPABASE_URL, SUPABASE_KEY
-
-   supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-   ```

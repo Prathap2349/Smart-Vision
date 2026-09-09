@@ -36,7 +36,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
   const activeCameras = cameras.filter(c => c.status === 'ONLINE').length;
 
   return (
-    <header className="bg-[#0a0e1a]/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30">
+    <header className="bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30">
       <div>
         <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-3">
           {title}
@@ -47,32 +47,32 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
       <div className="flex items-center gap-4 text-xs font-mono">
         {/* Emergency/Security Status Indicator */}
         {hasThreat ? (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-300 animate-pulse shadow-rose-glow">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-300 animate-pulse shadow-lg shadow-rose-600/20">
             <AlertTriangle className="w-4 h-4 text-rose-400" />
             <span className="font-bold">🚨 ACTIVE THREAT DETECTED</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-300">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold">ALL SYSTEMS NOMINAL</span>
+            <span className="font-bold">ALL SYSTEMS NOMINAL</span>
           </div>
         )}
 
         {/* System Status */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
-          <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
+          <Cpu className="w-4 h-4 text-indigo-400" />
           <span>EDGE AI ONLINE</span>
         </div>
 
         {/* Cameras Status */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
-          <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+        <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
+          <Wifi className="w-4 h-4 text-emerald-400" />
           <span>{activeCameras}/{cameras.length} CAMERAS</span>
         </div>
 
         {/* Clock */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-cyan-400 font-bold">
-          <Clock className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-indigo-400 font-bold">
+          <Clock className="w-4 h-4" />
           <span>{timeString}</span>
         </div>
 
@@ -80,7 +80,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white relative transition"
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white relative transition"
           >
             <Bell className="w-4 h-4" />
             {alerts.length > 0 && (
@@ -91,8 +91,8 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-[#0f172a] border border-slate-800 rounded-xl shadow-2xl p-3 space-y-2 z-50 animate-fadeIn">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-semibold text-white">
+            <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 space-y-3 z-50 animate-fadeIn">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-white">
                 <span>Security Notifications ({alerts.length})</span>
                 <Badge variant="cyan">REALTIME</Badge>
               </div>
@@ -101,7 +101,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
                 {alerts.slice(0, 4).map(alt => (
                   <div
                     key={alt.id}
-                    className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs space-y-1"
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1"
                   >
                     <div className="flex items-center justify-between text-rose-400 font-bold">
                       <span>{alt.detectionType}</span>
@@ -120,3 +120,4 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
     </header>
   );
 };
+

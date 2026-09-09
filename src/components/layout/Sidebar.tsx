@@ -55,19 +55,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   ];
 
   return (
-    <aside className="w-64 bg-[#0a0e1a] border-r border-slate-800 flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
+    <aside className="w-64 bg-slate-950 border-r border-slate-800/80 flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
       <div>
         {/* Top Logo Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-cyan-glow">
+        <div className="p-5 border-b border-slate-800/80 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <Shield className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="font-bold text-base tracking-tight text-white flex items-center gap-1.5">
-              SVS <span className="text-[10px] text-cyan-400 font-mono font-normal">v1.0</span>
+              Smart Vision <span className="text-[10px] text-indigo-400 font-mono font-bold">v1.0</span>
             </h1>
-            <p className="text-xs font-semibold text-slate-400 tracking-wider uppercase">
-              Smart Vision Sentry
+            <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
+              Edge Security Console
             </p>
           </div>
         </div>
@@ -82,14 +82,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id as NavTab)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-cyan-950/80 to-slate-900 border border-cyan-500/40 text-cyan-300 shadow-cyan-glow'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
                 </div>
 
@@ -106,14 +106,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       </div>
 
       {/* Bottom Status & Profile */}
-      <div className="p-4 border-t border-slate-800 space-y-3 bg-[#070a14]">
+      <div className="p-4 border-t border-slate-800/80 space-y-3 bg-slate-950">
         {/* Edge AI Status Indicator */}
         <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-cyan-400" />
+            <Cpu className="w-4 h-4 text-indigo-400" />
             <div>
               <p className="text-[11px] font-bold text-slate-200">Edge AI: {metrics.edgeStatus}</p>
-              <p className="text-[10px] text-slate-400 font-mono">10 FPS • Local INT8</p>
+              <p className="text-[10px] text-slate-400 font-mono">10 FPS • INT8 Quantized</p>
             </div>
           </div>
           <Badge variant="emerald" pulse>ONLINE</Badge>
@@ -125,10 +125,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
             <img
               src={user.avatar}
               alt={user.name}
-              className="w-8 h-8 rounded-full border border-cyan-500/40 object-cover"
+              className="w-8 h-8 rounded-full border border-indigo-500/40 object-cover"
             />
             <div className="truncate max-w-[110px]">
-              <p className="text-xs font-semibold text-white truncate">{user.name}</p>
+              <p className="text-xs font-bold text-white truncate">{user.name}</p>
               <p className="text-[10px] text-slate-400 truncate">{user.role}</p>
             </div>
           </div>
@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           <button
             onClick={logout}
             title="Log Out"
-            className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition"
+            className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-900 transition"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -145,3 +145,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     </aside>
   );
 };
+

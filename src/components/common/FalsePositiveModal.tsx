@@ -69,9 +69,9 @@ export const FalsePositiveModal: React.FC = () => {
                   type="button"
                   key={opt.id}
                   onClick={() => setSelectedReason(opt.id)}
-                  className={`p-3 rounded-lg text-left text-xs font-medium border transition-all ${
+                  className={`p-3 rounded-xl text-left text-xs font-medium border transition-all ${
                     selectedReason === opt.id
-                      ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300 shadow-cyan-glow'
+                      ? 'bg-indigo-950/80 border-indigo-500 text-indigo-200 shadow-md shadow-indigo-500/20'
                       : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
                   }`}
                 >
@@ -89,7 +89,7 @@ export const FalsePositiveModal: React.FC = () => {
                 value={customNote}
                 onChange={e => setCustomNote(e.target.value)}
                 placeholder="e.g. Car headlight beam flare..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 outline-none"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 outline-none"
               />
             </div>
           )}
@@ -98,13 +98,13 @@ export const FalsePositiveModal: React.FC = () => {
             <button
               type="button"
               onClick={() => setFeedbackModalAlert(null)}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:bg-slate-800 transition"
+              className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 transition shadow-lg shadow-cyan-600/30"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/20"
             >
               Submit Feedback
             </button>
