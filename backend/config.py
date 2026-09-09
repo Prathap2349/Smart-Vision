@@ -35,8 +35,9 @@ NIGHT_END_HOUR = 6     # 6 AM
 NIGHT_DWELL_THRESHOLD = 10  # Strict 10-second loitering at night
 DAY_DWELL_THRESHOLD = 20    # Standard 20-second loitering during day
 
-# Supabase Integration Settings (Optional Cloud Database)
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+# Supabase Integration Settings (Cloud Database)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://phiboawjlfnzlrdcsddv.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
 
 
