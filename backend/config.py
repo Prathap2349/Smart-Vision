@@ -1,0 +1,30 @@
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+EVIDENCE_DIR = DATA_DIR / "evidence"
+
+DATA_DIR.mkdir(exist_ok=True)
+EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+
+DB_PATH = DATA_DIR / "smart_vision.db"
+
+# Default Hikvision Environment settings
+HIKVISION_HOST = os.getenv("HIKVISION_HOST", "192.168.1.104")
+HIKVISION_RTSP_PORT = int(os.getenv("HIKVISION_RTSP_PORT", "554"))
+HIKVISION_USERNAME = os.getenv("HIKVISION_USERNAME", "admin")
+HIKVISION_PASSWORD = os.getenv("HIKVISION_PASSWORD", "admin123")
+HIKVISION_CHANNEL = os.getenv("HIKVISION_CHANNEL", "101")
+
+# AI & Dwell Threshold Defaults
+DEFAULT_DWELL_THRESHOLD = 20  # seconds
+DEFAULT_AI_FPS = 5             # 1, 5, or 10 FPS
+DEFAULT_HUMAN_CONFIDENCE = 0.85
+DEFAULT_FACE_CONFIDENCE = 0.90
+ALERT_COOLDOWN_SECONDS = 60
+
+# Telegram Bot Integration Settings
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
