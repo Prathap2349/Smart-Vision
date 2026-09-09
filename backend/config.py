@@ -28,3 +28,15 @@ ALERT_COOLDOWN_SECONDS = 60
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
+# Scheduled Sensitivity Profile Settings (Idea 3)
+ENABLE_SCHEDULED_PROFILES = True
+NIGHT_START_HOUR = 23  # 11 PM
+NIGHT_END_HOUR = 6     # 6 AM
+NIGHT_DWELL_THRESHOLD = 10  # Strict 10-second loitering at night
+DAY_DWELL_THRESHOLD = 20    # Standard 20-second loitering during day
+
+# Supabase Integration Settings (Optional Cloud Database)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+

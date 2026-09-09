@@ -26,6 +26,11 @@ def get_alerts():
 
     result = []
     for r in rows:
+        reasoning_summary = (
+            f"🚨 Threat Alert: {r['detection_type']} at {r['camera_name']} ({r['zone_name']}). "
+            f"Human detected ({int(r['confidence'] * 100)}%), dwelt for {int(r['dwell_duration'])}s, "
+            f"face status: {r['face_status']}."
+        )
         result.append({
             "id": r["id"],
             "timestamp": r["timestamp"],
@@ -45,6 +50,7 @@ def get_alerts():
             "falsePositiveReason": r["false_positive_reason"],
             "falsePositiveTimestamp": r["false_positive_timestamp"],
             "zoneName": r["zone_name"],
+            "aiReasoningSummary": reasoning_summary,
             "aiReasoning": {
                 "gate1Human": True,
                 "gate2Dwell": True,
@@ -52,6 +58,38 @@ def get_alerts():
             }
         })
     return result
+
+# Idea 4: Confirmation Loop — Confirm Alert Endpoint
+@router.post("/api/alerts/{id}/confirm")
+def confirm_alert(id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.datetime.now().isoformat()
+    cursor.execute("UPDATE alerts SET status = 'CONFIRMED_THREAT' WHERE id = ?;", (id,))
+    conn.commit()
+    conn.close()
+    return {
+        "success": True,
+        "message": f"Alert {id} confirmed by resident as real security threat.",
+        "status": "CONFIRMED_THREAT",
+        "timestamp": now_str
+    }
+
+# Idea 4: Confirmation Loop — Dismiss Alert Endpoint
+@router.post("/api/alerts/{id}/dismiss")
+def dismiss_alert(id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.datetime.now().isoformat()
+    cursor.execute("UPDATE alerts SET status = 'DISMISSED' WHERE id = ?;", (id,))
+    conn.commit()
+    conn.close()
+    return {
+        "success": True,
+        "message": f"Alert {id} dismissed by resident (1-tap confirmation loop).",
+        "status": "DISMISSED",
+        "timestamp": now_str
+    }
 
 @router.post("/api/alerts/{id}/feedback")
 def submit_feedback(id: str, req: FeedbackRequest):
@@ -96,3 +134,4 @@ def get_events():
         }
         for r in rows
     ]
+
