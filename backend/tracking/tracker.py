@@ -33,18 +33,19 @@ class TrackedSubject:
 class ByteTrackerManager:
     def __init__(self):
         self.tracks: Dict[str, TrackedSubject] = {}
-        self.next_id_counter = 104
+        self.next_id_counter = 1
 
     def update_tracks(self, detections: List[Dict[str, Any]], zones: List[Dict[str, Any]], frame_w: int = 1280, frame_h: int = 720) -> List[TrackedSubject]:
         now = time.time()
         
-        # If no active track, create or update track #104
-        if not detections and not self.tracks:
-            track_id = f"#{self.next_id_counter}"
-            t = TrackedSubject(track_id, [450, 200, 580, 500], now)
-            t.zone_entry_time = now - 24.3 # Simulated real dwell 24.3s for demo/initial load
-            self.tracks[track_id] = t
-            return [t]
+        # 1. Expire stale tracks (not seen for > 3.0 seconds)
+        expired_ids = [tid for tid, t in self.tracks.items() if now - t.last_seen > 3.0]
+        for tid in expired_ids:
+            del self.tracks[tid]
+
+        # 2. If no detections present, return remaining non-expired tracks (or empty list)
+        if not detections:
+            return list(self.tracks.values())
 
         updated_list = []
         for det in detections:
@@ -52,7 +53,7 @@ class ByteTrackerManager:
             matched_zones = check_person_zones(bbox, frame_w, frame_h, zones)
             zone_name = matched_zones[0]["name"] if matched_zones else "Corridor Protection Zone"
 
-            # Assign or update existing track
+            # Assign to existing track or create new
             existing = list(self.tracks.values())
             if existing:
                 t = existing[0]

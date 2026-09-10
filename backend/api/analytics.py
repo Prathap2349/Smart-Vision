@@ -15,13 +15,19 @@ def get_analytics():
     verified_threats = cursor.fetchone()[0]
 
     cursor.execute("SELECT COUNT(*) FROM events WHERE event_type LIKE '%Human%';")
-    total_detections = cursor.fetchone()[0] or 18
+    total_detections = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT COUNT(*) FROM residents WHERE face_status = 'VERIFIED';")
+    verified_residents = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT COUNT(*) FROM alerts WHERE face_status = 'UNKNOWN';")
+    unknowns_count = cursor.fetchone()[0] or 0
 
     conn.close()
 
     return {
         "falseAlarmsBefore": 99,
-        "falseAlarmsAfter": max(3, fp_count),
+        "falseAlarmsAfter": fp_count,
         "reductionPercentage": 97,
         "timeWastedBeforeMins": 20,
         "timeWastedAfterMins": 1,
@@ -29,7 +35,7 @@ def get_analytics():
         "accuracyPercent": 98.6,
         "residentRecognitionPercent": 99.1,
         "totalDetectionsToday": total_detections,
-        "residentsRecognizedToday": 14,
-        "unknownsDetectedToday": 4,
+        "residentsRecognizedToday": verified_residents,
+        "unknownsDetectedToday": unknowns_count,
         "verifiedThreatsToday": verified_threats
     }

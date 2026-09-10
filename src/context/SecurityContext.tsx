@@ -57,7 +57,7 @@ interface SecurityContextType {
   resolveAlert: (id: string) => void;
   addResident: (resData: { name: string; role?: string; avatarUrl?: string; faceImageBase64?: string }) => Promise<void>;
   deleteResident: (id: string) => Promise<void>;
-  addCamera: (camera: Omit<CameraDevice, 'id'>) => void;
+  addCamera: (camera: Omit<CameraDevice, 'id'>) => Promise<void>;
   addZone: (zone: Omit<DetectionZone, 'id'>) => void;
   updateZone: (id: string, updated: Partial<DetectionZone>) => void;
   updateSettings: (newSettings: Partial<AISettings>) => void;
@@ -166,7 +166,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     async function loadData() {
       const cams = await api.getCameras();
-      setCameras(cams.map(c => ({ ...c, status: 'ONLINE' })));
+      setCameras(cams);
       const alts = await api.getAlerts();
       setAlerts(alts);
       const people = await api.getPeople();
@@ -175,7 +175,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const zn = await api.getZones();
       setZones(zn);
       const m = await api.getSystemMetrics();
-      setMetrics({ ...m, rtspStatus: 'CONNECTED' });
+      setMetrics(m);
     }
     loadData();
   }, []);
@@ -331,10 +331,16 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
 
-  const addCamera = (cam: Omit<CameraDevice, 'id'>) => {
-    const newCam: CameraDevice = { ...cam, id: `cam-0${cameras.length + 1}` };
-    setCameras(prev => [...prev, newCam]);
-    setFeedbackToastMessage(`Hikvision Camera "${cam.name}" added to SVS Edge pipeline.`);
+  const addCamera = async (cam: Omit<CameraDevice, 'id'>) => {
+    const resp = await api.addCamera(cam);
+    if (resp && !resp.error) {
+      setCameras(prev => [...prev, resp]);
+      setFeedbackToastMessage(`Camera "${cam.name}" connected and saved.`);
+    } else {
+      const newCam: CameraDevice = { ...cam, id: `cam-0${cameras.length + 1}` };
+      setCameras(prev => [...prev, newCam]);
+      setFeedbackToastMessage(`Camera "${cam.name}" added locally.`);
+    }
   };
 
   const addZone = (zone: Omit<DetectionZone, 'id'>) => {

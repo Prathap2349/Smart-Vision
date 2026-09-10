@@ -13,9 +13,15 @@ class YOLOv8PersonDetector:
             self.model = YOLO('yolov8n.pt')
             print("YOLOv8-Nano initialized successfully.")
         except Exception as e:
-            print(f"YOLOv8 init warning: {e}. Using OpenCV HOG Person Detector fallback.")
-            self.hog = cv2.HOGDescriptor()
-            self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+            print(f"YOLOv8 init warning: {e}. Using OpenCV contour detector fallback.")
+            self.hog = None
+            if hasattr(cv2, 'HOGDescriptor'):
+                try:
+                    self.hog = cv2.HOGDescriptor()
+                    if hasattr(cv2.HOGDescriptor, 'getDefaultPeopleDetector'):
+                        self.hog.setSVMDetector(cv2.HOGDescriptor.getDefaultPeopleDetector())
+                except Exception:
+                    self.hog = None
 
     def detect_people(self, frame: np.ndarray, conf_threshold: float = 0.85) -> List[Dict[str, Any]]:
         if frame is None or frame.size == 0:
@@ -38,6 +44,21 @@ class YOLOv8PersonDetector:
                 return results
             except Exception as e:
                 pass
+
+        if self.hog is not None:
+            try:
+                boxes, weights = self.hog.detectMultiScale(frame, winStride=(8, 8))
+                for (x, y, w, h), weight in zip(boxes, weights):
+                    if weight >= conf_threshold * 0.5:
+                        results.append({
+                            "class": "person",
+                            "confidence": round(float(weight), 2),
+                            "bbox": [int(x), int(y), int(x + w), int(y + h)]
+                        })
+            except Exception:
+                pass
+
+        return results
 
         # OpenCV HOG Fallback Person Detector
         try:

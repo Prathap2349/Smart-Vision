@@ -45,18 +45,33 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
     setCameraName(`${brandTemplates[brand].name} Camera`);
   };
 
-  const handleScanOnvif = () => {
+  const handleScanOnvif = async () => {
     setScanningOnvif(true);
     setOnvifDiscovered(false);
-    setTimeout(() => {
+    try {
+      const res = await api.scanOnvifNetwork();
       setScanningOnvif(false);
-      setOnvifDiscovered(true);
-      setHost('192.168.1.104');
+      if (res && res.devices && res.devices.length > 0) {
+        const dev = res.devices[0];
+        setOnvifDiscovered(true);
+        if (dev.ip) setHost(dev.ip);
+        setTestResult({
+          connected: true,
+          message: `✓ ONVIF Device Discovered: ${dev.name || 'Camera'} (${dev.ip || 'LAN'}) responding on network.`,
+        });
+      } else {
+        setTestResult({
+          connected: false,
+          message: 'No ONVIF camera discovered on LAN. Enter IP manually or select Webcam.',
+        });
+      }
+    } catch {
+      setScanningOnvif(false);
       setTestResult({
-        connected: true,
-        message: '✓ ONVIF Device Discovered: Camera (192.168.1.104:554) responding on local network.',
+        connected: false,
+        message: 'ONVIF scan failed or network permissions restricted.',
       });
-    }, 1500);
+    }
   };
 
   const handleTestConnection = async (targetHost?: string) => {

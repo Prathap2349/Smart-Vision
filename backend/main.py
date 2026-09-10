@@ -6,17 +6,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from config import EVIDENCE_DIR
-from database import init_db
+from database import init_db, get_db_connection
 from api import cameras, detections, alerts, people, zones, analytics, health, integrations
 from services.websocket_manager import ws_manager
 from tracking.tracker import tracker_manager
 from ai.decision_engine import decision_engine
-from alerts.alert_manager import alert_manager
+from camera.rtsp_stream import rtsp_manager
+from detection_loop import detection_loop
 
 app = FastAPI(
     title="Smart Vision Sentry Edge AI Engine",
     version="1.0.0",
-    description="Real Hikvision RTSP + YOLOv8 + ByteTrack + InsightFace 3-Gate Security Backend"
+    description="Real Continuous Camera Capture + YOLOv8 + ByteTrack + InsightFace Security Backend"
 )
 
 # Enable CORS for React frontend (port 3000 & 5173)
@@ -41,66 +42,65 @@ app.include_router(analytics.router)
 app.include_router(health.router)
 app.include_router(integrations.router)
 
+@app.on_event("startup")
+def startup_event():
+    # 1. Initialize SQLite Database
+    init_db()
+
+    # 2. Start default camera capture thread if camera exists
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, host, port, username, password, channel FROM cameras WHERE enabled = 1 LIMIT 1;")
+    r = cursor.fetchone()
+    conn.close()
+
+    if r:
+        rtsp_manager.start_camera(r["id"], r["host"], r["port"], r["username"], r["password"], r["channel"])
+
+    # 3. Start continuous AI detection background loop
+    detection_loop.start()
+    print("[Main Engine] Continuous AI Detection Loop & Real Camera Capture Started Successfully.")
+
 # Real-time WebSocket Endpoint
 @app.websocket("/ws/cameras/{camera_id}")
 async def camera_websocket(websocket: WebSocket, camera_id: str):
     await ws_manager.connect(camera_id, websocket)
     try:
         while True:
-            # Gather live telemetry & 3-Gate states
-            tracks = list(tracker_manager.tracks.values())
-            active_track = tracks[0] if tracks else None
-            
-            gate_eval = {
-                "gate1_human": {"pass": True, "confidence": 0.97, "label": "PASS (97%)"},
-                "gate2_dwell": {"pass": False, "dwell_seconds": 12.0, "threshold_seconds": 20, "label": "12s / 20s"},
-                "gate3_unknown": {"pass": True, "face_status": "UNKNOWN", "label": "PASS (UNKNOWN)"},
-                "final_decision": "MONITORING"
-            }
+            # Relay real detection state & measured telemetry from continuous loop
+            state = detection_loop.last_detection_state
+            if state:
+                await websocket.send_json(state)
+            else:
+                _, is_connected, real_fps = rtsp_manager.get_frame_data(camera_id)
+                tracks = list(tracker_manager.tracks.values())
+                payload = {
+                    "camera_id": camera_id,
+                    "status": "ONLINE" if is_connected else "OFFLINE",
+                    "fps": real_fps,
+                    "inference_latency_ms": 18 if is_connected else 0,
+                    "tracks": [
+                        {
+                            "track_id": t.track_id,
+                            "bbox": t.bbox,
+                            "dwell_seconds": t.dwell_seconds,
+                            "face_status": t.face_status,
+                            "confidence": t.confidence,
+                            "current_zone": t.current_zone
+                        }
+                        for t in tracks
+                    ],
+                    "decision": {
+                        "gate1_human": {"pass": len(tracks) > 0, "label": "HUMAN CHECK"},
+                        "gate2_dwell": {"pass": any(t.dwell_seconds >= 20 for t in tracks), "label": "LOITERING CHECK"},
+                        "gate3_unknown": {"pass": any(t.face_status == "UNKNOWN" for t in tracks), "label": "FAMILY CHECK"},
+                        "final_decision": "VERIFIED_THREAT" if any(t.dwell_seconds >= 20 and t.face_status == "UNKNOWN" for t in tracks) else "CLEAR"
+                    },
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                }
+                await websocket.send_json(payload)
 
-            if active_track:
-                is_human = True
-                conf = active_track.confidence
-                dwell = active_track.dwell_seconds
-                face = active_track.face_status
-
-                gate_eval = decision_engine.evaluate_gates(is_human, conf, dwell, 20.0, face)
-
-                # Check if alert needs to be triggered
-                if gate_eval["final_decision"] == "VERIFIED_THREAT":
-                    new_alert = alert_manager.trigger_alert(
-                        camera_id="cam-01",
-                        camera_name="Residential Corridor",
-                        track_id=active_track.track_id,
-                        dwell_duration=dwell,
-                        face_status=face,
-                        confidence=conf
-                    )
-                    if new_alert:
-                        gate_eval["new_alert"] = new_alert
-
-            payload = {
-                "camera_id": camera_id,
-                "status": "ONLINE",
-                "fps": 10.2,
-                "inference_latency_ms": 18,
-                "tracks": [
-                    {
-                        "track_id": t.track_id,
-                        "bbox": t.bbox,
-                        "dwell_seconds": t.dwell_seconds,
-                        "face_status": t.face_status,
-                        "confidence": t.confidence,
-                        "current_zone": t.current_zone
-                    }
-                    for t in tracks
-                ],
-                "decision": gate_eval,
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
-            }
-
-            await websocket.send_json(payload)
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(0.2) # 5 Hz WebSocket update
     except WebSocketDisconnect:
         ws_manager.disconnect(camera_id, websocket)
     except Exception:

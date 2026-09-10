@@ -48,19 +48,18 @@ HIKVISION CCTV / RTSP STREAM
 
 ### **Backend (Python 3.10+ & FastAPI)**
 - **Framework**: FastAPI + Uvicorn (REST API & WebSockets)
-- **Computer Vision**: OpenCV, FFmpeg
-- **Object Detection**: Ultralytics YOLOv8 (Human Silhouette Detection)
-- **Object Tracking & Dwell Timer**: ByteTrack multi-object tracker + Ray-Casting point-in-polygon geometry
-- **Face Recognition**: InsightFace feature embedding vector matching
-- **Database**: SQLite3 / Supabase PostgreSQL integration
-- **Real-Time Communication**: WebSockets (`/ws/cameras/{camera_id}`) + MJPEG stream provider
+- **Camera Streaming**: Continuous thread RTSP/Webcam capture with real measured FPS & MJPEG server (`/api/cameras/{id}/mjpeg`)
+- **AI Detection Loop**: Continuous background thread running YOLOv8 human detection, ByteTrack object tracking, and InsightFace biometrics
+- **ONVIF Discovery**: Native UDP WS-Discovery scanner on port 3702 for automatic LAN IP camera detection
+- **Face Biometrics & Persistence**: SQLite3 database with optional Supabase Cloud sync & full resident enrollment/deletion endpoints
+- **Real-Time Telemetry**: WebSockets (`/ws/cameras/{camera_id}`) streaming live measured FPS, latency, and detection bounding boxes
 
 ### **Frontend (React 18 & Dashboard)**
 - **Framework**: React 18, TypeScript, Vite
 - **Styling**: Tailwind CSS (Modern Consumer & Security dark theme)
 - **Icons**: Lucide React
 - **Analytics & Charts**: Recharts
-- **Video Renderer**: Custom HTML5 Canvas renderer with real-time AI bounding box, track ID, and face tag overlays
+- **Video Renderer**: Dual HTML5 Canvas + MJPEG player rendering real continuous camera feeds with live bounding box, track ID, and face tag overlays
 - **Deployment Rules**: `vercel.json` Monorepo configuration with API rewrites (`/api/*` → FastAPI backend service)
 
 ---

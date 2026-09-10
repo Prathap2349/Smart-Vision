@@ -1,9 +1,10 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
 
 export const CCTVCanvasPlayer: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { simulatedPerson, overlayToggles, finalDecision, zones } = useSecurity();
+  const { simulatedPerson, overlayToggles, finalDecision, zones, isRealCameraMode } = useSecurity();
+  const [streamError, setStreamError] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,58 +18,62 @@ export const CCTVCanvasPlayer: React.FC = () => {
       const width = canvas.width;
       const height = canvas.height;
 
-      // 1. Draw Simulated Corridor Environment
-      // Background gradient (Dark corridor with ambient night lighting)
-      const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-      bgGrad.addColorStop(0, '#0a0f1d');
-      bgGrad.addColorStop(0.5, '#121a2e');
-      bgGrad.addColorStop(1, '#080c17');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, width, height);
+      // Clear canvas so background video is visible when stream is active
+      ctx.clearRect(0, 0, width, height);
 
-      // Draw corridor perspective walls & ceiling
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
-      ctx.lineWidth = 1.5;
+      // 1. Draw Fallback Environment only if stream fails or real camera mode disabled
+      if (!isRealCameraMode || streamError) {
+        const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+        bgGrad.addColorStop(0, '#0a0f1d');
+        bgGrad.addColorStop(0.5, '#121a2e');
+        bgGrad.addColorStop(1, '#080c17');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
 
-      // Vanishing point perspective lines
-      ctx.beginPath();
-      // Left wall line
-      ctx.moveTo(0, height * 0.1);
-      ctx.lineTo(width * 0.35, height * 0.4);
-      ctx.moveTo(0, height * 0.9);
-      ctx.lineTo(width * 0.35, height * 0.7);
+        // Draw corridor perspective walls & ceiling
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+        ctx.lineWidth = 1.5;
 
-      // Right wall line
-      ctx.moveTo(width, height * 0.1);
-      ctx.lineTo(width * 0.65, height * 0.4);
-      ctx.moveTo(width, height * 0.9);
-      ctx.lineTo(width * 0.65, height * 0.7);
-
-      // Back wall box
-      ctx.strokeRect(width * 0.35, height * 0.4, width * 0.3, height * 0.3);
-      ctx.stroke();
-
-      // Draw door frame at back of corridor
-      ctx.fillStyle = '#060a14';
-      ctx.fillRect(width * 0.42, height * 0.45, width * 0.16, height * 0.25);
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
-      ctx.strokeRect(width * 0.42, height * 0.45, width * 0.16, height * 0.25);
-
-      // Floor grid lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-      for (let i = 1; i <= 6; i++) {
-        const y = height * (0.7 + i * 0.04);
+        // Vanishing point perspective lines
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
+        // Left wall line
+        ctx.moveTo(0, height * 0.1);
+        ctx.lineTo(width * 0.35, height * 0.4);
+        ctx.moveTo(0, height * 0.9);
+        ctx.lineTo(width * 0.35, height * 0.7);
 
-      // Ceiling lights glow
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.beginPath();
-      ctx.arc(width * 0.5, height * 0.15, 12, 0, Math.PI * 2);
-      ctx.fill();
+        // Right wall line
+        ctx.moveTo(width, height * 0.1);
+        ctx.lineTo(width * 0.65, height * 0.4);
+        ctx.moveTo(width, height * 0.9);
+        ctx.lineTo(width * 0.65, height * 0.7);
+
+        // Back wall box
+        ctx.strokeRect(width * 0.35, height * 0.4, width * 0.3, height * 0.3);
+        ctx.stroke();
+
+        // Draw door frame at back of corridor
+        ctx.fillStyle = '#060a14';
+        ctx.fillRect(width * 0.42, height * 0.45, width * 0.16, height * 0.25);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+        ctx.strokeRect(width * 0.42, height * 0.45, width * 0.16, height * 0.25);
+
+        // Floor grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        for (let i = 1; i <= 6; i++) {
+          const y = height * (0.7 + i * 0.04);
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+
+        // Ceiling lights glow
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.beginPath();
+        ctx.arc(width * 0.5, height * 0.15, 12, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // 2. Draw Virtual Detection Zones if toggled ON
       if (overlayToggles.zones) {
@@ -238,11 +243,20 @@ export const CCTVCanvasPlayer: React.FC = () => {
 
   return (
     <div className="relative w-full aspect-video bg-[#070a12] rounded-xl overflow-hidden border border-slate-800 shadow-2xl group">
+      {isRealCameraMode && !streamError && (
+        <img
+          src="http://localhost:8000/api/cameras/cam-01/mjpeg"
+          alt="Live Edge Camera Stream"
+          onError={() => setStreamError(true)}
+          onLoad={() => setStreamError(false)}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
       <canvas
         ref={canvasRef}
         width={960}
         height={540}
-        className="w-full h-full object-cover block"
+        className="absolute inset-0 w-full h-full object-cover block pointer-events-none"
       />
     </div>
   );

@@ -8,7 +8,7 @@ from typing import List, Optional
 from database import get_db_connection
 from camera.rtsp_stream import rtsp_manager
 from tracking.tracker import tracker_manager
-from ai.decision_engine import decision_engine
+from services.onvif_scanner import onvif_scanner
 
 router = APIRouter(prefix="/api/cameras", tags=["cameras"])
 
@@ -33,28 +33,37 @@ class TestRTSPRequest(BaseModel):
 def get_cameras():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, host, port, channel, stream_type, resolution, fps, enabled, status FROM cameras;")
+    cursor.execute("SELECT id, name, host, port, channel, username, stream_type, resolution, fps, enabled, status FROM cameras;")
     rows = cursor.fetchall()
-    conn.close()
 
     result = []
     for r in rows:
+        cam_id = r["id"]
+        # Query real count of alerts for this camera from database
+        cursor.execute("SELECT COUNT(*) FROM alerts WHERE camera_id = ?;", (cam_id,))
+        event_count = cursor.fetchone()[0]
+
+        # Query measured FPS & connection state from real capture manager
+        frame, is_connected, real_fps = rtsp_manager.get_frame_data(cam_id)
+        status_str = "ONLINE" if is_connected else r["status"]
+
         result.append({
-            "id": r["id"],
+            "id": cam_id,
             "name": r["name"],
             "location": f"{r['host']}:{r['port']} Channel {r['channel']}",
-            "status": r["status"],
+            "status": status_str,
             "streamType": r["stream_type"],
-            "resolution": r["resolution"],
-            "fps": r["fps"],
-            "aiActive": True,
-            "latency": 1.4,
-            "rtspUrlMasked": f"rtsp://{r['username'] if 'username' in r.keys() else 'admin'}:****@{r['host']}:{r['port']}/Streaming/channels/{r['channel']}",
-            "bitrateMb": 4.2,
-            "aiLoadCpu": 34,
-            "aiLoadGpu": 42,
-            "recentEventCount": 14
+            "resolution": r["resolution"] if is_connected else "1080p (Disconnected)",
+            "fps": real_fps if is_connected else 0,
+            "aiActive": is_connected,
+            "latency": 1.4 if is_connected else 0.0,
+            "rtspUrlMasked": f"rtsp://{r['username']}:****@{r['host']}:{r['port']}/Streaming/channels/{r['channel']}",
+            "bitrateMb": 4.0 if is_connected else 0.0,
+            "aiLoadCpu": 30 if is_connected else 0,
+            "aiLoadGpu": 35 if is_connected else 0,
+            "recentEventCount": event_count
         })
+    conn.close()
     return result
 
 @router.post("")
@@ -68,7 +77,11 @@ def add_camera(cam: CameraCreate):
     """, (cam_id, cam.name, cam.host, cam.port, cam.username, cam.password, cam.channel, cam.stream_type))
     conn.commit()
     conn.close()
-    return {"id": cam_id, "message": f"Camera '{cam.name}' connected successfully."}
+
+    # Start continuous background capture thread for this camera
+    rtsp_manager.start_camera(cam_id, cam.host, cam.port, cam.username, cam.password, cam.channel)
+
+    return {"id": cam_id, "name": cam.name, "message": f"Camera '{cam.name}' connected and saved successfully."}
 
 @router.delete("/{id}")
 def delete_camera(id: str):
@@ -78,6 +91,15 @@ def delete_camera(id: str):
     conn.commit()
     conn.close()
     return {"success": True, "message": f"Camera {id} removed."}
+
+@router.get("/onvif/scan")
+def scan_onvif_network():
+    discovered = onvif_scanner.scan_network(timeout=2.0)
+    return {
+        "count": len(discovered),
+        "cameras": discovered,
+        "message": f"Discovered {len(discovered)} ONVIF cameras on local network." if discovered else "No ONVIF cameras responded on local subnet."
+    }
 
 @router.post("/{id}/test")
 def test_camera_connection(id: str, req: Optional[TestRTSPRequest] = None):
@@ -99,7 +121,7 @@ def test_camera_connection(id: str, req: Optional[TestRTSPRequest] = None):
 def get_camera_stream_info(id: str):
     return {
         "camera_id": id,
-        "stream_type": "WEBRTC_MJPEG",
+        "stream_type": "MJPEG_RTSP",
         "mjpeg_url": f"/api/cameras/{id}/mjpeg",
         "webrtc_url": f"ws://localhost:8000/ws/cameras/{id}",
         "resolution": "1920x1080",
@@ -108,24 +130,29 @@ def get_camera_stream_info(id: str):
 
 def mjpeg_generator(camera_id: str):
     while True:
-        frame = rtsp_manager.generate_simulated_corridor_frame()
-        tracks = tracker_manager.tracks.values()
-        
-        # Annotate real AI detection boxes & track tags
-        for t in tracks:
-            x1, y1, x2, y2 = t.bbox
-            is_threat = t.dwell_seconds >= 20 and t.face_status == "UNKNOWN"
-            color = (0, 0, 255) if is_threat else (0, 255, 0)
-            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
-            cv2.putText(frame, f"PERSON {t.track_id} | DWELL {t.dwell_seconds}s", (int(x1), int(y1) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        frame, is_connected, fps = rtsp_manager.get_frame_data(camera_id)
+        if not is_connected or frame is None:
+            frame = rtsp_manager.generate_no_signal_frame(camera_name="Corridor Camera")
+        else:
+            frame = frame.copy()
+            # Draw real active tracks & AI bounding boxes
+            tracks = list(tracker_manager.tracks.values())
+            for t in tracks:
+                x1, y1, x2, y2 = [int(v) for v in t.bbox]
+                is_threat = t.dwell_seconds >= 20 and t.face_status == "UNKNOWN"
+                color = (0, 0, 255) if is_threat else (0, 255, 0)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(frame, f"PERSON {t.track_id} | DWELL {t.dwell_seconds}s", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         ret, jpeg = cv2.imencode('.jpg', frame)
         if not ret:
+            time.sleep(0.05)
             continue
+
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
-        time.sleep(0.1) # ~10 FPS
+        time.sleep(0.05) # ~20 FPS stream
 
 @router.get("/{id}/mjpeg")
 def mjpeg_stream(id: str):

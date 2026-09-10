@@ -1,4 +1,4 @@
-import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics, AISettings } from '../types';
+import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics } from '../types';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -9,7 +9,7 @@ export const api = {
       if (!res.ok) throw new Error('Backend offline');
       return await res.json();
     } catch {
-      return { status: 'ONLINE', mode: 'STANDALONE_SIMULATION' };
+      return { status: 'OFFLINE', mode: 'STANDALONE' };
     }
   },
 
@@ -19,24 +19,7 @@ export const api = {
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {
-      return [
-        {
-          id: 'cam-01',
-          name: 'Residential Corridor Hikvision',
-          location: 'North Wing Corridor (Main Entrance)',
-          status: 'ONLINE',
-          streamType: 'RTSP',
-          resolution: '1920x1080',
-          fps: 10,
-          aiActive: true,
-          latency: 1.4,
-          rtspUrlMasked: 'rtsp://admin:****@192.168.1.104:554/Streaming/channels/101',
-          bitrateMb: 4.2,
-          aiLoadCpu: 34,
-          aiLoadGpu: 42,
-          recentEventCount: 14,
-        },
-      ];
+      return [];
     }
   },
 
@@ -48,8 +31,8 @@ export const api = {
         body: JSON.stringify(camData),
       });
       return await res.json();
-    } catch {
-      return { id: `cam-${Date.now()}`, message: 'Camera added to local state' };
+    } catch (e: any) {
+      return { error: true, message: 'Failed to connect camera to backend.' };
     }
   },
 
@@ -62,12 +45,21 @@ export const api = {
       });
       return await res.json();
     } catch {
-      // Friendly fallback test simulation
       return {
-        status: 'CONNECTED',
-        message: '✓ Hikvision RTSP connection verified! 1920x1080 @ 10 FPS responsive.',
-        connected: true,
+        status: 'CONNECTION FAILED',
+        message: 'Backend server unreachable.',
+        connected: false,
       };
+    }
+  },
+
+  async scanOnvifNetwork() {
+    try {
+      const res = await fetch(`${API_BASE}/cameras/onvif/scan`);
+      if (!res.ok) throw new Error('Scan failed');
+      return await res.json();
+    } catch {
+      return { count: 0, cameras: [], message: 'No ONVIF cameras discovered on local subnet.' };
     }
   },
 
@@ -90,7 +82,7 @@ export const api = {
       });
       return await res.json();
     } catch {
-      return { success: true, message: 'Feedback recorded for threshold analysis.' };
+      return { success: false, message: 'Failed to record feedback.' };
     }
   },
 
@@ -113,7 +105,7 @@ export const api = {
       });
       return await res.json();
     } catch {
-      return { id: `res-${Date.now()}`, name: residentData.name, faceStatus: 'VERIFIED' };
+      return { error: true, message: 'Failed to save resident to backend.' };
     }
   },
 
@@ -124,10 +116,9 @@ export const api = {
       });
       return await res.json();
     } catch {
-      return { success: true, message: `Resident ${id} removed.` };
+      return { success: false, message: `Failed to remove resident ${id}.` };
     }
   },
-
 
   async getZones(): Promise<DetectionZone[]> {
     try {
@@ -146,23 +137,23 @@ export const api = {
       return await res.json();
     } catch {
       return {
-        edgeStatus: 'ONLINE',
-        cpuUsage: 34,
-        gpuUsage: 42,
-        ramUsageGb: 2.8,
-        ramTotalGb: 8.0,
-        tempCelsius: 48,
-        fps: 10.2,
-        inferenceLatencyMs: 18,
-        networkLatencyMs: 14,
+        edgeStatus: 'OFFLINE',
+        cpuUsage: 0,
+        gpuUsage: 0,
+        ramUsageGb: 0,
+        ramTotalGb: 16.0,
+        tempCelsius: 0,
+        fps: 0,
+        inferenceLatencyMs: 0,
+        networkLatencyMs: 0,
         queueSize: 0,
-        uptimeSeconds: 846200,
-        yoloStatus: 'ACTIVE',
-        byteTrackStatus: 'ACTIVE',
-        insightFaceStatus: 'ACTIVE',
-        openCvStatus: 'ACTIVE',
-        rtspStatus: 'CONNECTED',
-        telegramStatus: 'CONNECTED',
+        uptimeSeconds: 0,
+        yoloStatus: 'OFFLINE',
+        byteTrackStatus: 'OFFLINE',
+        insightFaceStatus: 'OFFLINE',
+        openCvStatus: 'OFFLINE',
+        rtspStatus: 'DISCONNECTED',
+        telegramStatus: 'DISCONNECTED',
       };
     }
   },
@@ -173,7 +164,7 @@ export const api = {
       return await res.json();
     } catch {
       return {
-        hikvision_local_rtsp: { status: 'CONNECTED', mode: 'Real-time Local RTSP Edge AI' },
+        hikvision_local_rtsp: { status: 'DISCONNECTED', mode: 'Real-time Local Edge Processing' },
         hik_connect: { status: 'NOT_CONFIGURED' },
         hik_central: { status: 'NOT_CONFIGURED' },
       };
