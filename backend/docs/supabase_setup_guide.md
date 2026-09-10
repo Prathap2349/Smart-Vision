@@ -11,7 +11,7 @@ Add the following environment variables to your system environment or `backend/.
 
 ```bash
 # Supabase Configuration
-SUPABASE_URL="https://phiboawjlfnzlrdcsddv.supabase.co"
+SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_KEY="YOUR_SUPABASE_ANON_OR_SERVICE_ROLE_KEY"
 ```
 
@@ -116,6 +116,6 @@ CREATE POLICY "Allow public access to events" ON public.events FOR ALL USING (tr
 
 -- Seed Default Camera
 INSERT INTO public.cameras (id, name, host, port, username, password, channel, stream_type, resolution, fps, enabled, status)
-VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'admin', 'admin123', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE')
+VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'your_camera_username', 'your_camera_password', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE')
 ON CONFLICT (id) DO NOTHING;
 ```

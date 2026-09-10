@@ -262,7 +262,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
         {/* Chart 1: Before vs After */}
         <Card className="space-y-3">
           <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            Daily False Alarm Reduction
+            Daily False Alarm Reduction (Target Model)
           </h3>
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">

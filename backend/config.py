@@ -20,8 +20,8 @@ DB_PATH = DATA_DIR / "smart_vision.db"
 # Default Hikvision Environment settings
 HIKVISION_HOST = os.getenv("HIKVISION_HOST", "192.168.1.104")
 HIKVISION_RTSP_PORT = int(os.getenv("HIKVISION_RTSP_PORT", "554"))
-HIKVISION_USERNAME = os.getenv("HIKVISION_USERNAME", "admin")
-HIKVISION_PASSWORD = os.getenv("HIKVISION_PASSWORD", "admin123")
+HIKVISION_USERNAME = os.getenv("HIKVISION_USERNAME", "your_camera_username")
+HIKVISION_PASSWORD = os.getenv("HIKVISION_PASSWORD", "your_camera_password")
 HIKVISION_CHANNEL = os.getenv("HIKVISION_CHANNEL", "101")
 
 # AI & Dwell Threshold Defaults

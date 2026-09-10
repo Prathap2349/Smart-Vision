@@ -66,7 +66,7 @@ export const PeoplePage: React.FC = () => {
               <UserCheck className="w-5 h-5 text-emerald-400" /> Whitelisted Residents &amp; Family
             </h2>
             <p className="text-xs text-slate-400">
-              InsightFace 512-d feature vector biometrics. Recognized residents bypass loitering alerts automatically.
+              Prototype 512-d feature vector biometrics. Recognized residents bypass loitering alerts automatically.
             </p>
           </div>
 
@@ -86,7 +86,7 @@ export const PeoplePage: React.FC = () => {
             <div>
               <h3 className="text-sm font-bold text-white">No Whitelisted Residents Enrolled</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-                Add residents or upload face photos to generate 512-d InsightFace biometric embeddings for silent alert suppression.
+                Add residents or upload face photos to generate 512-d prototype biometric embeddings for silent alert suppression.
               </p>
             </div>
             <button

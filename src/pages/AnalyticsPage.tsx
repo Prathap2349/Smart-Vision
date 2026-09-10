@@ -53,37 +53,37 @@ export const AnalyticsPage: React.FC = () => {
       {/* Metrics Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Detection Accuracy"
+          title="Detection Accuracy (Target)"
           value="98.6%"
-          subtitle="Smart AI Model"
-          statusText="High Precision"
+          subtitle="PROTOTYPE TARGET"
+          statusText="Target Model"
           statusVariant="emerald"
           icon={<ShieldCheck className="w-5 h-5 text-emerald-400" />}
         />
 
         <MetricCard
-          title="Resident Recognition"
+          title="Resident Recognition (Target)"
           value="99.1%"
-          subtitle="Face Matcher Engine"
-          statusText="Zero False Hits"
+          subtitle="PROTOTYPE TARGET"
+          statusText="Target Matcher"
           statusVariant="emerald"
           icon={<Zap className="w-5 h-5 text-cyan-400" />}
         />
 
         <MetricCard
-          title="Avg Alert Latency"
+          title="Avg Alert Latency (Target)"
           value="1.4s"
-          subtitle="Instant Mobile Delivery"
+          subtitle="ILLUSTRATIVE TARGET"
           statusText="Target < 2.0s"
           statusVariant="emerald"
           icon={<Clock className="w-5 h-5 text-cyan-400" />}
         />
 
         <MetricCard
-          title="System Uptime"
+          title="System Uptime (Target)"
           value="99.98%"
-          subtitle="Real-Time Protection"
-          statusText="High Availability"
+          subtitle="PROTOTYPE TARGET"
+          statusText="Target Availability"
           statusVariant="cyan"
           icon={<Activity className="w-5 h-5 text-cyan-400" />}
         />
@@ -93,9 +93,9 @@ export const AnalyticsPage: React.FC = () => {
       <Card className="border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-slate-900 p-6 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-cyan-400" /> Security Performance Impact
+            <BarChart2 className="w-5 h-5 text-cyan-400" /> Security Performance Targets
           </h3>
-          <Badge variant="cyan">SYSTEM RESULTS</Badge>
+          <Badge variant="cyan">PROTOTYPE TARGETS</Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -106,7 +106,7 @@ export const AnalyticsPage: React.FC = () => {
               <span className="text-2xl font-bold text-slate-400">→</span>
               <span className="text-3xl font-extrabold text-emerald-400">&lt;4 verified/day</span>
             </div>
-            <p className="text-xs text-slate-400">97% reduction achieved via Triple-Gate AI decision logic.</p>
+            <p className="text-xs text-slate-400">97% Target Reduction via Triple-Gate AI decision logic.</p>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">

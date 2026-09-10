@@ -38,7 +38,7 @@ export const LiveMonitorPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <Badge variant="cyan" pulse>YOLOv8 + ByteTrack + InsightFace ACTIVE</Badge>
+          <Badge variant="cyan" pulse>YOLOv8 + IoU Tracker + Prototype Face Matcher</Badge>
         </div>
       </div>
 

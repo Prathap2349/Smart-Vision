@@ -10,9 +10,9 @@ export const SystemHealthPage: React.FC = () => {
   const pipelineNodes = [
     { name: 'CCTV Camera', status: metrics.rtspStatus === 'CONNECTED' ? 'ACTIVE' : 'OFFLINE', icon: '📷', sub: 'High Definition Feed' },
     { name: 'Video Processing', status: metrics.openCvStatus, icon: '🖼️', sub: 'Frame Buffer & ROI Crop' },
-    { name: 'Human Detection', status: metrics.yoloStatus, icon: '🧠', sub: 'Smart AI Detection' },
-    { name: 'Loitering Tracker', status: metrics.byteTrackStatus, icon: '🎯', sub: 'Dwell Time Counter' },
-    { name: 'Resident Check', status: metrics.insightFaceStatus, icon: '👤', sub: 'Whitelist Matcher' },
+    { name: 'Human Detection', status: metrics.yoloStatus, icon: '🧠', sub: 'YOLOv8 Human Silhouette' },
+    { name: 'Loitering Tracker', status: metrics.byteTrackStatus, icon: '🎯', sub: 'Lightweight IoU Tracker' },
+    { name: 'Resident Check', status: metrics.insightFaceStatus, icon: '👤', sub: 'Prototype Face Matcher' },
     { name: 'Decision Engine', status: 'ACTIVE', icon: '⚖️', sub: '3-Gate Rule Evaluation' },
     { name: 'Alert Channel', status: metrics.telegramStatus === 'CONNECTED' ? 'ACTIVE' : 'OFFLINE', icon: '📲', sub: 'Instant Mobile Alert' },
   ];

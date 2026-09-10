@@ -1,8 +1,12 @@
+import cv2
 import psutil
 import time
 from fastapi import APIRouter
 from database import get_db_connection
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+from ai.detector import yolo_detector
+from tracking.tracker import tracker_manager
+from face.recognizer import face_recognizer
 
 router = APIRouter(tags=["health"])
 
@@ -62,6 +66,12 @@ def get_system_metrics():
     # Honest fix: telegramStatus was hardcoded to CONNECTED; now verifying TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID configuration
     telegram_status = "CONNECTED" if (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID) else "DISCONNECTED"
 
+    # Truthful AI runtime component health inspection
+    open_cv_status = "ACTIVE" if hasattr(cv2, "__version__") else "OFFLINE"
+    yolo_status = "ACTIVE" if (yolo_detector and getattr(yolo_detector, "model", None) is not None) else ("WARNING" if (yolo_detector and getattr(yolo_detector, "hog", None) is not None) else "OFFLINE")
+    tracker_status = "ACTIVE" if tracker_manager is not None else "OFFLINE"
+    face_status = "ACTIVE" if face_recognizer is not None else "OFFLINE"
+
     return {
         "edgeStatus": "ONLINE",
         "cpuUsage": round(cpu, 1),
@@ -74,10 +84,10 @@ def get_system_metrics():
         "networkLatencyMs": network_latency,
         "queueSize": 0,
         "uptimeSeconds": int(time.time() - psutil.boot_time()),
-        "yoloStatus": "ACTIVE",
-        "byteTrackStatus": "ACTIVE",
-        "insightFaceStatus": "ACTIVE",
-        "openCvStatus": "ACTIVE",
+        "yoloStatus": yolo_status,
+        "byteTrackStatus": tracker_status,
+        "insightFaceStatus": face_status,
+        "openCvStatus": open_cv_status,
         "rtspStatus": rtsp_status,
         "telegramStatus": telegram_status
     }

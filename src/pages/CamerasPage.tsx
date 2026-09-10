@@ -69,7 +69,7 @@ export const CamerasPage: React.FC = () => {
             <Camera className="w-5 h-5 text-cyan-400" /> Active Edge Camera Streams
           </h2>
           <p className="text-xs text-slate-400">
-            RTSP IP Camera network integrated into YOLOv8-Nano &amp; ByteTrack edge pipeline.
+            RTSP IP Camera network integrated into YOLOv8-Nano &amp; Lightweight IoU Tracker edge pipeline.
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export const CamerasPage: React.FC = () => {
                   <span className="text-cyan-400 font-bold">{selectedCam.aiLoadCpu}%</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-800">
-                  <span className="text-slate-400">ByteTrack GPU Frame Memory:</span>
+                  <span className="text-slate-400">IoU Tracker Frame Memory:</span>
                   <span className="text-blue-400 font-bold">{selectedCam.aiLoadGpu}%</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-800">

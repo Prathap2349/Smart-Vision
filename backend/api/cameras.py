@@ -68,20 +68,40 @@ def get_cameras():
 
 @router.post("")
 def add_camera(cam: CameraCreate):
+    cam_id = f"cam-0{int(time.time()) % 100}"
+    
+    # 1. Test RTSP Connection before setting status to ONLINE
+    conn_res = rtsp_manager.test_connection(cam.host, cam.port, cam.username, cam.password, cam.channel)
+    is_online = conn_res.get("connected", False)
+    initial_status = "ONLINE" if is_online else "OFFLINE"
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cam_id = f"cam-0{int(time.time()) % 100}"
     cursor.execute("""
     INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, enabled, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'ONLINE');
-    """, (cam_id, cam.name, cam.host, cam.port, cam.username, cam.password, cam.channel, cam.stream_type))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?);
+    """, (cam_id, cam.name, cam.host, cam.port, cam.username, cam.password, cam.channel, cam.stream_type, initial_status))
     conn.commit()
     conn.close()
 
-    # Start continuous background capture thread for this camera
-    rtsp_manager.start_camera(cam_id, cam.host, cam.port, cam.username, cam.password, cam.channel)
-
-    return {"id": cam_id, "name": cam.name, "message": f"Camera '{cam.name}' connected and saved successfully."}
+    if is_online:
+        # Start continuous background capture thread for this camera
+        rtsp_manager.start_camera(cam_id, cam.host, cam.port, cam.username, cam.password, cam.channel)
+        return {
+            "id": cam_id,
+            "name": cam.name,
+            "status": "ONLINE",
+            "connected": True,
+            "message": f"Camera '{cam.name}' connected and saved successfully."
+        }
+    else:
+        return {
+            "id": cam_id,
+            "name": cam.name,
+            "status": "OFFLINE",
+            "connected": False,
+            "message": f"Camera '{cam.name}' saved, but connection test failed (OFFLINE: {conn_res.get('message', 'No RTSP signal')})."
+        }
 
 @router.delete("/{id}")
 def delete_camera(id: str):
@@ -130,7 +150,7 @@ def get_camera_stream_info(id: str):
         "camera_id": id,
         "stream_type": "MJPEG_RTSP",
         "mjpeg_url": f"/api/cameras/{id}/mjpeg",
-        "webrtc_url": f"ws://localhost:8000/ws/cameras/{id}",
+        "websocket_url": f"ws://localhost:8000/ws/cameras/{id}",
         "resolution": resolution if is_connected else "Disconnected",
         "fps": real_fps if is_connected else 0,
     }

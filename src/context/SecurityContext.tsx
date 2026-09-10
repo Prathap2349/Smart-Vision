@@ -38,9 +38,10 @@ interface SecurityContextType {
   hikvisionSetupModalOpen: boolean;
   setHikvisionSetupModalOpen: (val: boolean) => void;
 
-  // Live Simulation state
+  // Live Simulation & Multi-Person Track state
   isSimulating: boolean;
   simulatedPerson: SimulationPerson;
+  activeTracks: any[];
   gate1Human: boolean;
   gate2Dwell: boolean;
   gate3Unknown: boolean;
@@ -195,6 +196,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => clearInterval(metricsInterval);
   }, []);
 
+  const [activeTracks, setActiveTracks] = useState<any[]>([]);
+
   // WebSocket Live Updates Connection to FastAPI
   useEffect(() => {
     if (!isRealCameraMode) return;
@@ -220,18 +223,25 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (data.fps !== undefined) {
             setMetrics(prev => ({ ...prev, fps: data.fps }));
           }
-          if (data.tracks && data.tracks.length > 0) {
-            const t = data.tracks[0];
-            setSimulatedPerson(prev => ({
-              ...prev,
-              trackId: t.track_id ?? prev.trackId,
-              dwellSeconds: t.dwell_seconds ?? prev.dwellSeconds,
-              faceStatus: t.face_status === 'KNOWN' ? 'VERIFIED_RESIDENT' : 'UNKNOWN',
-              residentName: t.resident_name,
-              confidence: t.confidence ?? 0,
-              active: true,
-            }));
+          if (data.tracks) {
+            setActiveTracks(data.tracks);
+            if (data.tracks.length > 0) {
+              const t = data.tracks[0];
+              setSimulatedPerson(prev => ({
+                ...prev,
+                trackId: t.track_id ?? prev.trackId,
+                dwellSeconds: t.dwell_seconds ?? prev.dwellSeconds,
+                faceStatus: t.face_status === 'KNOWN' ? 'VERIFIED_RESIDENT' : 'UNKNOWN',
+                residentName: t.resident_name,
+                confidence: t.confidence ?? 0,
+                isHuman: true,
+                active: true,
+              }));
+            } else if (isRealCameraMode) {
+              setSimulatedPerson(prev => ({ ...prev, active: false }));
+            }
           } else if (isRealCameraMode) {
+            setActiveTracks([]);
             setSimulatedPerson(prev => ({ ...prev, active: false }));
           }
 
@@ -435,6 +445,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setHikvisionSetupModalOpen,
         isSimulating,
         simulatedPerson,
+        activeTracks,
         gate1Human,
         gate2Dwell,
         gate3Unknown,

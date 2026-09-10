@@ -30,7 +30,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
   const [cameraName, setCameraName] = useState<string>('Corridor CCTV Camera');
   const [host, setHost] = useState<string>('192.168.1.104');
   const [port, setPort] = useState<number>(554);
-  const [username, setUsername] = useState<string>('admin');
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [streamType, setStreamType] = useState<'101' | '102'>('101');
 

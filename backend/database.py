@@ -117,7 +117,7 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
         INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, resolution, fps, enabled, status)
-        VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'admin', 'admin123', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE');
+        VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'your_camera_username', 'your_camera_password', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE');
         """)
 
     # Seed Default Detection Zones if empty

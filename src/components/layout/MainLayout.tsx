@@ -14,13 +14,13 @@ const TAB_TITLES: Record<NavTab, { title: string; subtitle: string }> = {
   overview: { title: 'Security Overview', subtitle: 'AI-powered residential CCTV intelligence' },
   'live-monitor': { title: 'Live Monitor', subtitle: '1080p RTSP Stream & Real-time AI Decision Pipeline' },
   alerts: { title: 'Security Alerts', subtitle: 'Incident management and false alarm verification audit' },
-  people: { title: 'People & Residents', subtitle: 'InsightFace biometrics whitelisting & unknown subjects' },
+  people: { title: 'People & Residents', subtitle: 'Prototype face biometrics whitelisting & unknown subjects' },
   cameras: { title: 'Camera Management', subtitle: 'Edge RTSP streams, resolutions & processing latency' },
   zones: { title: 'Detection Zones', subtitle: 'Virtual tripwire ROI geometry & dwell thresholds' },
   history: { title: 'Event History', subtitle: 'Filterable temporal audit trail of all security events' },
-  analytics: { title: 'Analytics & Impact', subtitle: '99+ → <4 false-alarm reduction metrics & benchmark charts' },
+  analytics: { title: 'Analytics & Impact', subtitle: 'Target 99+ → <4 false-alarm reduction metrics & benchmark charts' },
   health: { title: 'System Health', subtitle: 'Edge AI hardware utilization, temperature & node graph' },
-  settings: { title: 'System Settings', subtitle: 'YOLOv8, ByteTrack, Telegram API & Privacy configurations' },
+  settings: { title: 'System Settings', subtitle: 'YOLOv8, Lightweight IoU Tracker, Telegram API & Privacy configurations' },
 };
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
