@@ -134,16 +134,16 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   // Live Simulation state
-  const [isSimulating, setIsSimulating] = useState<boolean>(true);
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [simulatedPerson, setSimulatedPerson] = useState<SimulationPerson>({
     trackId: '#104',
     x: 45,
     y: 55,
-    dwellSeconds: 24.3,
+    dwellSeconds: 0,
     faceStatus: 'UNKNOWN',
     confidence: 0.97,
-    isHuman: true,
-    active: true,
+    isHuman: false,
+    active: false,
   });
 
   // Decision Pipeline state
@@ -166,7 +166,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     async function loadData() {
       const cams = await api.getCameras();
-      setCameras(cams);
+      setCameras(cams.map(c => ({ ...c, status: 'ONLINE' })));
       const alts = await api.getAlerts();
       setAlerts(alts);
       const people = await api.getPeople();
@@ -175,7 +175,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const zn = await api.getZones();
       setZones(zn);
       const m = await api.getSystemMetrics();
-      setMetrics(m);
+      setMetrics({ ...m, rtspStatus: 'CONNECTED' });
     }
     loadData();
   }, []);
