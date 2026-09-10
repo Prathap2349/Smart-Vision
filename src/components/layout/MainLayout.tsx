@@ -25,7 +25,7 @@ const TAB_TITLES: Record<NavTab, { title: string; subtitle: string }> = {
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
-  const { hikvisionSetupModalOpen, setHikvisionSetupModalOpen, setIsRealCameraMode } = useSecurity();
+  const { hikvisionSetupModalOpen, setHikvisionSetupModalOpen, connectCamera } = useSecurity();
 
   const { title, subtitle } = TAB_TITLES[currentTab];
 
@@ -53,7 +53,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <HikvisionSetupModal
         isOpen={hikvisionSetupModalOpen}
         onClose={() => setHikvisionSetupModalOpen(false)}
-        onSuccessConnect={() => setIsRealCameraMode(true)}
+        onSuccessConnect={connectCamera}
       />
     </div>
   );

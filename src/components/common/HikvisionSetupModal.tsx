@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { api } from '../../services/api';
-import { Camera, CheckCircle2, AlertTriangle, Shield, RefreshCw, Video, Info, Radar, Cpu } from 'lucide-react';
-import { Badge } from '../ui/Badge';
+import { Camera, CheckCircle2, AlertTriangle, Shield, RefreshCw, Video, Radar } from 'lucide-react';
 
 export type CameraBrand = 'hikvision' | 'dahua' | 'cpplus' | 'tapo' | 'reolink' | 'generic';
+
+interface CameraConnectConfig {
+  name: string;
+  brand: CameraBrand;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  channel: string;
+}
 
 interface HikvisionSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccessConnect: (camConfig: any) => void;
+  onSuccessConnect: (camConfig: CameraConnectConfig) => Promise<void>;
 }
 
 export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
@@ -26,8 +35,8 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
   const [streamType, setStreamType] = useState<'101' | '102'>('101');
 
   const [testing, setTesting] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
   const [scanningOnvif, setScanningOnvif] = useState<boolean>(false);
-  const [onvifDiscovered, setOnvifDiscovered] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<{ connected: boolean; message: string } | null>(null);
 
   const brandTemplates: Record<CameraBrand, { name: string; pathTemplate: string; defaultPort: number }> = {
@@ -47,13 +56,11 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
 
   const handleScanOnvif = async () => {
     setScanningOnvif(true);
-    setOnvifDiscovered(false);
+    setTestResult(null);
     try {
       const res = await api.scanOnvifNetwork();
-      setScanningOnvif(false);
-      if (res && res.devices && res.devices.length > 0) {
-        const dev = res.devices[0];
-        setOnvifDiscovered(true);
+      if (res && res.cameras && res.cameras.length > 0) {
+        const dev = res.cameras[0];
         if (dev.ip) setHost(dev.ip);
         setTestResult({
           connected: true,
@@ -62,15 +69,16 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
       } else {
         setTestResult({
           connected: false,
-          message: 'No ONVIF camera discovered on LAN. Enter IP manually or select Webcam.',
+          message: res.message || 'No ONVIF camera discovered on LAN. Enter IP manually or select Webcam.',
         });
       }
     } catch {
-      setScanningOnvif(false);
       setTestResult({
         connected: false,
         message: 'ONVIF scan failed or network permissions restricted.',
       });
+    } finally {
+      setScanningOnvif(false);
     }
   };
 
@@ -83,7 +91,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
       host: h,
       port,
       username,
-      password: password || 'admin123',
+      password,
       channel: streamType,
     });
 
@@ -96,7 +104,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
     } else {
       setTestResult({
         connected: false,
-        message: res.error || 'CONNECTION FAILED: Port 554 unreachable on target IP.',
+        message: res.error || res.message || 'CONNECTION FAILED: Port 554 unreachable on target IP.',
       });
     }
   };
@@ -107,23 +115,33 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
     handleTestConnection('0');
   };
 
-  const handleSaveAndConnect = (e: React.FormEvent) => {
+  const handleSaveAndConnect = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSuccessConnect({
-      name: cameraName,
-      brand: selectedBrand,
-      host,
-      port,
-      username,
-      channel: streamType,
-    });
-    onClose();
+    setSaving(true);
+    try {
+      await onSuccessConnect({
+        name: cameraName,
+        brand: selectedBrand,
+        host,
+        port,
+        username,
+        password,
+        channel: streamType,
+      });
+      onClose();
+    } catch {
+      setTestResult({
+        connected: false,
+        message: 'Failed to persist camera configuration to backend.',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Connect Any Home CCTV Camera">
       <form onSubmit={handleSaveAndConnect} className="space-y-5">
-        {/* Brand Selector Bar */}
         <div>
           <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
             Select Your Camera Brand
@@ -147,7 +165,6 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
         </div>
 
-        {/* ONVIF Scan & Quick Webcam Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -185,7 +202,6 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
         </div>
 
-        {/* RTSP Path Preview */}
         <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs flex items-center justify-between">
           <span className="text-slate-400 font-mono">Stream Path Template:</span>
           <code className="text-cyan-300 font-mono text-[11px] bg-slate-900 px-2 py-1 rounded">
@@ -211,7 +227,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
               type="text"
               value={host}
               onChange={e => setHost(e.target.value)}
-              placeholder="e.g. 192.168.1.104"
+              placeholder="e.g. 192.168.1.104 or 0 for webcam"
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
               required
             />
@@ -252,7 +268,6 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
         </div>
 
-        {/* Connection Test Result */}
         {testResult && (
           <div
             className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
@@ -294,9 +309,10 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20"
+              disabled={saving}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 disabled:opacity-60"
             >
-              Start Live Monitoring
+              {saving ? 'Connecting...' : 'Start Live Monitoring'}
             </button>
           </div>
         </div>

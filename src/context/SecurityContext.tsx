@@ -58,6 +58,14 @@ interface SecurityContextType {
   addResident: (resData: { name: string; role?: string; avatarUrl?: string; faceImageBase64?: string }) => Promise<void>;
   deleteResident: (id: string) => Promise<void>;
   addCamera: (camera: Omit<CameraDevice, 'id'>) => Promise<void>;
+  connectCamera: (config: {
+    name: string;
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    channel: string;
+  }) => Promise<void>;
   addZone: (zone: Omit<DetectionZone, 'id'>) => void;
   updateZone: (id: string, updated: Partial<DetectionZone>) => void;
   updateSettings: (newSettings: Partial<AISettings>) => void;
@@ -95,23 +103,23 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [cameras, setCameras] = useState<CameraDevice[]>([]);
   const [zones, setZones] = useState<DetectionZone[]>([]);
   const [metrics, setMetrics] = useState<SystemMetrics>({
-    edgeStatus: 'ONLINE',
-    cpuUsage: 34,
-    gpuUsage: 42,
-    ramUsageGb: 2.8,
-    ramTotalGb: 8.0,
-    tempCelsius: 48,
-    fps: 10.2,
-    inferenceLatencyMs: 18,
-    networkLatencyMs: 14,
+    edgeStatus: 'OFFLINE',
+    cpuUsage: 0,
+    gpuUsage: 0,
+    ramUsageGb: 0,
+    ramTotalGb: 0,
+    tempCelsius: 0,
+    fps: 0,
+    inferenceLatencyMs: 0,
+    networkLatencyMs: 0,
     queueSize: 0,
-    uptimeSeconds: 846200,
-    yoloStatus: 'ACTIVE',
-    byteTrackStatus: 'ACTIVE',
-    insightFaceStatus: 'ACTIVE',
-    openCvStatus: 'ACTIVE',
-    rtspStatus: 'CONNECTED',
-    telegramStatus: 'CONNECTED',
+    uptimeSeconds: 0,
+    yoloStatus: 'OFFLINE',
+    byteTrackStatus: 'OFFLINE',
+    insightFaceStatus: 'OFFLINE',
+    openCvStatus: 'OFFLINE',
+    rtspStatus: 'DISCONNECTED',
+    telegramStatus: 'DISCONNECTED',
   });
   const [settings, setSettings] = useState<AISettings>(defaultSettings);
   const [events, setEvents] = useState<SecurityEvent[]>([]);
@@ -136,12 +144,12 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Live Simulation state
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [simulatedPerson, setSimulatedPerson] = useState<SimulationPerson>({
-    trackId: '#104',
-    x: 45,
+    trackId: '',
+    x: 50,
     y: 55,
     dwellSeconds: 0,
     faceStatus: 'UNKNOWN',
-    confidence: 0.97,
+    confidence: 0,
     isHuman: false,
     active: false,
   });
@@ -162,7 +170,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }
 
-  // Load initial data & connect WebSocket if backend active
+  // Load initial data & poll metrics from backend
   useEffect(() => {
     async function loadData() {
       const cams = await api.getCameras();
@@ -178,28 +186,42 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setMetrics(m);
     }
     loadData();
+
+    const metricsInterval = setInterval(async () => {
+      const m = await api.getSystemMetrics();
+      setMetrics(m);
+    }, 5000);
+
+    return () => clearInterval(metricsInterval);
   }, []);
 
   // WebSocket Live Updates Connection to FastAPI
   useEffect(() => {
     if (!isRealCameraMode) return;
 
+    const cameraId = cameras[0]?.id ?? 'cam-01';
     let ws: WebSocket | null = null;
     try {
-      ws = new WebSocket('ws://localhost:8000/ws/cameras/cam-01');
+      ws = new WebSocket(`ws://localhost:8000/ws/cameras/${cameraId}`);
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          if (data.fps !== undefined) {
+            setMetrics(prev => ({ ...prev, fps: data.fps }));
+          }
           if (data.tracks && data.tracks.length > 0) {
             const t = data.tracks[0];
             setSimulatedPerson(prev => ({
               ...prev,
-              trackId: t.track_id || '#104',
-              dwellSeconds: t.dwell_seconds || prev.dwellSeconds,
+              trackId: t.track_id ?? prev.trackId,
+              dwellSeconds: t.dwell_seconds ?? prev.dwellSeconds,
               faceStatus: t.face_status === 'KNOWN' ? 'VERIFIED_RESIDENT' : 'UNKNOWN',
-              confidence: t.confidence || 0.97,
+              residentName: t.resident_name,
+              confidence: t.confidence ?? 0,
               active: true,
             }));
+          } else if (isRealCameraMode) {
+            setSimulatedPerson(prev => ({ ...prev, active: false }));
           }
 
           if (data.decision && data.decision.new_alert) {
@@ -213,7 +235,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       if (ws) ws.close();
     };
-  }, [isRealCameraMode]);
+  }, [isRealCameraMode, cameras]);
 
   // Simulation Loop when in Demo Mode
   useEffect(() => {
@@ -334,12 +356,38 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addCamera = async (cam: Omit<CameraDevice, 'id'>) => {
     const resp = await api.addCamera(cam);
     if (resp && !resp.error) {
-      setCameras(prev => [...prev, resp]);
+      const updated = await api.getCameras();
+      setCameras(updated);
       setFeedbackToastMessage(`Camera "${cam.name}" connected and saved.`);
     } else {
-      const newCam: CameraDevice = { ...cam, id: `cam-0${cameras.length + 1}` };
-      setCameras(prev => [...prev, newCam]);
-      setFeedbackToastMessage(`Camera "${cam.name}" added locally.`);
+      setFeedbackToastMessage(resp?.message || `Failed to connect camera "${cam.name}" to backend.`);
+    }
+  };
+
+  const connectCamera = async (config: {
+    name: string;
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    channel: string;
+  }) => {
+    const resp = await api.addCamera({
+      name: config.name,
+      host: config.host,
+      port: config.port,
+      username: config.username,
+      password: config.password,
+      channel: config.channel,
+      stream_type: 'RTSP',
+    });
+    if (resp && !resp.error) {
+      const updated = await api.getCameras();
+      setCameras(updated);
+      setIsRealCameraMode(true);
+      setFeedbackToastMessage(`Camera "${config.name}" connected and saved to backend.`);
+    } else {
+      throw new Error(resp?.message || 'Failed to connect camera.');
     }
   };
 
@@ -391,6 +439,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addResident,
         deleteResident,
         addCamera,
+        connectCamera,
         addZone,
         updateZone,
         updateSettings,

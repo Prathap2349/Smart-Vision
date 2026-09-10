@@ -1,10 +1,32 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
 
-export const CCTVCanvasPlayer: React.FC = () => {
+const API_BASE = 'http://localhost:8000/api';
+
+interface CCTVCanvasPlayerProps {
+  cameraId?: string;
+}
+
+export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: cameraIdProp }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { simulatedPerson, overlayToggles, finalDecision, zones, isRealCameraMode } = useSecurity();
+  const {
+    simulatedPerson,
+    overlayToggles,
+    finalDecision,
+    zones,
+    isRealCameraMode,
+    isSimulating,
+    cameras,
+    metrics,
+  } = useSecurity();
   const [streamError, setStreamError] = useState(false);
+
+  const activeCamera = cameras.find(c => c.id === cameraIdProp) ?? cameras[0];
+  const cameraId = cameraIdProp ?? activeCamera?.id ?? 'cam-01';
+  const mjpegUrl = `${API_BASE}/cameras/${cameraId}/mjpeg`;
+  const showDemoOverlay = !isRealCameraMode && isSimulating && simulatedPerson.active;
+  const showDisconnectedBanner =
+    streamError || (isRealCameraMode && activeCamera?.status === 'OFFLINE' && streamError);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,69 +39,19 @@ export const CCTVCanvasPlayer: React.FC = () => {
     const render = () => {
       const width = canvas.width;
       const height = canvas.height;
-
-      // Clear canvas so background video is visible when stream is active
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Draw Fallback Environment only if stream fails or real camera mode disabled
-      if (!isRealCameraMode || streamError) {
-        const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-        bgGrad.addColorStop(0, '#0a0f1d');
-        bgGrad.addColorStop(0.5, '#121a2e');
-        bgGrad.addColorStop(1, '#080c17');
-        ctx.fillStyle = bgGrad;
+      // Demo mode only: plain dark background (no synthetic corridor)
+      if (!isRealCameraMode) {
+        ctx.fillStyle = '#070a12';
         ctx.fillRect(0, 0, width, height);
-
-        // Draw corridor perspective walls & ceiling
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
-        ctx.lineWidth = 1.5;
-
-        // Vanishing point perspective lines
-        ctx.beginPath();
-        // Left wall line
-        ctx.moveTo(0, height * 0.1);
-        ctx.lineTo(width * 0.35, height * 0.4);
-        ctx.moveTo(0, height * 0.9);
-        ctx.lineTo(width * 0.35, height * 0.7);
-
-        // Right wall line
-        ctx.moveTo(width, height * 0.1);
-        ctx.lineTo(width * 0.65, height * 0.4);
-        ctx.moveTo(width, height * 0.9);
-        ctx.lineTo(width * 0.65, height * 0.7);
-
-        // Back wall box
-        ctx.strokeRect(width * 0.35, height * 0.4, width * 0.3, height * 0.3);
-        ctx.stroke();
-
-        // Draw door frame at back of corridor
-        ctx.fillStyle = '#060a14';
-        ctx.fillRect(width * 0.42, height * 0.45, width * 0.16, height * 0.25);
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
-        ctx.strokeRect(width * 0.42, height * 0.45, width * 0.16, height * 0.25);
-
-        // Floor grid lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-        for (let i = 1; i <= 6; i++) {
-          const y = height * (0.7 + i * 0.04);
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(width, y);
-          ctx.stroke();
-        }
-
-        // Ceiling lights glow
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.beginPath();
-        ctx.arc(width * 0.5, height * 0.15, 12, 0, Math.PI * 2);
-        ctx.fill();
       }
 
-      // 2. Draw Virtual Detection Zones if toggled ON
+      // Virtual detection zones overlay
       if (overlayToggles.zones) {
         zones.forEach(zone => {
           if (!zone.enabled) return;
-          ctx.fillStyle = `${zone.color}15`; // semi transparent fill
+          ctx.fillStyle = `${zone.color}15`;
           ctx.strokeStyle = zone.color;
           ctx.lineWidth = 1.5;
           ctx.setLineDash([6, 4]);
@@ -94,9 +66,8 @@ export const CCTVCanvasPlayer: React.FC = () => {
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
-          ctx.setLineDash([]); // reset dash
+          ctx.setLineDash([]);
 
-          // Draw Zone Label
           if (zone.polygonPoints.length > 0) {
             const labelX = (zone.polygonPoints[0].x / 100) * width + 8;
             const labelY = (zone.polygonPoints[0].y / 100) * height + 18;
@@ -107,24 +78,10 @@ export const CCTVCanvasPlayer: React.FC = () => {
         });
       }
 
-      // 3. Draw Tracked Human Subject if active
-      if (simulatedPerson.active) {
+      // Demo simulation overlay only — real mode uses backend MJPEG bbox drawing
+      if (showDemoOverlay && simulatedPerson.active) {
         const px = (simulatedPerson.x / 100) * width;
         const py = (simulatedPerson.y / 100) * height;
-
-        // Draw human silhouette figure
-        ctx.fillStyle = simulatedPerson.faceStatus === 'UNKNOWN' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(16, 185, 129, 0.25)';
-        // Head
-        ctx.beginPath();
-        ctx.arc(px, py - 60, 14, 0, Math.PI * 2);
-        ctx.fill();
-        // Body torso
-        ctx.fillRect(px - 16, py - 44, 32, 45);
-        // Legs
-        ctx.fillRect(px - 14, py + 1, 12, 35);
-        ctx.fillRect(px + 2, py + 1, 12, 35);
-
-        // Bounding Box
         const boxWidth = 90;
         const boxHeight = 150;
         const boxX = px - boxWidth / 2;
@@ -139,61 +96,28 @@ export const CCTVCanvasPlayer: React.FC = () => {
           ctx.lineWidth = isThreat ? 2.5 : 1.8;
           ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
-          // Draw corner target accents
-          const cornerLen = 12;
-          ctx.lineWidth = 3;
-          // Top-left
-          ctx.beginPath();
-          ctx.moveTo(boxX, boxY + cornerLen);
-          ctx.lineTo(boxX, boxY);
-          ctx.lineTo(boxX + cornerLen, boxY);
-          ctx.stroke();
-          // Top-right
-          ctx.beginPath();
-          ctx.moveTo(boxX + boxWidth - cornerLen, boxY);
-          ctx.lineTo(boxX + boxWidth, boxY);
-          ctx.lineTo(boxX + boxWidth, boxY + cornerLen);
-          ctx.stroke();
-          // Bottom-left
-          ctx.beginPath();
-          ctx.moveTo(boxX, boxY + boxHeight - cornerLen);
-          ctx.lineTo(boxX, boxY + boxHeight);
-          ctx.lineTo(boxX + cornerLen, boxY + boxHeight);
-          ctx.stroke();
-          // Bottom-right
-          ctx.beginPath();
-          ctx.moveTo(boxX + boxWidth - cornerLen, boxY + boxHeight);
-          ctx.lineTo(boxX + boxWidth, boxY + boxHeight);
-          ctx.lineTo(boxX + boxWidth, boxY + boxHeight - cornerLen);
-          ctx.stroke();
-
-          // Face recognition box around head
           if (overlayToggles.faceRecognition) {
             ctx.strokeStyle = simulatedPerson.faceStatus === 'UNKNOWN' ? '#ef4444' : '#10b981';
             ctx.setLineDash([3, 3]);
             ctx.strokeRect(px - 18, py - 78, 36, 36);
             ctx.setLineDash([]);
-
             ctx.fillStyle = simulatedPerson.faceStatus === 'UNKNOWN' ? '#ef4444' : '#10b981';
             ctx.font = 'bold 9px JetBrains Mono';
-            ctx.fillText(
-              simulatedPerson.faceStatus === 'UNKNOWN' ? 'FACE: UNKNOWN' : 'FACE: ARUN KUMAR',
-              px - 30,
-              py - 82
-            );
+            const faceLabel =
+              simulatedPerson.faceStatus === 'UNKNOWN'
+                ? 'FACE: UNKNOWN'
+                : `FACE: ${simulatedPerson.residentName?.toUpperCase() ?? 'RESIDENT'}`;
+            ctx.fillText(faceLabel, px - 30, py - 82);
           }
 
-          // Labels & Metadata Tags
           if (overlayToggles.aiLabels || overlayToggles.trackIds) {
             ctx.fillStyle = 'rgba(9, 13, 22, 0.85)';
             ctx.fillRect(boxX, boxY - 32, boxWidth + 40, 30);
             ctx.strokeStyle = strokeColor;
             ctx.strokeRect(boxX, boxY - 32, boxWidth + 40, 30);
-
             ctx.fillStyle = '#ffffff';
             ctx.font = '600 10px JetBrains Mono, monospace';
             ctx.fillText(`PERSON ${simulatedPerson.trackId}`, boxX + 6, boxY - 18);
-
             ctx.fillStyle = strokeColor;
             ctx.font = '500 9px JetBrains Mono, monospace';
             ctx.fillText(
@@ -205,58 +129,81 @@ export const CCTVCanvasPlayer: React.FC = () => {
         }
       }
 
-      // 4. CCTV Top/Bottom HUD Overlay
-      // Top bar gradient
+      // HUD overlay
       ctx.fillStyle = 'rgba(7, 10, 18, 0.85)';
       ctx.fillRect(0, 0, width, 36);
 
-      // Camera title
+      const camLabel = activeCamera?.name ?? cameraId.toUpperCase();
       ctx.fillStyle = '#00f0ff';
       ctx.font = '700 11px Inter, sans-serif';
-      ctx.fillText('CAM-01 • RESIDENTIAL CORRIDOR', 12, 22);
+      ctx.fillText(`${cameraId.toUpperCase()} • ${camLabel.toUpperCase()}`, 12, 22);
 
-      // Stream Metadata
+      const fps = activeCamera?.fps ?? metrics.fps ?? 0;
+      const resolution = activeCamera?.resolution ?? '—';
+      const rtspStatus = metrics.rtspStatus ?? 'DISCONNECTED';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
       ctx.font = '10px JetBrains Mono, monospace';
-      ctx.fillText('1920x1080 @ 10.2 FPS | RTSP H.264 | EDGE AI: ONLINE', 240, 22);
+      ctx.fillText(`${resolution} @ ${fps} FPS | RTSP | ${rtspStatus}`, 240, 22);
 
-      // REC indicator dot
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.arc(width - 130, 20, 4, 0, Math.PI * 2);
-      ctx.fill();
+      if (isRealCameraMode) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(width - 130, 20, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 10px JetBrains Mono';
+        ctx.fillText('REC', width - 120, 23);
+      }
+
+      const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
       ctx.fillStyle = '#ffffff';
       ctx.font = '600 10px JetBrains Mono';
-      ctx.fillText('REC', width - 120, 23);
-
-      // Live Timestamp
-      const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
       ctx.fillText(timestamp, width - 85, 23);
 
       animId = requestAnimationFrame(render);
     };
 
     render();
-
     return () => cancelAnimationFrame(animId);
-  }, [simulatedPerson, overlayToggles, finalDecision, zones]);
+  }, [
+    simulatedPerson,
+    overlayToggles,
+    finalDecision,
+    zones,
+    isRealCameraMode,
+    isSimulating,
+    showDemoOverlay,
+    activeCamera,
+    cameraId,
+    metrics,
+  ]);
 
   return (
     <div className="relative w-full aspect-video bg-[#070a12] rounded-xl overflow-hidden border border-slate-800 shadow-2xl group">
-      {isRealCameraMode && !streamError && (
+      {isRealCameraMode && (
         <img
-          src="http://localhost:8000/api/cameras/cam-01/mjpeg"
+          key={cameraId}
+          src={mjpegUrl}
           alt="Live Edge Camera Stream"
           onError={() => setStreamError(true)}
           onLoad={() => setStreamError(false)}
           className="absolute inset-0 w-full h-full object-cover"
         />
       )}
+
+      {(showDisconnectedBanner || (isRealCameraMode && streamError)) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#060a14]/90 z-10">
+          <p className="text-rose-500 font-mono font-bold text-sm md:text-base tracking-wide text-center px-4">
+            [ NO CAMERA SIGNAL — RTSP STREAM DISCONNECTED ]
+          </p>
+        </div>
+      )}
+
       <canvas
         ref={canvasRef}
         width={960}
         height={540}
-        className="absolute inset-0 w-full h-full object-cover block pointer-events-none"
+        className="absolute inset-0 w-full h-full object-cover block pointer-events-none z-20"
       />
     </div>
   );

@@ -74,15 +74,15 @@ export const SystemHealthPage: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-[#0d1424] border border-slate-800 rounded-xl text-xs">
         <div>
           <span className="text-slate-400">Processing Speed:</span>
-          <p className="text-lg font-bold text-cyan-400">{metrics.fps || 10} FPS</p>
+          <p className="text-lg font-bold text-cyan-400">{metrics.fps ? `${metrics.fps} FPS` : '0 FPS (Idle)'}</p>
         </div>
         <div>
           <span className="text-slate-400">Inference Latency:</span>
-          <p className="text-lg font-bold text-emerald-400">{metrics.inferenceLatencyMs || 18} ms</p>
+          <p className="text-lg font-bold text-emerald-400">{metrics.inferenceLatencyMs ? `${metrics.inferenceLatencyMs} ms` : '0 ms (Idle)'}</p>
         </div>
         <div>
           <span className="text-slate-400">Network Latency:</span>
-          <p className="text-lg font-bold text-slate-200">{metrics.networkLatencyMs || 14} ms</p>
+          <p className="text-lg font-bold text-slate-200">{metrics.networkLatencyMs ? `${metrics.networkLatencyMs} ms` : '0 ms'}</p>
         </div>
         <div>
           <span className="text-slate-400">Frame Buffer:</span>

@@ -56,11 +56,11 @@ def get_cameras():
             "resolution": r["resolution"] if is_connected else "1080p (Disconnected)",
             "fps": real_fps if is_connected else 0,
             "aiActive": is_connected,
-            "latency": 1.4 if is_connected else 0.0,
+            "latency": 0.0,
             "rtspUrlMasked": f"rtsp://{r['username']}:****@{r['host']}:{r['port']}/Streaming/channels/{r['channel']}",
-            "bitrateMb": 4.0 if is_connected else 0.0,
-            "aiLoadCpu": 30 if is_connected else 0,
-            "aiLoadGpu": 35 if is_connected else 0,
+            "bitrateMb": 0.0,
+            "aiLoadCpu": 0,
+            "aiLoadGpu": 0,
             "recentEventCount": event_count
         })
     conn.close()
@@ -119,13 +119,20 @@ def test_camera_connection(id: str, req: Optional[TestRTSPRequest] = None):
 
 @router.get("/{id}/stream")
 def get_camera_stream_info(id: str):
+    _, is_connected, real_fps = rtsp_manager.get_frame_data(id)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT resolution FROM cameras WHERE id = ?;", (id,))
+    row = cursor.fetchone()
+    conn.close()
+    resolution = row["resolution"] if row else "1920x1080"
     return {
         "camera_id": id,
         "stream_type": "MJPEG_RTSP",
         "mjpeg_url": f"/api/cameras/{id}/mjpeg",
         "webrtc_url": f"ws://localhost:8000/ws/cameras/{id}",
-        "resolution": "1920x1080",
-        "fps": 10
+        "resolution": resolution if is_connected else "Disconnected",
+        "fps": real_fps if is_connected else 0,
     }
 
 def mjpeg_generator(camera_id: str):

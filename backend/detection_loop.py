@@ -77,19 +77,30 @@ class ContinuousDetectionLoop(threading.Thread):
                         active_track.face_status = face_status
                         active_track.resident_name = res_name
 
+                    dwell_threshold = 20.0
+                    if zones:
+                        dwell_threshold = float(zones[0].get("dwell_threshold", 20.0))
+
                     gate_eval = decision_engine.evaluate_gates(
                         is_human=True,
                         confidence=active_track.confidence,
                         dwell_seconds=active_track.dwell_seconds,
-                        dwell_threshold=20.0,
+                        dwell_threshold=dwell_threshold,
                         face_status=active_track.face_status
                     )
+
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT name FROM cameras WHERE id = ?;", (self.camera_id,))
+                    cam_row = cursor.fetchone()
+                    conn.close()
+                    camera_name = cam_row["name"] if cam_row else self.camera_id
 
                     # Trigger Alert if Triple-Gate passes (VERIFIED_THREAT)
                     if gate_eval["final_decision"] == "VERIFIED_THREAT":
                         new_alert = alert_manager.trigger_alert(
                             camera_id=self.camera_id,
-                            camera_name="Residential Corridor",
+                            camera_name=camera_name,
                             track_id=active_track.track_id,
                             dwell_duration=active_track.dwell_seconds,
                             face_status=active_track.face_status,

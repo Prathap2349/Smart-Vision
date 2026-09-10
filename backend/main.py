@@ -78,7 +78,7 @@ async def camera_websocket(websocket: WebSocket, camera_id: str):
                     "camera_id": camera_id,
                     "status": "ONLINE" if is_connected else "OFFLINE",
                     "fps": real_fps,
-                    "inference_latency_ms": 18 if is_connected else 0,
+                    "inference_latency_ms": 0,
                     "tracks": [
                         {
                             "track_id": t.track_id,

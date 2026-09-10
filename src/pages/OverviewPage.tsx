@@ -57,10 +57,11 @@ interface OverviewPageProps {
 }
 
 export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => {
-  const { metrics, alerts, finalDecision } = useSecurity();
+  const { metrics, alerts, finalDecision, residents, unknownPersons } = useSecurity();
 
   const activeAlerts = alerts.filter(a => a.status === 'ACTIVE').length;
   const isThreatActive = finalDecision === 'VERIFIED_THREAT' || activeAlerts > 0;
+  const totalDetected = residents.length + unknownPersons.length;
 
   return (
     <div className="space-y-6">
@@ -147,7 +148,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
 
         <MetricCard
           title="Humans Detected"
-          value={18}
+          value={totalDetected}
           subtitle="Smart AI Detection"
           statusText="Today"
           statusVariant="cyan"
@@ -156,7 +157,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
 
         <MetricCard
           title="Residents Recognized"
-          value={14}
+          value={residents.length}
           subtitle="Face Recognition"
           statusText="Whitelisted"
           statusVariant="emerald"

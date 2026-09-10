@@ -36,9 +36,12 @@ export const api = {
     }
   },
 
-  async testRTSPConnection(camData: { host: string; port: number; username: string; password: string; channel: string }) {
+  async testRTSPConnection(
+    camData: { host: string; port: number; username: string; password: string; channel: string },
+    cameraId = 'cam-01'
+  ) {
     try {
-      const res = await fetch(`${API_BASE}/cameras/cam-01/test`, {
+      const res = await fetch(`${API_BASE}/cameras/${cameraId}/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(camData),
@@ -49,6 +52,32 @@ export const api = {
         status: 'CONNECTION FAILED',
         message: 'Backend server unreachable.',
         connected: false,
+      };
+    }
+  },
+
+  async getAnalytics() {
+    try {
+      const res = await fetch(`${API_BASE}/analytics`);
+      if (!res.ok) throw new Error('API error');
+      return await res.json();
+    } catch {
+      return {
+        falseAlarmsToday: 0,
+        verifiedThreatsToday: 0,
+        humansDetectedToday: 0,
+        residentsRecognizedToday: 0,
+        unknownPersonsTotal: 0,
+        verifiedResidentsTotal: 0,
+        cameraCount: 0,
+        averageLatencySec: 0,
+        totalAlertsToday: 0,
+        hourlyEvents: [],
+        pieData: [],
+        latencyHist: [],
+        confidenceDist: [],
+        hourlyAlerts: [],
+        uptimePercent: 0,
       };
     }
   },

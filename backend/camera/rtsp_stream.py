@@ -99,8 +99,8 @@ class RTSPStreamManager:
             cv2.line(frame, (x, 0), (x, height), (20, 25, 35), 1)
 
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        cv2.putText(frame, "NO CAMERA SIGNAL", (width // 2 - 200, height // 2 - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+        cv2.putText(frame, "[ NO CAMERA SIGNAL - RTSP STREAM DISCONNECTED ]", (width // 2 - 420, height // 2 - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         cv2.putText(frame, f"CAMERA: {camera_name.upper()} | STATUS: DISCONNECTED", (width // 2 - 240, height // 2 + 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
         cv2.putText(frame, f"CONNECT RTSP / WEBCAM | {timestamp}", (width // 2 - 230, height // 2 + 50),
