@@ -170,8 +170,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       if (import.meta.env.VITE_WS_BASE_URL) {
         return `${import.meta.env.VITE_WS_BASE_URL}/ws/test-camera`;
       }
-      const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${protocol}//127.0.0.1:8000/ws/test-camera`;
+      return 'ws://127.0.0.1:8000/ws/test-camera';
     };
 
     const wsUrl = getWsUrl();
@@ -399,15 +398,23 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
         {/* Error Notice */}
         {permissionError && (
-          <div className="p-4 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs space-y-2">
+          <div className="p-4 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs space-y-2.5">
             <div className="flex items-center gap-2 font-bold text-rose-300">
               <AlertCircle className="w-4 h-4 text-rose-400" />
               <span>Camera / Backend Initialization Error</span>
             </div>
             <p>{permissionError}</p>
+
+            {permissionError.includes('FastAPI') && (
+              <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-xl font-mono text-[11px] text-cyan-300 space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase">Terminal Command to Start Local Edge AI Backend:</span>
+                <code className="text-emerald-400 font-bold block">cd backend &amp;&amp; python3 -m uvicorn main:app --port 8000</code>
+              </div>
+            )}
+
             <button
               onClick={startSelfTestAndCamera}
-              className="px-3 py-1.5 rounded-xl bg-rose-900 hover:bg-rose-800 font-bold text-white text-xs transition"
+              className="px-4 py-1.5 rounded-xl bg-rose-900 hover:bg-rose-800 font-bold text-white text-xs transition"
             >
               Retry Connection
             </button>

@@ -3,16 +3,13 @@ import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZo
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || (
   typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:8000/api'
-    : ''
+    : 'http://127.0.0.1:8000/api'
 );
 
 export const api = {
   async getHealth() {
-    if (!API_BASE) {
-      return { status: 'OFFLINE', mode: 'STANDALONE', edgeStatus: 'OFFLINE', message: 'EDGE BACKEND NOT CONNECTED' };
-    }
     try {
-      const res = await fetch(`${API_BASE}/health`);
+      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined });
       if (!res.ok) throw new Error('Backend offline');
       return await res.json();
     } catch {
