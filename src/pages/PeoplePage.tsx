@@ -276,7 +276,7 @@ export const PeoplePage: React.FC = () => {
               <ShieldCheck className="w-4 h-4 text-indigo-400" /> Biometric Embedding:
             </p>
             <p className="text-slate-400 mt-0.5">
-              If a photo is provided, InsightFace extracts a 512-d vector for whitelisting. If omitted, resident is enrolled as PENDING_ENROLLMENT.
+              If a photo is provided, the current prototype generates a normalized 512-D visual feature vector for resident matching. Production deployment can replace this prototype matcher with an ArcFace/InsightFace model.
             </p>
           </div>
 

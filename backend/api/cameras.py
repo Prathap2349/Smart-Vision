@@ -150,7 +150,7 @@ def get_camera_stream_info(id: str):
         "camera_id": id,
         "stream_type": "MJPEG_RTSP",
         "mjpeg_url": f"/api/cameras/{id}/mjpeg",
-        "websocket_url": f"ws://localhost:8000/ws/cameras/{id}",
+        "websocket_url": f"/ws/cameras/{id}",
         "resolution": resolution if is_connected else "Disconnected",
         "fps": real_fps if is_connected else 0,
     }

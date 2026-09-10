@@ -17,7 +17,7 @@ from detection_loop import detection_loop
 app = FastAPI(
     title="Smart Vision Sentry Edge AI Engine",
     version="1.0.0",
-    description="Real Continuous Camera Capture + YOLOv8 + ByteTrack + InsightFace Security Backend"
+    description="Real Continuous Camera Capture + YOLO Human Detection + Lightweight IoU Tracking + Prototype Resident Matching"
 )
 
 # Enable CORS for React frontend (port 3000 & 5173)
