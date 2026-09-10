@@ -25,11 +25,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  const handleDemoAccess = () => {
-    login();
-    onClose();
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
       <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative border-cyan-500/30">
@@ -50,7 +45,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               Sign In to Smart Vision
             </h2>
-            <p className="text-xs text-slate-400">Use Mobile Number, Email, or Gmail Account</p>
+            <p className="text-xs text-slate-400">Use Mobile Number, Email, or Google Account</p>
           </div>
         </div>
 
@@ -78,7 +73,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          <span>Sign In Automatically with Google (Gmail)</span>
+          <span>Sign In Automatically with Google</span>
         </button>
 
         <div className="flex items-center gap-3 text-xs text-slate-500">
@@ -91,7 +86,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center justify-between">
-              <span>Mobile Phone / Email / Account ID</span>
+              <span>Mobile Phone / Email</span>
               <span className="text-[10px] text-slate-400 flex items-center gap-1">
                 <Phone className="w-3 h-3 text-cyan-400" /> Phone Numbers Supported
               </span>
@@ -125,16 +120,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </form>
-
-        {/* Instant Demo Shortcut */}
-        <div className="pt-3 border-t border-slate-800 text-center space-y-2">
-          <button
-            onClick={handleDemoAccess}
-            className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold border border-slate-700 rounded-xl text-xs transition"
-          >
-            Open Interactive Demo Dashboard →
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -68,7 +68,7 @@ export const LandingPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => login()}
+            onClick={() => setLoginModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition shadow-lg shadow-indigo-600/20 flex items-center gap-1.5"
           >
             <span>Open Dashboard</span>

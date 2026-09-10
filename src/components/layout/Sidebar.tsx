@@ -174,13 +174,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-2.5">
             <img
-              src={user.avatar}
-              alt={user.name}
+              src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80'}
+              alt={user?.name || 'Resident Owner'}
               className="w-8 h-8 rounded-full border border-indigo-500/40 object-cover"
             />
             <div className="truncate max-w-[110px]">
-              <p className="text-xs font-bold text-white truncate">{user.name}</p>
-              <p className="text-[10px] text-slate-400 truncate">{user.role}</p>
+              <p className="text-xs font-bold text-white truncate">{user?.name || 'Resident Owner'}</p>
+              <p className="text-[10px] text-slate-400 truncate">{user?.role || 'Home Resident'}</p>
             </div>
           </div>
 

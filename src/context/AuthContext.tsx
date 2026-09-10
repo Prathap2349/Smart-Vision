@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase, signInWithGoogle, signOutSupabase } from '../services/supabase';
 
-interface UserProfile {
+export interface UserProfile {
   name: string;
   role: string;
   department: string;
@@ -11,56 +12,90 @@ interface UserProfile {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: UserProfile;
-  login: (identifier?: string, password?: string) => void;
-  loginWithGoogle: () => void;
-  logout: () => void;
+  user: UserProfile | null;
+  login: (identifier: string, password?: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
 }
-
-const defaultUser: UserProfile = {
-  name: 'Prathap S',
-  role: 'Security Administrator',
-  department: 'BTech AI&DS (C29)',
-  institution: 'Rathinam Technical Campus',
-  email: 'prathap.s@rathinam.edu.in',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
-};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
-  const [user, setUser] = useState<UserProfile>(defaultUser);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('svs_user_session');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  const login = (identifier?: string) => {
-    if (identifier) {
-      setUser(prev => ({
-        ...prev,
-        email: identifier.includes('@') ? identifier : `${identifier}@mobile.user`,
-        name: identifier.includes('@') ? identifier.split('@')[0] : `Resident (${identifier})`,
-      }));
-    }
-    setIsAuthenticated(true);
-  };
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('svs_user_session');
+  });
 
-  const loginWithGoogle = () => {
-    setUser({
-      name: 'Google User',
-      role: 'Home Resident Owner',
-      department: 'Gmail Connected',
-      institution: 'Smart Vision Home',
-      email: 'user@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
+  useEffect(() => {
+    // Listen for Supabase OAuth redirects
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const profile: UserProfile = {
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Resident Owner',
+          role: 'Home Resident Owner',
+          department: 'Google Account',
+          institution: 'Smart Vision Home',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
+        };
+        setUser(profile);
+        setIsAuthenticated(true);
+        localStorage.setItem('svs_user_session', JSON.stringify(profile));
+      }
     });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const profile: UserProfile = {
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Resident Owner',
+          role: 'Home Resident Owner',
+          department: 'Google Account',
+          institution: 'Smart Vision Home',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
+        };
+        setUser(profile);
+        setIsAuthenticated(true);
+        localStorage.setItem('svs_user_session', JSON.stringify(profile));
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const login = async (identifier: string) => {
+    const profile: UserProfile = {
+      name: identifier.includes('@') ? identifier.split('@')[0] : `Resident (${identifier})`,
+      role: 'Home Resident Owner',
+      department: 'Smart Vision Mobile',
+      institution: 'Smart Vision Home',
+      email: identifier.includes('@') ? identifier : `${identifier}@mobile.user`,
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+    };
+    setUser(profile);
     setIsAuthenticated(true);
+    localStorage.setItem('svs_user_session', JSON.stringify(profile));
   };
 
-  const logout = () => {
+  const handleLoginWithGoogle = async () => {
+    await signInWithGoogle();
+  };
+
+  const logout = async () => {
+    await signOutSupabase();
+    setUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('svs_user_session');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, loginWithGoogle: handleLoginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
