@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSecurity } from '../context/SecurityContext';
 import { TripleGate3DStage } from '../components/common/TripleGate3DStage';
 import { LoginModal } from '../components/common/LoginModal';
+import { DeviceCameraTestModal } from '../components/common/DeviceCameraTestModal';
 import {
   Shield,
   ArrowRight,
@@ -14,11 +16,13 @@ import {
   Video,
   ShieldCheck,
   Lock,
+  Camera,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 
 export const LandingPage: React.FC = () => {
   const { login } = useAuth();
+  const { deviceCameraModalOpen, setDeviceCameraModalOpen } = useSecurity();
   const [loginModalOpen, setLoginModalOpen] = useState<boolean>(false);
 
   // Counter animation: 99 false alarms down to 3
@@ -60,6 +64,14 @@ export const LandingPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setDeviceCameraModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-xs font-bold text-white transition shadow-lg shadow-cyan-600/20 flex items-center gap-1.5"
+          >
+            <Camera className="w-3.5 h-3.5 text-cyan-200" />
+            <span>Test with Device Camera</span>
+          </button>
+
           <button
             onClick={() => setLoginModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-bold text-slate-200 hover:text-white hover:bg-slate-800 transition"
@@ -233,6 +245,9 @@ export const LandingPage: React.FC = () => {
 
       {/* Login Modal */}
       <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
+
+      {/* Real Device Camera Test Modal */}
+      <DeviceCameraTestModal isOpen={deviceCameraModalOpen} onClose={() => setDeviceCameraModalOpen(false)} />
     </div>
   );
 };

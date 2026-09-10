@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics, AISettings, SecurityEvent } from '../types';
+import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics, AISettings, SecurityEvent, OperatingMode } from '../types';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -33,6 +33,12 @@ interface SecurityContextType {
   settings: AISettings;
   events: SecurityEvent[];
   
+  // Operating Mode model: LIVE_CCTV | DEVICE_CAMERA_TEST | DEMO_SIMULATION | OFFLINE
+  operatingMode: OperatingMode;
+  setOperatingMode: (mode: OperatingMode) => void;
+  deviceCameraModalOpen: boolean;
+  setDeviceCameraModalOpen: (val: boolean) => void;
+
   // Real vs Demo Mode state
   isRealCameraMode: boolean;
   setIsRealCameraMode: (val: boolean) => void;
@@ -127,7 +133,11 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettings] = useState<AISettings>(defaultSettings);
   const [events, setEvents] = useState<SecurityEvent[]>([]);
 
-  // Operating Mode State
+  // Operating Mode model: LIVE_CCTV | DEVICE_CAMERA_TEST | DEMO_SIMULATION | OFFLINE
+  const [operatingMode, setOperatingMode] = useState<OperatingMode>('LIVE_CCTV');
+  const [deviceCameraModalOpen, setDeviceCameraModalOpen] = useState<boolean>(false);
+
+  // Real vs Demo Mode state
   const [isRealCameraMode, setIsRealCameraMode] = useState<boolean>(true);
   const [hikvisionSetupModalOpen, setHikvisionSetupModalOpen] = useState<boolean>(false);
 
@@ -464,6 +474,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         metrics,
         settings,
         events,
+        operatingMode,
+        setOperatingMode,
+        deviceCameraModalOpen,
+        setDeviceCameraModalOpen,
         isRealCameraMode,
         setIsRealCameraMode,
         hikvisionSetupModalOpen,

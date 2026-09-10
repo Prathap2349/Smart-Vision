@@ -55,7 +55,7 @@ class ContinuousDetectionLoop(threading.Thread):
                     except Exception:
                         pass
 
-                # 3. Update ByteTrack Multi-Object Tracker
+                # 3. Update Lightweight IoU Multi-Object Tracker
                 tracks = tracker_manager.update_tracks(detections, zones, frame_w=w, frame_h=h)
 
                 # 4. Face Recognition & Triple-Gate Rule Evaluation

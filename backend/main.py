@@ -98,13 +98,118 @@ async def camera_websocket(websocket: WebSocket, camera_id: str):
                     },
                     "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
                 }
-                await websocket.send_json(payload)
-
             await asyncio.sleep(0.2) # 5 Hz WebSocket update
     except WebSocketDisconnect:
         ws_manager.disconnect(camera_id, websocket)
     except Exception:
         ws_manager.disconnect(camera_id, websocket)
+
+import base64
+import json
+import cv2
+import numpy as np
+from ai.detector import yolo_detector
+from tracking.tracker import LightweightIoUTracker
+from face.recognizer import face_recognizer
+
+# Dedicated Real Device Camera Test WebSocket Endpoint
+@app.websocket("/ws/test-camera")
+async def test_camera_websocket(websocket: WebSocket):
+    await websocket.accept()
+    test_tracker = LightweightIoUTracker()
+
+    try:
+        while True:
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                break
+
+            img_bytes = None
+            if "bytes" in message and message["bytes"]:
+                img_bytes = message["bytes"]
+            elif "text" in message and message["text"]:
+                try:
+                    payload = json.loads(message["text"])
+                    img_str = payload.get("image", "")
+                    if img_str.startswith("data:image"):
+                        img_str = img_str.split(",")[1]
+                    img_bytes = base64.b64decode(img_str)
+                except Exception:
+                    pass
+
+            if not img_bytes:
+                continue
+
+            # Decode JPEG image
+            np_arr = np.frombuffer(img_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            if frame is None:
+                continue
+
+            h, w, _ = frame.shape
+            proc_start = time.time()
+
+            # 1. Real YOLO Human Detection
+            detections = yolo_detector.detect(frame)
+
+            # 2. Real Lightweight IoU Tracker
+            tracks = test_tracker.update_tracks(detections, zones=[], frame_w=w, frame_h=h)
+
+            # 3. Real Prototype Resident Matcher
+            for t in tracks:
+                x1, y1, x2, y2 = [int(v) for v in t.bbox]
+                crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
+                if crop.size > 0:
+                    face_status, res_name, face_conf = face_recognizer.match_face(crop)
+                    t.face_status = face_status
+                    t.resident_name = res_name
+
+            # 4. Real Triple-Gate Decision Engine
+            if tracks:
+                active_track = tracks[0]
+                gate_eval = decision_engine.evaluate_gates(
+                    is_human=True,
+                    human_confidence=active_track.confidence,
+                    dwell_seconds=active_track.dwell_seconds,
+                    dwell_threshold=20.0,
+                    face_status=active_track.face_status
+                )
+            else:
+                gate_eval = decision_engine.evaluate_gates(
+                    is_human=False,
+                    human_confidence=0.0,
+                    dwell_seconds=0.0,
+                    dwell_threshold=20.0,
+                    face_status="NONE"
+                )
+
+            proc_duration = time.time() - proc_start
+            proc_fps = round(1.0 / proc_duration, 1) if proc_duration > 0 else 10.0
+
+            res_payload = {
+                "mode": "DEVICE_CAMERA_TEST",
+                "camera_status": "CONNECTED",
+                "fps": proc_fps,
+                "inference_latency_ms": round(proc_duration * 1000, 1),
+                "tracks": [
+                    {
+                        "track_id": t.track_id,
+                        "bbox": t.bbox,
+                        "dwell_seconds": round(t.dwell_seconds, 1),
+                        "face_status": t.face_status,
+                        "resident_name": t.resident_name,
+                        "confidence": round(t.confidence, 3)
+                    } for t in tracks
+                ],
+                "decision": gate_eval,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
+            }
+
+            await websocket.send_json(res_payload)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"[WS Device Camera Test Error]: {e}")
 
 if __name__ == "__main__":
     import uvicorn

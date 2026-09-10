@@ -135,3 +135,17 @@ export interface AISettings {
   nightModeIrFallback: boolean;
   int8Quantization: boolean;
 }
+
+export type OperatingMode = 'LIVE_CCTV' | 'DEVICE_CAMERA_TEST' | 'DEMO_SIMULATION' | 'OFFLINE';
+
+export interface DeviceCameraTestResult {
+  durationSeconds: number;
+  framesProcessed: number;
+  averageFps: number;
+  humansDetectedCount: number;
+  tracksCreatedCount: number;
+  maxDwellSeconds: number;
+  totalYoloDetections: number;
+  pipelineStatus: 'PASS' | 'WARNING' | 'FAIL';
+}
+

@@ -8,6 +8,7 @@ export const DemoSimulationBar: React.FC = () => {
     isRealCameraMode,
     setIsRealCameraMode,
     setHikvisionSetupModalOpen,
+    setDeviceCameraModalOpen,
     isSimulating,
     toggleSimulation,
     triggerThreatSimulation,
@@ -50,6 +51,14 @@ export const DemoSimulationBar: React.FC = () => {
       )}
 
       <div className="flex items-center gap-2">
+        <button
+          onClick={() => setDeviceCameraModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold transition shadow-md shadow-cyan-600/20"
+        >
+          <Camera className="w-4 h-4 text-cyan-200" />
+          Test Device Camera
+        </button>
+
         {isRealCameraMode ? (
           <>
             <button

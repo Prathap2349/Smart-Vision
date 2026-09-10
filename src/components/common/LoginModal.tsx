@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Shield, ArrowRight, X, Phone, Mail } from 'lucide-react';
+import { useSecurity } from '../../context/SecurityContext';
+import { Shield, ArrowRight, X, Phone, Mail, Camera } from 'lucide-react';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface LoginModalProps {
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const { login, loginWithGoogle } = useAuth();
+  const { setDeviceCameraModalOpen } = useSecurity();
   const [identifier, setIdentifier] = useState('8838523456');
   const [password, setPassword] = useState('••••••••••••');
 
@@ -120,6 +122,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </form>
+
+        {/* Separator & Professional Device Camera Test Section */}
+        <div className="pt-2 border-t border-slate-800 space-y-3 text-center">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            WANT TO TEST THE REAL AI ENGINE?
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              setDeviceCameraModalOpen(true);
+            }}
+            className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-cyan-600/20 flex items-center justify-center gap-2"
+          >
+            <Camera className="w-4 h-4 text-cyan-200" />
+            <span>Test with Device Camera</span>
+          </button>
+
+          <p className="text-[10px] text-slate-400 font-mono">
+            No account required • Local AI processing • Zero fake data
+          </p>
+        </div>
       </div>
     </div>
   );

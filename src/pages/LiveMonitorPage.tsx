@@ -112,7 +112,7 @@ export const LiveMonitorPage: React.FC = () => {
                 <span className="text-cyan-400 font-bold">{Math.round(simulatedPerson.confidence * 100)}%</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">ByteTrack Dwell Timer:</span>
+                <span className="text-slate-400">IoU Tracker Dwell Timer:</span>
                 <span className="text-amber-400 font-bold">{simulatedPerson.dwellSeconds} Seconds</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/60">

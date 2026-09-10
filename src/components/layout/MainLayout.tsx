@@ -4,6 +4,7 @@ import { Topbar } from './Topbar';
 import { DemoSimulationBar } from '../common/DemoSimulationBar';
 import { FalsePositiveModal } from '../common/FalsePositiveModal';
 import { HikvisionSetupModal } from '../common/HikvisionSetupModal';
+import { DeviceCameraTestModal } from '../common/DeviceCameraTestModal';
 import { useSecurity } from '../../context/SecurityContext';
 
 interface MainLayoutProps {
@@ -25,7 +26,13 @@ const TAB_TITLES: Record<NavTab, { title: string; subtitle: string }> = {
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
-  const { hikvisionSetupModalOpen, setHikvisionSetupModalOpen, connectCamera } = useSecurity();
+  const {
+    hikvisionSetupModalOpen,
+    setHikvisionSetupModalOpen,
+    connectCamera,
+    deviceCameraModalOpen,
+    setDeviceCameraModalOpen,
+  } = useSecurity();
 
   const { title, subtitle } = TAB_TITLES[currentTab];
 
@@ -54,6 +61,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         isOpen={hikvisionSetupModalOpen}
         onClose={() => setHikvisionSetupModalOpen(false)}
         onSuccessConnect={connectCamera}
+      />
+      <DeviceCameraTestModal
+        isOpen={deviceCameraModalOpen}
+        onClose={() => setDeviceCameraModalOpen(false)}
       />
     </div>
   );
