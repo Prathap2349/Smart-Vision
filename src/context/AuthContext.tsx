@@ -12,7 +12,8 @@ interface UserProfile {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: UserProfile;
-  login: (email?: string, password?: string) => void;
+  login: (identifier?: string, password?: string) => void;
+  loginWithGoogle: () => void;
   logout: () => void;
 }
 
@@ -28,9 +29,29 @@ const defaultUser: UserProfile = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // default logged in for easy access, can toggle log out
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [user, setUser] = useState<UserProfile>(defaultUser);
 
-  const login = () => {
+  const login = (identifier?: string) => {
+    if (identifier) {
+      setUser(prev => ({
+        ...prev,
+        email: identifier.includes('@') ? identifier : `${identifier}@mobile.user`,
+        name: identifier.includes('@') ? identifier.split('@')[0] : `Resident (${identifier})`,
+      }));
+    }
+    setIsAuthenticated(true);
+  };
+
+  const loginWithGoogle = () => {
+    setUser({
+      name: 'Google User',
+      role: 'Home Resident Owner',
+      department: 'Gmail Connected',
+      institution: 'Smart Vision Home',
+      email: 'user@gmail.com',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
+    });
     setIsAuthenticated(true);
   };
 
@@ -39,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user: defaultUser, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
