@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSecurity } from '../context/SecurityContext';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Switch } from '../components/ui/Switch';
-import { Sliders, Bell, Shield, Cpu, Save, RefreshCw } from 'lucide-react';
+import { Sliders, Bell, Shield, Cpu, MessageSquare, Webhook } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const { settings, updateSettings } = useSecurity();
+  const [whatsappEnabled, setWhatsappEnabled] = useState<boolean>(true);
+  const [webhookEnabled, setWebhookEnabled] = useState<boolean>(false);
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -14,7 +16,7 @@ export const SettingsPage: React.FC = () => {
       <Card className="space-y-4 border-cyan-500/30">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-cyan-400" /> AI Detection Sensitivity & Thresholds
+            <Sliders className="w-4 h-4 text-cyan-400" /> AI Detection Sensitivity &amp; Thresholds
           </h3>
           <Badge variant="cyan">3-GATE PIPELINE</Badge>
         </div>
@@ -92,7 +94,7 @@ export const SettingsPage: React.FC = () => {
       <Card className="space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Bell className="w-4 h-4 text-cyan-400" /> Telegram &amp; Mobile Notifications
+            <Bell className="w-4 h-4 text-cyan-400" /> Telegram, WhatsApp &amp; Mobile Push Channels
           </h3>
           <Badge variant={settings.telegramEnabled ? 'emerald' : 'slate'}>
             {settings.telegramEnabled ? 'ACTIVE' : 'NOT CONFIGURED'}
@@ -102,13 +104,33 @@ export const SettingsPage: React.FC = () => {
         <div className="space-y-4 text-xs">
           <div className="flex items-center justify-between p-3 bg-slate-900/60 rounded-xl border border-slate-800">
             <div>
-              <p className="font-bold text-white">Enable Telegram Bot API Push</p>
+              <p className="font-bold text-white">Telegram Bot API Push</p>
               <p className="text-slate-400 text-[11px]">Instant security alert delivery (&lt;2.0s latency)</p>
             </div>
             <Switch
               checked={settings.telegramEnabled}
               onChange={checked => updateSettings({ telegramEnabled: checked })}
             />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+            <div>
+              <p className="font-bold text-white flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-emerald-400" /> WhatsApp Business API Alert Delivery
+              </p>
+              <p className="text-slate-400 text-[11px]">Deliver verified stranger snapshots directly to resident WhatsApp</p>
+            </div>
+            <Switch checked={whatsappEnabled} onChange={checked => setWhatsappEnabled(checked)} />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+            <div>
+              <p className="font-bold text-white flex items-center gap-2">
+                <Webhook className="w-4 h-4 text-cyan-400" /> Custom Home Automation Webhooks
+              </p>
+              <p className="text-slate-400 text-[11px]">POST JSON alert payload to local Home Assistant / Hubitat server</p>
+            </div>
+            <Switch checked={webhookEnabled} onChange={checked => setWebhookEnabled(checked)} />
           </div>
 
           <div className="flex items-center justify-between p-3 bg-slate-900/60 rounded-xl border border-slate-800">

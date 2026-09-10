@@ -16,7 +16,8 @@ import {
   TrendingUp,
   ArrowRight,
   Eye,
-  AlertTriangle,
+  Bell,
+  Sparkles,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -59,9 +60,71 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
   const { metrics, alerts, finalDecision } = useSecurity();
 
   const activeAlerts = alerts.filter(a => a.status === 'ACTIVE').length;
+  const isThreatActive = finalDecision === 'VERIFIED_THREAT' || activeAlerts > 0;
 
   return (
     <div className="space-y-6">
+      {/* Resident Hero Status Card */}
+      <Card
+        className={`p-6 border transition-all duration-500 shadow-xl ${
+          isThreatActive
+            ? 'bg-gradient-to-r from-rose-950/80 via-slate-900 to-slate-900 border-rose-500/50 shadow-rose-900/20 animate-pulse'
+            : 'bg-gradient-to-r from-emerald-950/50 via-slate-900 to-slate-900 border-emerald-500/30 shadow-emerald-950/20'
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${
+                isThreatActive
+                  ? 'bg-rose-600 text-white shadow-rose-600/30'
+                  : 'bg-emerald-600 text-white shadow-emerald-600/30'
+              }`}
+            >
+              {isThreatActive ? <ShieldAlert className="w-8 h-8" /> : <ShieldCheck className="w-8 h-8" />}
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-extrabold text-white">
+                  {isThreatActive ? '🚨 1 Unknown Visitor Waiting Outside' : '✓ All Quiet — Front Corridor Secured'}
+                </h2>
+                <Badge variant={isThreatActive ? 'rose' : 'emerald'} pulse>
+                  {isThreatActive ? 'ALERT FIRED' : 'SAFE'}
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">
+                {isThreatActive
+                  ? 'An unrecognized person has been lingering near your front door for > 20s. Alert sent to phone.'
+                  : 'AI is watching your corridor. Environmental motion (wind, animals, leaves) is filtered automatically.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {onNavigateTab && (
+              <>
+                <button
+                  onClick={() => onNavigateTab('live-monitor')}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>View Camera Feed</span>
+                </button>
+
+                <button
+                  onClick={() => onNavigateTab('alerts')}
+                  className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-bold transition flex items-center gap-2"
+                >
+                  <Bell className="w-4 h-4 text-cyan-400" />
+                  <span>Alert History ({alerts.length})</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </Card>
+
       {/* Top 6 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <MetricCard
