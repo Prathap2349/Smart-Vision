@@ -253,14 +253,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (data.tracks) {
             setActiveTracks(data.tracks);
             if (data.tracks.length > 0) {
-              const t = data.tracks[0];
+              const primaryTrack = data.tracks.reduce((max: any, item: any) => (item.dwell_seconds > (max.dwell_seconds || 0) ? item : max), data.tracks.at(0));
               setSimulatedPerson(prev => ({
                 ...prev,
-                trackId: t.track_id ?? prev.trackId,
-                dwellSeconds: t.dwell_seconds ?? prev.dwellSeconds,
-                faceStatus: t.face_status === 'KNOWN' ? 'VERIFIED_RESIDENT' : 'UNKNOWN',
-                residentName: t.resident_name,
-                confidence: t.confidence ?? 0,
+                trackId: primaryTrack.track_id ?? prev.trackId,
+                dwellSeconds: primaryTrack.dwell_seconds ?? prev.dwellSeconds,
+                faceStatus: primaryTrack.face_status === 'KNOWN' ? 'VERIFIED_RESIDENT' : 'UNKNOWN',
+                residentName: primaryTrack.resident_name,
+                confidence: primaryTrack.confidence ?? 0,
                 isHuman: true,
                 active: true,
               }));
@@ -280,11 +280,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
       ws.onerror = () => {
         setIsRealCameraMode(false);
-        setIsSimulating(true);
       };
     } catch {
       setIsRealCameraMode(false);
-      setIsSimulating(true);
     }
 
     return () => {
@@ -294,7 +292,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Simulation Loop when in Demo Mode
   useEffect(() => {
-    if (!isSimulating || isRealCameraMode) return;
+    if (!isSimulating || isRealCameraMode || operatingMode === 'DEVICE_CAMERA_TEST') return;
 
     const interval = setInterval(() => {
       setSimulatedPerson(prev => {

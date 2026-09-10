@@ -21,6 +21,8 @@ import {
   ImageIcon,
   ListFilter,
   Users,
+  Server,
+  Info,
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 
@@ -54,12 +56,12 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Operating Engine Sub-Mode
-  const [engineMode, setEngineMode] = useState<'FASTAPI_BACKEND' | 'BROWSER_EDGE_AI'>('BROWSER_EDGE_AI');
+  const [engineMode, setEngineMode] = useState<'FASTAPI_BACKEND' | 'BACKEND_DISCONNECTED'>('FASTAPI_BACKEND');
 
   // Test Settings & Controls
   const [dwellThreshold, setDwellThreshold] = useState<number>(10);
   const [selectedZone, setSelectedZone] = useState<'Corridor Protection Zone' | 'Main Entrance ROI' | 'Full Frame'>('Corridor Protection Zone');
-  const [activeTab, setActiveTab] = useState<'TELEMETRY' | 'GALLERY' | 'LOGS'>('TELEMETRY');
+  const [activeTab, setActiveTab] = useState<'TELEMETRY' | 'GALLERY' | 'LOGS' | 'DIAGNOSTICS'>('TELEMETRY');
 
   // Testing & Error State
   const [permissionError, setPermissionError] = useState<string | null>(null);
@@ -121,16 +123,6 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
   const [summaryData, setSummaryData] = useState<DeviceCameraTestResult | null>(null);
 
-  // Browser-native tracker ref for fallback mode
-  const browserTracksRef = useRef<Map<number, {
-    track_id: number;
-    first_seen: number;
-    last_seen: number;
-    bbox: [number, number, number, number];
-    current_zone: string;
-    snapshot_captured: boolean;
-  }>>(new Map());
-
   // Log Event Helper
   const addLog = (message: string, type: 'info' | 'warning' | 'alert' = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
@@ -149,12 +141,21 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     };
   }, [isOpen]);
 
+  // Handle Video Stream Re-attachment when navigating tabs inside modal
+  useEffect(() => {
+    if (isOpen && activeTab === 'TELEMETRY' && videoRef.current && mediaStreamRef.current) {
+      if (videoRef.current.srcObject !== mediaStreamRef.current) {
+        videoRef.current.srcObject = mediaStreamRef.current;
+      }
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isOpen, activeTab]);
+
   const startSelfTestAndCamera = async () => {
     setPermissionError(null);
     setSummaryData(null);
     setSnapshotGallery([]);
     setEventLog([]);
-    browserTracksRef.current.clear();
 
     setSelfTest({
       permission: 'pending',
@@ -198,7 +199,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       return;
     }
 
-    // 2. Check Local Backend Health or Engage Automatic Browser Edge AI Mode
+    // 2. Check Local Backend Health
     const health = await api.getHealth();
     if (health.status !== 'OFFLINE') {
       setEngineMode('FASTAPI_BACKEND');
@@ -206,12 +207,12 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       addLog('Connected to local FastAPI Edge AI Backend (OpenCV + YOLO + Lightweight IoU Tracker).', 'info');
       connectFastApiWebSocket();
     } else {
-      // Automatic Browser Edge AI Mode — Zero Terminal Commands Required
-      setEngineMode('BROWSER_EDGE_AI');
-      setSelfTest(prev => ({ ...prev, backend: 'pass', openCv: 'pass', yolo: 'pass', tracking: 'pass', decisionEngine: 'pass' }));
-      setIsTestRunning(true);
-      addLog('FastAPI backend offline. Activated Browser-Native Edge AI Fallback Engine.', 'info');
-      startBrowserAiPipelineLoop();
+      // Backend Disconnected Mode — Zero Fake/Simulated Detections
+      setEngineMode('BACKEND_DISCONNECTED');
+      setSelfTest(prev => ({ ...prev, backend: 'fail', openCv: 'fail', yolo: 'fail', tracking: 'fail', decisionEngine: 'fail' }));
+      setIsTestRunning(false);
+      setActiveTracks([]);
+      addLog('EDGE BACKEND NOT CONNECTED. Please start local FastAPI server to process real camera frames.', 'warning');
     }
   };
 
@@ -226,7 +227,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
       ws.onopen = () => {
         setIsTestRunning(true);
-        addLog('WebSocket pipeline session established.', 'info');
+        addLog('WebSocket pipeline session established with local FastAPI Edge server.', 'info');
         startFrameSendingLoop();
       };
 
@@ -236,6 +237,8 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
           if (data.mode === 'DEVICE_CAMERA_TEST') {
             setRealFps(data.fps || 0.0);
             setInferenceLatencyMs(data.inference_latency_ms || 0.0);
+            
+            // Real YOLO active tracks array directly replaces previous state (no accumulation)
             const tracks: TestTrack[] = data.tracks || [];
             setActiveTracks(tracks);
             setDecision(data.decision || { final_decision: 'CLEAR' });
@@ -249,15 +252,15 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 const trackStr = String(t.track_id);
                 if (!sessionStatsRef.current.trackIdsSeen.has(trackStr)) {
                   sessionStatsRef.current.trackIdsSeen.add(trackStr);
-                  addLog(`New subject detected: TRACK ${trackStr} in ${t.current_zone || selectedZone}`, 'info');
+                  addLog(`Real YOLO detected subject: TRACK ${trackStr} in ${t.current_zone || selectedZone}`, 'info');
                 }
 
                 if (t.dwell_seconds > sessionStatsRef.current.maxDwellSeconds) {
                   sessionStatsRef.current.maxDwellSeconds = t.dwell_seconds;
                 }
 
-                // Handle Snapshot capture on threshold
-                if (t.snapshot_base64 && t.snapshot_captured) {
+                // Handle Real Snapshot capture on threshold crossing
+                if (t.snapshot_base64 && t.snapshot_captured && t.current_zone !== 'Outside ROI') {
                   setSnapshotGallery(prev => {
                     if (!prev.some(s => s.trackId === t.track_id)) {
                       sessionStatsRef.current.snapshotsCapturedCount += 1;
@@ -287,15 +290,15 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       };
 
       ws.onerror = () => {
-        addLog('WebSocket error encountered. Switching to Browser Edge AI Fallback Engine.', 'warning');
-        setEngineMode('BROWSER_EDGE_AI');
-        setIsTestRunning(true);
-        startBrowserAiPipelineLoop();
+        addLog('WebSocket connection failed. EDGE BACKEND NOT CONNECTED.', 'warning');
+        setEngineMode('BACKEND_DISCONNECTED');
+        setIsTestRunning(false);
+        setActiveTracks([]);
       };
     } catch {
-      setEngineMode('BROWSER_EDGE_AI');
-      setIsTestRunning(true);
-      startBrowserAiPipelineLoop();
+      setEngineMode('BACKEND_DISCONNECTED');
+      setIsTestRunning(false);
+      setActiveTracks([]);
     }
   };
 
@@ -338,157 +341,6 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     }, 140);
   };
 
-  // Multi-Person Browser-Native Edge AI Engine Loop — 100% Client-Side Engine for Vercel
-  const startBrowserAiPipelineLoop = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    const sessionStartTime = Date.now();
-    let frameCounter = 0;
-
-    intervalRef.current = setInterval(() => {
-      if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
-      const video = videoRef.current;
-      if (video.videoWidth === 0 || video.videoHeight === 0) return;
-
-      if (!canvasRef.current) canvasRef.current = document.createElement('canvas');
-      const canvas = canvasRef.current;
-      canvas.width = 640;
-      canvas.height = 360;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // Multi-person presence detection across 2 spatial grid regions (Left: x 80-300, Right: x 340-560)
-      const regions = [
-        { id: 1, x: 80, y: 50, w: 220, h: 260, bbox: [80, 50, 300, 310] as [number, number, number, number] },
-        { id: 2, x: 340, y: 50, w: 220, h: 260, bbox: [340, 50, 560, 310] as [number, number, number, number] },
-      ];
-
-      const now = Date.now();
-      const detectedTracks: TestTrack[] = [];
-      let maxTrackDwell = 0;
-
-      regions.forEach(reg => {
-        const imgData = ctx.getImageData(reg.x, reg.y, reg.w, reg.h);
-        let totalLuma = 0;
-        for (let i = 0; i < imgData.data.length; i += 4) {
-          totalLuma += imgData.data[i] * 0.299 + imgData.data[i + 1] * 0.587 + imgData.data[i + 2] * 0.114;
-        }
-        const avgLuma = totalLuma / (imgData.data.length / 4);
-        const isPresent = avgLuma > 10.0;
-
-        if (isPresent) {
-          let bTrack = browserTracksRef.current.get(reg.id);
-          if (!bTrack) {
-            bTrack = {
-              track_id: reg.id,
-              first_seen: now,
-              last_seen: now,
-              bbox: reg.bbox,
-              current_zone: selectedZone,
-              snapshot_captured: false,
-            };
-            browserTracksRef.current.set(reg.id, bTrack);
-            addLog(`Multi-Person Tracker created TRACK #${reg.id} in ${selectedZone}`, 'info');
-          } else {
-            bTrack.last_seen = now;
-          }
-
-          const dwellSec = Number(((now - bTrack.first_seen) / 1000).toFixed(1));
-          if (dwellSec > maxTrackDwell) maxTrackDwell = dwellSec;
-
-          let snapBase64: string | null = null;
-          let snapCaptured = bTrack.snapshot_captured;
-
-          // Capture real snapshot crop upon crossing dwell threshold
-          if (dwellSec >= dwellThreshold && !bTrack.snapshot_captured) {
-            const cropCanvas = document.createElement('canvas');
-            cropCanvas.width = reg.w;
-            cropCanvas.height = reg.h;
-            const cropCtx = cropCanvas.getContext('2d');
-            if (cropCtx) {
-              cropCtx.drawImage(canvas, reg.x, reg.y, reg.w, reg.h, 0, 0, reg.w, reg.h);
-              snapBase64 = cropCanvas.toDataURL('image/jpeg', 0.85);
-              bTrack.snapshot_captured = true;
-              snapCaptured = true;
-
-              setSnapshotGallery(prev => [
-                {
-                  id: `snap_${reg.id}_${now}`,
-                  trackId: `#${reg.id}`,
-                  timestamp: new Date().toLocaleTimeString(),
-                  dwellSeconds: dwellSec,
-                  zoneName: selectedZone,
-                  snapshotUrl: snapBase64!,
-                  faceStatus: 'UNKNOWN',
-                  confidence: 0.945,
-                  decision: 'VERIFIED_THREAT',
-                },
-                ...prev,
-              ]);
-              sessionStatsRef.current.snapshotsCapturedCount += 1;
-              addLog(`🚨 TRACK #${reg.id} loitering threshold (${dwellThreshold}s) triggered! Real webcam snapshot captured.`, 'alert');
-            }
-          }
-
-          const isThreat = dwellSec >= dwellThreshold;
-
-          detectedTracks.push({
-            track_id: `#${reg.id}`,
-            bbox: reg.bbox,
-            dwell_seconds: dwellSec,
-            current_zone: selectedZone,
-            face_status: 'UNKNOWN',
-            confidence: 0.945,
-            snapshot_captured: snapCaptured,
-            snapshot_base64: snapBase64,
-            decision: {
-              gate1Human: { pass: true, confidence: 0.945, label: 'PASS (94.5%)' },
-              gate2Dwell: { pass: isThreat, dwellSeconds: dwellSec, thresholdSeconds: dwellThreshold, label: isThreat ? 'EXCEEDED' : 'MONITORING' },
-              gate3Unknown: { pass: true, faceStatus: 'UNKNOWN', label: 'UNVERIFIED' },
-              finalDecision: isThreat ? 'VERIFIED_THREAT' : 'MONITORING',
-            },
-          });
-
-          sessionStatsRef.current.trackIdsSeen.add(`#${reg.id}`);
-          if (dwellSec > sessionStatsRef.current.maxDwellSeconds) {
-            sessionStatsRef.current.maxDwellSeconds = dwellSec;
-          }
-        } else {
-          // Expire stale tracks
-          const bTrack = browserTracksRef.current.get(reg.id);
-          if (bTrack && now - bTrack.last_seen > 3000) {
-            browserTracksRef.current.delete(reg.id);
-            addLog(`TRACK #${reg.id} exited security zone. Track cleared.`, 'info');
-          }
-        }
-      });
-
-      frameCounter++;
-      const elapsedSec = (now - sessionStartTime) / 1000;
-      const measuredFps = Number((frameCounter / elapsedSec).toFixed(1)) || 12.0;
-      setRealFps(measuredFps);
-      setInferenceLatencyMs(9.8);
-      setActiveTracks(detectedTracks);
-
-      const hasThreat = detectedTracks.some(t => t.dwell_seconds >= dwellThreshold);
-      const finalDecision = hasThreat ? 'VERIFIED_THREAT' : detectedTracks.length > 0 ? 'MONITORING' : 'CLEAR';
-
-      setDecision({
-        gate1_human: { pass: detectedTracks.length > 0, label: 'HUMAN CHECK', confidence: 0.945 },
-        gate2_dwell: { pass: hasThreat, label: 'LOITERING CHECK', dwell_seconds: maxTrackDwell },
-        gate3_unknown: { pass: true, label: 'RESIDENT MATCH', face_status: 'UNKNOWN' },
-        final_decision: finalDecision,
-      });
-
-      sessionStatsRef.current.framesProcessed += 1;
-      if (detectedTracks.length > 0) {
-        sessionStatsRef.current.humansDetectedCount += 1;
-        sessionStatsRef.current.totalYoloDetections += detectedTracks.length;
-      }
-    }, 100);
-  };
-
   const stopCameraTest = () => {
     setIsTestRunning(false);
 
@@ -529,6 +381,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       sessionStatsRef.current.startTime = 0;
     }
 
+    setActiveTracks([]);
     setOperatingMode('OFFLINE');
   };
 
@@ -550,15 +403,15 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white tracking-tight">MULTI-PERSON EDGE AI TEST MODE</h2>
-                <Badge variant="cyan" pulse>
-                  {engineMode === 'FASTAPI_BACKEND' ? 'LIVE MAC WEBCAM • FASTAPI ENGINE' : 'LIVE WEBCAM • BROWSER AI ENGINE'}
+                <h2 className="text-lg font-bold text-white tracking-tight">REAL DEVICE CAMERA TEST MODE</h2>
+                <Badge variant={engineMode === 'FASTAPI_BACKEND' ? 'emerald' : 'rose'} pulse={engineMode === 'FASTAPI_BACKEND'}>
+                  {engineMode === 'FASTAPI_BACKEND' ? 'LIVE MAC WEBCAM • FASTAPI ENGINE' : 'EDGE BACKEND NOT CONNECTED'}
                 </Badge>
               </div>
               <p className="text-xs text-slate-400">
                 {engineMode === 'FASTAPI_BACKEND'
-                  ? 'Real-Time Multi-Person Pipeline (YOLO + IoU Tracker + Decision Engine)'
-                  : 'Automatic Multi-Person Edge AI Engine • Zero Terminal Commands Required'}
+                  ? 'Real-Time Multi-Person Pipeline (YOLO + IoU Tracker + Decision Engine) • Zero Simulated Data'
+                  : 'Start FastAPI Edge Backend (uvicorn main:app) to run real-time YOLO detection'}
               </p>
             </div>
           </div>
@@ -597,8 +450,8 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             ) : (
               <RefreshCw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
             )}
-            <span className={selfTest.backend === 'pass' ? 'text-emerald-300' : 'text-slate-400'}>
-              {engineMode === 'FASTAPI_BACKEND' ? 'FastAPI Backend' : 'Browser AI Engine'}
+            <span className={selfTest.backend === 'pass' ? 'text-emerald-300' : 'text-rose-400'}>
+              {engineMode === 'FASTAPI_BACKEND' ? 'FastAPI Backend' : 'Backend Disconnected'}
             </span>
           </div>
 
@@ -628,6 +481,25 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             </span>
           </div>
         </div>
+
+        {/* Backend Disconnected Alert Banner */}
+        {engineMode === 'BACKEND_DISCONNECTED' && (
+          <div className="p-4 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Server className="w-5 h-5 text-rose-400 shrink-0" />
+              <div>
+                <strong className="block text-rose-300">EDGE BACKEND NOT CONNECTED</strong>
+                <span>Local FastAPI Edge AI backend is offline. Run <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-300">.venv/bin/python backend/main.py</code> to process real webcam frames.</span>
+              </div>
+            </div>
+            <button
+              onClick={startSelfTestAndCamera}
+              className="px-3 py-1.5 rounded-xl bg-rose-900 hover:bg-rose-800 font-bold text-white text-xs transition shrink-0"
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
 
         {/* Configuration Controls Bar */}
         <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -702,6 +574,15 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
               <ListFilter className="w-3.5 h-3.5" />
               LOGS ({eventLog.length})
             </button>
+            <button
+              onClick={() => setActiveTab('DIAGNOSTICS')}
+              className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                activeTab === 'DIAGNOSTICS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Info className="w-3.5 h-3.5" />
+              DIAGNOSTICS
+            </button>
           </div>
         </div>
 
@@ -739,7 +620,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 <div
                   className={`absolute border-2 border-dashed pointer-events-none transition-all duration-300 ${
                     selectedZone === 'Corridor Protection Zone'
-                      ? 'top-[15%] left-[20%] width-[60%] w-[60%] h-[70%] border-amber-400/70 bg-amber-500/5'
+                      ? 'top-[15%] left-[20%] w-[60%] h-[70%] border-amber-400/70 bg-amber-500/5'
                       : selectedZone === 'Main Entrance ROI'
                       ? 'top-[10%] left-[30%] w-[40%] h-[45%] border-cyan-400/70 bg-cyan-500/5'
                       : 'top-[2%] left-[2%] w-[96%] h-[96%] border-indigo-400/70 bg-indigo-500/5'
@@ -750,18 +631,19 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   </span>
                 </div>
 
-                {/* Multi-Person Bounding Box Overlays */}
+                {/* Multi-Person Real YOLO Bounding Box Overlays */}
                 {activeTracks.map(t => {
-                  const isThreat = t.dwell_seconds >= dwellThreshold;
+                  const isInsideROI = t.current_zone !== 'Outside ROI';
+                  const isThreat = isInsideROI && t.dwell_seconds >= dwellThreshold;
                   const isResident = t.face_status === 'VERIFIED_RESIDENT';
                   const borderColor = isThreat ? 'border-rose-500' : isResident ? 'border-emerald-400' : 'border-cyan-400';
                   const bgColor = isThreat ? 'bg-rose-950/40' : isResident ? 'bg-emerald-950/30' : 'bg-cyan-950/30';
 
                   const [x1, y1, x2, y2] = t.bbox;
-                  const left = `${Math.max(5, Math.min(90, (x1 / 640) * 100))}%`;
-                  const top = `${Math.max(5, Math.min(90, (y1 / 360) * 100))}%`;
-                  const width = `${Math.max(10, Math.min(85, ((x2 - x1) / 640) * 100))}%`;
-                  const height = `${Math.max(15, Math.min(85, ((y2 - y1) / 360) * 100))}%`;
+                  const left = `${Math.max(2, Math.min(95, (x1 / 640) * 100))}%`;
+                  const top = `${Math.max(2, Math.min(95, (y1 / 360) * 100))}%`;
+                  const width = `${Math.max(5, Math.min(95, ((x2 - x1) / 640) * 100))}%`;
+                  const height = `${Math.max(5, Math.min(95, ((y2 - y1) / 360) * 100))}%`;
 
                   return (
                     <div
@@ -775,7 +657,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                       </div>
 
                       <div className="bg-slate-950/90 border border-slate-700 px-2 py-0.5 rounded text-[10px] font-mono text-amber-300 font-bold self-end backdrop-blur-md">
-                        DWELL: {t.dwell_seconds.toFixed(1)}s / {dwellThreshold}s
+                        {isInsideROI ? `DWELL: ${t.dwell_seconds.toFixed(1)}s / ${dwellThreshold}s` : 'OUTSIDE ROI'}
                       </div>
                     </div>
                   );
@@ -783,14 +665,14 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
                 {/* Status Header Overlay */}
                 <div className="absolute top-3 left-3 flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>LIVE DEVICE CAMERA</span>
+                  <span className={`w-2 h-2 rounded-full ${engineMode === 'FASTAPI_BACKEND' ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
+                  <span>{engineMode === 'FASTAPI_BACKEND' ? 'LIVE DEVICE CAMERA' : 'CAMERA CONNECTED • BACKEND DISCONNECTED'}</span>
                 </div>
 
                 {/* Telemetry Footer Overlay */}
                 <div className="absolute bottom-3 right-3 flex items-center gap-3 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
-                  <span>AI FPS: <strong className="text-cyan-400">{realFps.toFixed(1)}</strong></span>
-                  <span>LATENCY: <strong className="text-indigo-400">{inferenceLatencyMs.toFixed(0)}ms</strong></span>
+                  <span>AI FPS: <strong className="text-cyan-400">{engineMode === 'FASTAPI_BACKEND' ? realFps.toFixed(1) : '—'}</strong></span>
+                  <span>LATENCY: <strong className="text-indigo-400">{engineMode === 'FASTAPI_BACKEND' ? `${inferenceLatencyMs.toFixed(0)}ms` : '—'}</strong></span>
                 </div>
               </div>
 
@@ -800,18 +682,21 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   <span className="flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-cyan-400" /> ACTIVE TRACKED SUBJECTS ({activeTracks.length})
                   </span>
-                  <span className="text-[10px] text-slate-400">IoU ASSOCIATED TRACKS</span>
+                  <span className="text-[10px] text-slate-400">REAL YOLO TRACKS</span>
                 </div>
 
                 {activeTracks.length === 0 ? (
                   <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center text-xs font-mono text-slate-500">
-                    — NO ACTIVE PERSONS IN CAMERA FIELD OF VIEW —
+                    {engineMode === 'FASTAPI_BACKEND'
+                      ? '— 0 PEOPLE DETECTED • NO ACTIVE TRACKS IN CAMERA VIEW —'
+                      : '— EDGE BACKEND NOT CONNECTED • 0 PEOPLE DETECTED —'}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {activeTracks.map(t => {
-                      const isThreat = t.dwell_seconds >= dwellThreshold;
-                      const pct = Math.min(100, (t.dwell_seconds / dwellThreshold) * 100);
+                      const isInsideROI = t.current_zone !== 'Outside ROI';
+                      const isThreat = isInsideROI && t.dwell_seconds >= dwellThreshold;
+                      const pct = isInsideROI ? Math.min(100, (t.dwell_seconds / dwellThreshold) * 100) : 0;
 
                       return (
                         <div
@@ -825,16 +710,16 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                               <Activity className="w-3.5 h-3.5 text-indigo-400" /> TRACK {String(t.track_id)}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              isThreat ? 'bg-rose-950 text-rose-400 border border-rose-500/40' : 'bg-amber-950 text-amber-300 border border-amber-500/40'
+                              isThreat ? 'bg-rose-950 text-rose-400 border border-rose-500/40' : isInsideROI ? 'bg-amber-950 text-amber-300 border border-amber-500/40' : 'bg-slate-950 text-slate-400 border border-slate-800'
                             }`}>
-                              {isThreat ? '🚨 THREAT' : '👁️ MONITORING'}
+                              {isThreat ? '🚨 THREAT' : isInsideROI ? '👁️ MONITORING' : 'OUTSIDE ROI'}
                             </span>
                           </div>
 
                           <div className="space-y-1">
                             <div className="flex justify-between text-[11px] text-slate-400">
                               <span>Dwell Duration:</span>
-                              <span className="font-bold text-white">{t.dwell_seconds.toFixed(1)}s / {dwellThreshold}s</span>
+                              <span className="font-bold text-white">{isInsideROI ? `${t.dwell_seconds.toFixed(1)}s / ${dwellThreshold}s` : '—'}</span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                               <div
@@ -846,7 +731,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
                           <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
                             <div>Confidence: <strong className="text-slate-200">{(t.confidence * 100).toFixed(1)}%</strong></div>
-                            <div>Match: <strong className="text-slate-200">{t.resident_name || t.face_status}</strong></div>
+                            <div>Zone: <strong className="text-slate-200">{t.current_zone || selectedZone}</strong></div>
                           </div>
                         </div>
                       );
@@ -880,8 +765,8 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   </div>
                   <p className="text-[10px] text-slate-400 font-mono">
                     {activeTracks.length > 0
-                      ? `${activeTracks.length} human silhouette(s) tracked`
-                      : 'No human silhouette present'}
+                      ? `${activeTracks.length} human silhouette(s) detected by YOLO`
+                      : '0 human silhouettes in camera frame'}
                   </p>
                 </div>
 
@@ -891,7 +776,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                     <span className="text-slate-300 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-amber-400" /> GATE 2 — Dwell Threshold ({dwellThreshold}s)
                     </span>
-                    {activeTracks.some(t => t.dwell_seconds >= dwellThreshold) ? (
+                    {activeTracks.some(t => t.current_zone !== 'Outside ROI' && t.dwell_seconds >= dwellThreshold) ? (
                       <span className="text-rose-400 font-mono text-[11px]">✓ TRIGGERED</span>
                     ) : (
                       <span className="text-slate-500 font-mono text-[11px]">
@@ -900,9 +785,9 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                     )}
                   </div>
                   <p className="text-[10px] text-slate-400 font-mono">
-                    {activeTracks.some(t => t.dwell_seconds >= dwellThreshold)
+                    {activeTracks.some(t => t.current_zone !== 'Outside ROI' && t.dwell_seconds >= dwellThreshold)
                       ? `Loitering threshold exceeded (${dwellThreshold}s)`
-                      : 'Monitoring active loitering dwell'}
+                      : 'Monitoring loitering dwell duration'}
                   </p>
                 </div>
 
@@ -910,7 +795,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
                   <div className="flex items-center justify-between text-xs font-bold">
                     <span className="text-slate-300 flex items-center gap-1.5">
-                      <UserCheck className="w-3.5 h-3.5 text-emerald-400" /> GATE 3 — Biometric Match
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-400" /> GATE 3 — Resident Match
                     </span>
                     {activeTracks.length > 0 ? (
                       activeTracks.some(t => t.face_status === 'VERIFIED_RESIDENT') ? (
@@ -947,7 +832,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                       ? '🛡️ SAFE RESIDENT'
                       : activeTracks.length > 0
                       ? '👁️ MONITORING SUBJECT'
-                      : 'CLEAR — NO THREAT'}
+                      : 'CLEAR — WAITING FOR PERSON'}
                   </span>
                 </div>
               </div>
@@ -992,7 +877,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 <ImageIcon className="w-8 h-8 text-slate-600 mx-auto" />
                 <h4 className="text-sm font-bold text-slate-300">No Snapshot Events Triggered Yet</h4>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  When a tracked person remains inside the selected ROI zone for &ge; {dwellThreshold}s, a real webcam frame snapshot will be captured and displayed here.
+                  When a real tracked person remains inside the selected ROI zone for &ge; {dwellThreshold}s, a real webcam frame snapshot will be captured and displayed here.
                 </p>
               </div>
             ) : (
@@ -1055,6 +940,55 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: SYSTEM DIAGNOSTICS PANEL */}
+        {activeTab === 'DIAGNOSTICS' && (
+          <div className="space-y-3 font-mono text-xs">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 text-slate-300">
+                <Info className="w-4 h-4 text-cyan-400" />
+                <span className="font-bold text-white uppercase">TEST MODE DIAGNOSTICS PANEL</span>
+              </div>
+              <Badge variant={engineMode === 'FASTAPI_BACKEND' ? 'emerald' : 'rose'}>
+                {engineMode === 'FASTAPI_BACKEND' ? 'FASTAPI ONLINE' : 'DISCONNECTED'}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase">WEBCAM STREAM</span>
+                <span className="font-bold text-emerald-400">{mediaStreamRef.current ? 'CONNECTED' : 'DISCONNECTED'}</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase">EDGE BACKEND</span>
+                <span className={`font-bold ${engineMode === 'FASTAPI_BACKEND' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {engineMode === 'FASTAPI_BACKEND' ? 'CONNECTED (8000)' : 'OFFLINE'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase">ACTIVE TRACKS</span>
+                <span className="font-bold text-cyan-400">{activeTracks.length}</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase">PROCESSING FPS</span>
+                <span className="font-bold text-indigo-400">{engineMode === 'FASTAPI_BACKEND' ? `${realFps.toFixed(1)} FPS` : '—'}</span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-slate-400">
+              <strong className="text-slate-200 block">Strict Real-Time Data Pipeline Protocol:</strong>
+              <ul className="list-disc pl-4 space-y-1 text-[11px]">
+                <li>Zero fake / simulated detections exist in Device Camera Test Mode.</li>
+                <li>Camera empty state returns 0 active tracks, 0 bounding boxes, 0 dwell timers, 0 snapshots.</li>
+                <li>Stale tracks expire after 0.8s max grace period upon person leaving frame.</li>
+                <li>Dwell timers accumulate ONLY when a person is inside the active ROI security zone.</li>
+              </ul>
             </div>
           </div>
         )}
@@ -1136,7 +1070,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             </div>
 
             <p className="text-xs text-slate-400 bg-slate-950 p-3 rounded-xl border border-slate-800">
-              ℹ️ <strong>Honest Evaluation Note:</strong> Live webcam frames were processed locally by {engineMode === 'FASTAPI_BACKEND' ? 'FastAPI Edge AI Engine' : 'Browser-Native Edge AI Engine'}. Temporary test snapshots have been purged from active memory.
+              ℹ️ <strong>Honest Evaluation Note:</strong> Live webcam frames were processed locally by FastAPI Edge AI Engine. Temporary test snapshots have been purged from active memory.
             </p>
           </div>
         )}

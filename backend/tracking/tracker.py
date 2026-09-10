@@ -17,13 +17,13 @@ def compute_iou(boxA: List[float], boxB: List[float]) -> float:
     return iou
 
 class TrackedSubject:
-    def __init__(self, track_id: str, initial_bbox: List[float], timestamp: float):
+    def __init__(self, track_id: str, initial_bbox: List[float], timestamp: float, zone_name: str = "Outside ROI"):
         self.track_id = track_id
         self.bbox = initial_bbox
         self.first_seen = timestamp
         self.last_seen = timestamp
-        self.current_zone = "Corridor Protection Zone"
-        self.zone_entry_time: Optional[float] = timestamp
+        self.current_zone = zone_name
+        self.zone_entry_time: Optional[float] = timestamp if zone_name != "Outside ROI" else None
         self.confidence = 0.95
         self.face_status = "UNKNOWN"
         self.resident_name: Optional[str] = None
@@ -34,14 +34,17 @@ class TrackedSubject:
 
     @property
     def dwell_seconds(self) -> float:
-        if self.zone_entry_time is None:
+        if self.current_zone == "Outside ROI" or self.zone_entry_time is None:
             return 0.0
         return round(time.time() - self.zone_entry_time, 1)
 
-    def update(self, bbox: List[float], timestamp: float, zone_name: Optional[str] = None):
+    def update(self, bbox: List[float], timestamp: float, zone_name: str = "Outside ROI"):
         self.bbox = bbox
         self.last_seen = timestamp
-        if zone_name and zone_name != self.current_zone:
+        if zone_name == "Outside ROI":
+            self.current_zone = "Outside ROI"
+            self.zone_entry_time = None
+        elif zone_name != self.current_zone:
             self.current_zone = zone_name
             self.zone_entry_time = timestamp
         elif self.zone_entry_time is None:
@@ -53,7 +56,7 @@ class LightweightIoUTracker:
     Performs frame-to-frame bounding box association, maintains independent track IDs,
     dwell timers, and cleans up stale tracks.
     """
-    def __init__(self, iou_threshold: float = 0.3, max_staleness_seconds: float = 3.0):
+    def __init__(self, iou_threshold: float = 0.3, max_staleness_seconds: float = 0.8):
         self.tracks: Dict[str, TrackedSubject] = {}
         self.next_id_counter = 1
         self.iou_threshold = iou_threshold
@@ -98,7 +101,7 @@ class LightweightIoUTracker:
             if best_tid is not None and best_iou >= self.iou_threshold:
                 # Update existing track
                 matched_zones = check_person_zones(det_bbox, frame_w, frame_h, zones)
-                zone_name = matched_zones[0]["name"] if matched_zones else "Corridor Protection Zone"
+                zone_name = matched_zones[0]["name"] if matched_zones else "Outside ROI"
 
                 t = self.tracks[best_tid]
                 t.update(det_bbox, now, zone_name)
@@ -111,13 +114,12 @@ class LightweightIoUTracker:
             det = detections[det_idx]
             det_bbox = det.get("bbox", [400, 200, 520, 500])
             matched_zones = check_person_zones(det_bbox, frame_w, frame_h, zones)
-            zone_name = matched_zones[0]["name"] if matched_zones else "Corridor Protection Zone"
+            zone_name = matched_zones[0]["name"] if matched_zones else "Outside ROI"
 
             track_id = f"#{self.next_id_counter}"
             self.next_id_counter += 1
 
-            new_track = TrackedSubject(track_id, det_bbox, now)
-            new_track.current_zone = zone_name
+            new_track = TrackedSubject(track_id, det_bbox, now, zone_name=zone_name)
             new_track.confidence = float(det.get("confidence", 0.95))
             self.tracks[track_id] = new_track
 

@@ -67,48 +67,55 @@ class ContinuousDetectionLoop(threading.Thread):
                 }
 
                 if tracks:
-                    active_track = tracks[0]
-                    # Crop person box for face matching
-                    x1, y1, x2, y2 = [int(v) for v in active_track.bbox]
-                    crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
-                    
-                    if crop.size > 0:
-                        face_status, res_name, face_conf = face_recognizer.match_face(crop)
-                        active_track.face_status = face_status
-                        active_track.resident_name = res_name
-
                     dwell_threshold = 20.0
                     if zones:
                         dwell_threshold = float(zones[0].get("dwell_threshold", 20.0))
 
+                    for t in tracks:
+                        x1, y1, x2, y2 = [int(v) for v in t.bbox]
+                        crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
+                        if crop.size > 0:
+                            face_status, res_name, face_conf = face_recognizer.match_face(crop)
+                            t.face_status = face_status
+                            t.resident_name = res_name
+
+                        t_gate_eval = decision_engine.evaluate_gates(
+                            is_human=True,
+                            human_confidence=t.confidence,
+                            dwell_seconds=t.dwell_seconds,
+                            dwell_threshold=dwell_threshold,
+                            face_status=t.face_status
+                        )
+
+                        conn = get_db_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT name FROM cameras WHERE id = ?;", (self.camera_id,))
+                        cam_row = cursor.fetchone()
+                        conn.close()
+                        camera_name = cam_row["name"] if cam_row else self.camera_id
+
+                        # Trigger Alert if Triple-Gate passes (VERIFIED_THREAT)
+                        if t_gate_eval["final_decision"] == "VERIFIED_THREAT":
+                            new_alert = alert_manager.trigger_alert(
+                                camera_id=self.camera_id,
+                                camera_name=camera_name,
+                                track_id=t.track_id,
+                                dwell_duration=t.dwell_seconds,
+                                face_status=t.face_status,
+                                confidence=t.confidence,
+                                frame=frame
+                            )
+                            if new_alert:
+                                gate_eval["new_alert"] = new_alert
+
+                    primary_track = max(tracks, key=lambda tr: tr.dwell_seconds)
                     gate_eval = decision_engine.evaluate_gates(
                         is_human=True,
-                        human_confidence=active_track.confidence,
-                        dwell_seconds=active_track.dwell_seconds,
+                        human_confidence=primary_track.confidence,
+                        dwell_seconds=primary_track.dwell_seconds,
                         dwell_threshold=dwell_threshold,
-                        face_status=active_track.face_status
+                        face_status=primary_track.face_status
                     )
-
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT name FROM cameras WHERE id = ?;", (self.camera_id,))
-                    cam_row = cursor.fetchone()
-                    conn.close()
-                    camera_name = cam_row["name"] if cam_row else self.camera_id
-
-                    # Trigger Alert if Triple-Gate passes (VERIFIED_THREAT)
-                    if gate_eval["final_decision"] == "VERIFIED_THREAT":
-                        new_alert = alert_manager.trigger_alert(
-                            camera_id=self.camera_id,
-                            camera_name=camera_name,
-                            track_id=active_track.track_id,
-                            dwell_duration=active_track.dwell_seconds,
-                            face_status=active_track.face_status,
-                            confidence=active_track.confidence,
-                            frame=frame
-                        )
-                        if new_alert:
-                            gate_eval["new_alert"] = new_alert
 
                 with self.lock:
                     self.last_detection_state = {

@@ -185,8 +185,8 @@ async def test_camera_websocket(websocket: WebSocket):
                     face_status=t.face_status
                 )
 
-                # Capture snapshot crop if dwell_seconds >= dwell_threshold and not yet captured
-                if t.dwell_seconds >= dwell_threshold and not t.snapshot_captured:
+                # Capture snapshot crop if person is inside ROI zone, dwell_seconds >= dwell_threshold, and not yet captured
+                if t.current_zone != "Outside ROI" and t.dwell_seconds >= dwell_threshold and not t.snapshot_captured:
                     pad = 20
                     cx1, cy1 = max(0, x1 - pad), max(0, y1 - pad)
                     cx2, cy2 = min(w, x2 + pad), min(h, y2 + pad)
