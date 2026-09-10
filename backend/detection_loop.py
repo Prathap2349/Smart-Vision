@@ -83,7 +83,7 @@ class ContinuousDetectionLoop(threading.Thread):
 
                     gate_eval = decision_engine.evaluate_gates(
                         is_human=True,
-                        confidence=active_track.confidence,
+                        human_confidence=active_track.confidence,
                         dwell_seconds=active_track.dwell_seconds,
                         dwell_threshold=dwell_threshold,
                         face_status=active_track.face_status

@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Drawer } from '../components/ui/Drawer';
 import { Camera, Plus, RefreshCw, Activity, Cpu, Wifi, Eye, CheckCircle2 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, API_BASE } from '../services/api';
 
 export const CamerasPage: React.FC = () => {
   const { cameras, addCamera } = useSecurity();
@@ -146,7 +146,7 @@ export const CamerasPage: React.FC = () => {
           <div className="space-y-6">
             <div className="aspect-video bg-[#060a14] border border-slate-800 rounded-xl overflow-hidden relative">
               <img
-                src={`http://localhost:8000/api/cameras/${selectedCam.id}/mjpeg`}
+                src={`${API_BASE}/cameras/${selectedCam.id}/mjpeg`}
                 alt={selectedCam.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {

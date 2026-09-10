@@ -2,6 +2,20 @@ import time
 from typing import Dict, List, Any, Optional
 from tracking.zone_checker import check_person_zones
 
+def compute_iou(boxA: List[float], boxB: List[float]) -> float:
+    """Calculates Intersection over Union (IoU) between two bounding boxes [x1, y1, x2, y2]."""
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+
+    interArea = max(0, xB - xA) * max(0, yB - yA)
+    boxAArea = max(0, boxA[2] - boxA[0]) * max(0, boxA[3] - boxA[1])
+    boxBArea = max(0, boxB[2] - boxB[0]) * max(0, boxB[3] - boxB[1])
+
+    iou = interArea / float(boxAArea + boxBArea - interArea + 1e-6)
+    return iou
+
 class TrackedSubject:
     def __init__(self, track_id: str, initial_bbox: List[float], timestamp: float):
         self.track_id = track_id
@@ -10,7 +24,7 @@ class TrackedSubject:
         self.last_seen = timestamp
         self.current_zone = "Corridor Protection Zone"
         self.zone_entry_time: Optional[float] = timestamp
-        self.confidence = 0.97
+        self.confidence = 0.95
         self.face_status = "UNKNOWN"
         self.resident_name: Optional[str] = None
         self.active = True
@@ -30,44 +44,82 @@ class TrackedSubject:
         elif self.zone_entry_time is None:
             self.zone_entry_time = timestamp
 
-class ByteTrackerManager:
-    def __init__(self):
+class LightweightIoUTracker:
+    """
+    Lightweight IoU-Based Object Tracker.
+    Performs frame-to-frame bounding box association, maintains independent track IDs,
+    dwell timers, and cleans up stale tracks.
+    """
+    def __init__(self, iou_threshold: float = 0.3, max_staleness_seconds: float = 3.0):
         self.tracks: Dict[str, TrackedSubject] = {}
         self.next_id_counter = 1
+        self.iou_threshold = iou_threshold
+        self.max_staleness_seconds = max_staleness_seconds
 
-    def update_tracks(self, detections: List[Dict[str, Any]], zones: List[Dict[str, Any]], frame_w: int = 1280, frame_h: int = 720) -> List[TrackedSubject]:
+    def update_tracks(
+        self,
+        detections: List[Dict[str, Any]],
+        zones: List[Dict[str, Any]],
+        frame_w: int = 1280,
+        frame_h: int = 720
+    ) -> List[TrackedSubject]:
         now = time.time()
-        
-        # 1. Expire stale tracks (not seen for > 3.0 seconds)
-        expired_ids = [tid for tid, t in self.tracks.items() if now - t.last_seen > 3.0]
+
+        # 1. Expire stale tracks not updated within max_staleness_seconds
+        expired_ids = [tid for tid, t in self.tracks.items() if now - t.last_seen > self.max_staleness_seconds]
         for tid in expired_ids:
             del self.tracks[tid]
 
-        # 2. If no detections present, return remaining non-expired tracks (or empty list)
         if not detections:
             return list(self.tracks.values())
 
-        updated_list = []
-        for det in detections:
-            bbox = det.get("bbox", [400, 200, 520, 500])
-            matched_zones = check_person_zones(bbox, frame_w, frame_h, zones)
+        # 2. IoU Association Matrix
+        active_track_keys = list(self.tracks.keys())
+        unmatched_detections = set(range(len(detections)))
+        matched_tracks = set()
+
+        for det_idx, det in enumerate(detections):
+            det_bbox = det.get("bbox", [400, 200, 520, 500])
+            best_iou = 0.0
+            best_tid = None
+
+            for tid in active_track_keys:
+                if tid in matched_tracks:
+                    continue
+                t = self.tracks[tid]
+                iou = compute_iou(det_bbox, t.bbox)
+                if iou > best_iou:
+                    best_iou = iou
+                    best_tid = tid
+
+            if best_tid is not None and best_iou >= self.iou_threshold:
+                # Update existing track
+                matched_zones = check_person_zones(det_bbox, frame_w, frame_h, zones)
+                zone_name = matched_zones[0]["name"] if matched_zones else "Corridor Protection Zone"
+
+                t = self.tracks[best_tid]
+                t.update(det_bbox, now, zone_name)
+                t.confidence = float(det.get("confidence", 0.95))
+                matched_tracks.add(best_tid)
+                unmatched_detections.remove(det_idx)
+
+        # 3. Create new tracks for unmatched detections
+        for det_idx in unmatched_detections:
+            det = detections[det_idx]
+            det_bbox = det.get("bbox", [400, 200, 520, 500])
+            matched_zones = check_person_zones(det_bbox, frame_w, frame_h, zones)
             zone_name = matched_zones[0]["name"] if matched_zones else "Corridor Protection Zone"
 
-            # Assign to existing track or create new
-            existing = list(self.tracks.values())
-            if existing:
-                t = existing[0]
-                t.update(bbox, now, zone_name)
-                t.confidence = det.get("confidence", 0.97)
-                updated_list.append(t)
-            else:
-                track_id = f"#{self.next_id_counter}"
-                self.next_id_counter += 1
-                t = TrackedSubject(track_id, bbox, now)
-                t.current_zone = zone_name
-                self.tracks[track_id] = t
-                updated_list.append(t)
+            track_id = f"#{self.next_id_counter}"
+            self.next_id_counter += 1
 
-        return updated_list
+            new_track = TrackedSubject(track_id, det_bbox, now)
+            new_track.current_zone = zone_name
+            new_track.confidence = float(det.get("confidence", 0.95))
+            self.tracks[track_id] = new_track
 
-tracker_manager = ByteTrackerManager()
+        return list(self.tracks.values())
+
+# Backward compatibility alias
+ByteTrackerManager = LightweightIoUTracker
+tracker_manager = LightweightIoUTracker()

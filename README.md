@@ -1,46 +1,48 @@
 # Smart Vision Sentry 🛡️
 
-> **AI-Powered CCTV False-Alarm Elimination & Residential Security System**
-> *Replacing pixel-motion notifications with semantic human detection, loitering dwell tracking, and biometric resident whitelisting.*
+> **Edge-AI CCTV False-Alarm Elimination & Residential Security Prototype**  
+> *Replacing pixel-motion notifications with semantic human detection, loitering dwell tracking, and resident verification.*
 
 ---
 
 ## 📌 Project Overview
 
-**Smart Vision Sentry (SVS)** is a production-grade local Edge-AI video analytics platform designed to solve the universal failure of traditional pixel-threshold CCTV security systems: **Notification Fatigue**.
+**Smart Vision Sentry (SVS)** is a prototype Edge-AI video analytics platform designed to address the universal problem of traditional CCTV security systems: **Notification Fatigue**.
 
-Traditional motion sensors trigger indiscriminate alerts for swaying foliage, wind, sunlight/shadow shifts, insects, and animals, generating over **99+ false alarms daily** and forcing residents to mute security notifications. 
+Traditional motion sensors trigger indiscriminate alerts for swaying foliage, wind, sunlight/shadow shifts, insects, and animals, generating frequent false alarms daily and forcing residents to mute security notifications. 
 
-Smart Vision Sentry introduces a **Triple-Gate AI Decision Logic** that evaluates semantic human presence, temporal loitering duration, and face recognition biometrics before firing an alert.
+Smart Vision Sentry introduces a **Triple-Gate AI Decision Pipeline** that evaluates semantic human presence, temporal loitering duration, and resident face verification before firing an alert.
 
 ```
-HIKVISION CCTV / RTSP STREAM
+HIKVISION CCTV / RTSP STREAM / WEBCAM
             ↓
   OPENCV & FFMPEG FRAME BUFFER
             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                   TRIPLE-GATE AI PIPELINE                   │
 │                                                             │
-│  [GATE 1]  Human Detection   →  Human Silhouette Detected   │
+│  [GATE 1]  Human Detection   →  YOLOv8 Silhouette Detection │
 │  [GATE 2]  Loitering Track   →  Dwell Duration > 20 Seconds │
-│  [GATE 3]  Resident Check    →  Unrecognized / Unknown Face │
+│  [GATE 3]  Resident Verification → Unrecognized / Unknown   │
 └─────────────────────────────────────────────────────────────┘
             ↓
-  VERIFIED SECURITY ALERT (< 2.0s Latency)
+  VERIFIED SECURITY ALERT (< 2.0s Latency Target)
             ↓
   WEB DASHBOARD & TELEGRAM BOT API
 ```
 
 ---
 
-## 🎯 Key Impact Metrics
+## 🎯 Target Impact Benchmarks (Prototype Metrics)
 
-| Metric | Traditional CCTV | Smart Vision Sentry | Improvement |
+| Metric | Traditional Motion CCTV | Smart Vision Sentry (Target) | Evaluation Metric |
 | :--- | :---: | :---: | :---: |
-| **Daily False Positive Alerts** | 99+ pings / day | **< 4 verified alerts / day** | **97% Reduction** |
-| **Daily Log-Checking Time** | 20 minutes / day | **< 1 minute / day** | **95% Time Saved** |
-| **Alert Delivery Latency** | 3.5 – 5.0s (Cloud) | **< 1.4s (Local Edge)** | **Real-Time** |
-| **Cloud Video Processing Fees** | $150+ / month | **$0 / month (100% Edge)** | **Zero Cloud Cost** |
+| **Daily False Positive Alerts** | 99+ pings / day | **< 4 verified alerts / day** | Target Reduction |
+| **Daily Log-Checking Time** | 20 minutes / day | **< 1 minute / day** | Operational Time Saved |
+| **Alert Delivery Latency** | 3.5 – 5.0s (Cloud) | **< 1.4s (Local Edge)** | Measured Latency Target |
+| **Cloud Video Processing Fees** | $150+ / month | **$0 / month (100% Edge Processing)** | Processing Model |
+
+*Note: Metrics represent design targets evaluated under controlled test scenarios.*
 
 ---
 
@@ -48,72 +50,58 @@ HIKVISION CCTV / RTSP STREAM
 
 ### **Backend (Python 3.10+ & FastAPI)**
 - **Framework**: FastAPI + Uvicorn (REST API & WebSockets)
+- **Object Detection**: Ultralytics YOLOv8 (Human Silhouette Detection) with OpenCV fallback
+- **Object Tracking**: Lightweight IoU-Based Object Tracker with frame-to-frame association, multi-person track IDs, and stale track cleanup
+- **Face Verification**: Prototype Face Verification Engine using normalized 512-D feature vector cosine similarity matching against whitelisted SQLite resident embeddings
 - **Camera Streaming**: Continuous thread RTSP/Webcam capture with real measured FPS & MJPEG server (`/api/cameras/{id}/mjpeg`)
-- **AI Detection Loop**: Continuous background thread running YOLOv8 human detection, ByteTrack object tracking, and InsightFace biometrics
 - **ONVIF Discovery**: Native UDP WS-Discovery scanner on port 3702 for automatic LAN IP camera detection
-- **Face Biometrics & Persistence**: SQLite3 database with optional Supabase Cloud sync & full resident enrollment/deletion endpoints
-- **Real-Time Telemetry**: WebSockets (`/ws/cameras/{camera_id}`) streaming live measured FPS, latency, and detection bounding boxes
+- **Database & Sync**: Local SQLite3 (`backend/data/smart_vision.db`) with optional Supabase Cloud synchronization
 
 ### **Frontend (React 18 & Dashboard)**
 - **Framework**: React 18, TypeScript, Vite
-- **Styling**: Tailwind CSS (Modern Consumer & Security dark theme)
-- **Icons**: Lucide React
-- **Analytics & Charts**: Recharts
-- **Video Renderer**: Dual HTML5 Canvas + MJPEG player rendering real continuous camera feeds with live bounding box, track ID, and face tag overlays
-- **Deployment Rules**: `vercel.json` Monorepo configuration with API rewrites (`/api/*` → FastAPI backend service)
+- **Styling**: Tailwind CSS (Modern NOC Dark Theme)
+- **Icons & Charts**: Lucide React, Recharts
+- **Video Renderer**: Dual HTML5 Canvas + MJPEG player rendering camera feeds with bounding box, track ID, and face tag overlays
+- **Deployment**: Vercel monorepo hosting (`https://smart-vision-eta.vercel.app`)
 
 ---
 
 ## ⚡ Triple-Gate Decision Engine Logic
 
-An alert is generated **only when all three gates evaluate to PASS**:
+An alert is classified as **VERIFIED_THREAT** only when all three gates evaluate to PASS:
 
 1. **GATE 1 — Human Detection**:
-   - Filters out environmental motion (plants, wind, shadows, rain, animals).
-   - *Pass Condition*: `Human Detected == True` with high confidence.
+   - Evaluates whether a human silhouette is present with `human_confidence >= 0.70`.
+   - Filters out environmental motion (foliage, shadows, animals, rain).
 
 2. **GATE 2 — Loitering Dwell Duration**:
-   - Tracks human movement trajectories inside configured corridor protection zones.
+   - Tracks human movement trajectories inside designated corridor protection zones.
    - *Pass Condition*: `Dwell Duration >= 20 Seconds`.
 
-3. **GATE 3 — Resident Biometric Verification**:
+3. **GATE 3 — Resident Identity Verification**:
    - Compares detected face features against whitelisted resident database.
    - *Pass Condition*: `Face Status == UNKNOWN`.
-   - *Safe State*: If face matches a whitelisted resident, system logs `✓ SAFE — NO ALERT`.
+   - *Safe State*: If face matches a whitelisted resident, system logs `SAFE_RESIDENT` and suppresses notification.
 
 ---
 
-## 🌐 Deployment Configuration (`vercel.json`)
-
-Smart Vision Sentry is configured for seamless deployment on Vercel or similar micro-service hosts:
-
-```json
-{
-  "services": {
-    "frontend": { "root": ".", "framework": "vite" },
-    "backend": { "root": "backend" }
-  },
-  "rewrites": [
-    { "source": "/api(/.*)?", "destination": { "type": "service", "service": "backend" } },
-    { "source": "/(.*)", "destination": { "type": "service", "service": "frontend" } }
-  ]
-}
-```
-
----
-
-## 📹 Real Hikvision CCTV Integration
-
-Smart Vision Sentry integrates directly with Hikvision IP Cameras and NVRs over RTSP:
+## 🌐 Edge-AI Deployment Architecture
 
 ```
-rtsp://USERNAME:PASSWORD@HOST:PORT/Streaming/channels/101
+Browser Dashboard (Vercel Frontend)
+       ▲
+       │ REST API / WebSockets
+       ▼
+Local Edge Machine (FastAPI Backend)
+       ▲
+       │ RTSP Stream / ONVIF Discovery / OpenCV
+       ▼
+IP Camera / Hikvision / USB Webcam
 ```
 
-- **Main Stream (1080p)**: Channel `101`
-- **Sub Stream (720p)**: Channel `102`
-
-> **Security Note**: Hikvision credentials (`HIKVISION_USERNAME`, `HIKVISION_PASSWORD`) are stored strictly on the backend in `.env` / database and are **never** exposed to browser JavaScript code.
+- **Vercel**: Hosts the static dashboard user interface.
+- **Local Edge Machine**: Runs the Python FastAPI backend, OpenCV capture, YOLO inference, tracking, and local SQLite database.
+- Physical video streams are processed locally on the Edge machine and are not uploaded to Vercel.
 
 ---
 
@@ -136,48 +124,51 @@ python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install Python Dependencies
-pip install fastapi uvicorn opencv-python-headless websockets psutil numpy pillow scipy python-multipart ultralytics
+pip install -r backend/requirements.txt pytest
+
+# Run Backend Automated Test Suite
+python -m pytest backend/tests/test_pipeline.py -v
 
 # Start FastAPI Backend Server (Runs on http://localhost:8000)
 cd backend
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### 3. Frontend Setup (React & Dashboard)
+### 3. Frontend Setup (React Dashboard)
 ```bash
 # Install Node Dependencies
 npm install
+
+# Build & Validate Frontend TypeScript Compilation
+npm run build
 
 # Start Vite Dev Server (Runs on http://localhost:5173)
 npm run dev
 ```
 
-Open your browser to [http://localhost:5173](http://localhost:5173) to access the Smart Vision Sentry dashboard.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🖥️ Dashboard Page Highlights
+## 🧪 Simulation / Demonstration Mode
 
-1. **Security Overview**: Executive command center displaying key metrics, live camera stream player, 3-Gate decision visualizer, and comparative analytics.
-2. **Live Monitor**: 1080p stream viewer with real-time overlay toggles (Bounding Boxes, Track IDs, Detection Zones, Face Match Tags, AI Labels).
-3. **Security Alerts**: Filterable incident management table with evidence drawer and Telegram delivery audit logs.
-4. **People & Residents**: Whitelisted resident cards + resident add/remove capabilities + unrecognized subjects review modal.
-5. **Camera Management**: RTSP stream configuration, connection testing, and live stream telemetry.
-6. **Detection Zones**: Interactive ROI polygon zone drawer supporting Entry, Corridor, Restricted, and Tripwire zones.
-7. **Event History**: Comprehensive audit log timeline with CSV export capability.
-8. **Analytics & Impact**: Grounded project benchmark charts.
-9. **System Health**: System CPU, GPU, RAM, Temperature gauges and interactive node topology graph.
-10. **System Settings**: AI confidence sliders, Telegram bot API config, local processing privacy, and IR night mode fallback.
+Smart Vision Sentry includes an interactive **Simulation Mode** designed for demonstration when a physical IP camera is unavailable:
+- **Simulate Intruder**: Generates a tracked subject (`#101`) entering the protection zone, increasing dwell time until the Triple-Gate evaluates to `VERIFIED_THREAT`.
+- **Simulate Resident**: Generates a whitelisted resident subject (`Arun Kumar`), demonstrating alert suppression (`SAFE_RESIDENT`).
+- All simulated events carry an explicit `[SIMULATION]` / `[DEMO EVENT]` badge to distinguish generated demonstration data from live camera measurements.
 
 ---
 
-## 🔄 Resident Feedback Loop
+## ⚠️ Prototype Limitations
 
-When a resident flags an alert as **False Positive**, the system records the environmental cause (*Wind, Foliage, Shadow, Animal, Lighting, Camera Artifact*) to automatically tune local model confidence thresholds, preventing future false pings.
+1. **Local Edge Processing**: Camera processing, YOLO inference, and RTSP stream decoding require the Python backend running locally.
+2. **Camera Hardware**: Real-time camera streaming requires an RTSP IP camera (e.g. Hikvision) or an attached USB webcam.
+3. **Face Verification Prototype**: The current face verification module uses a 512-D normalized feature vector similarity prototype; production deployment can upgrade to full InsightFace ArcFace models.
+4. **Environment Credentials**: Credentials must be supplied via environment variables (`.env`) using the provided `.env.example` templates.
 
 ---
 
-## 👥 Student & Project Metadata
+## 👥 Project & Evaluation Metadata
 
 - **Student Name**: Prathap S (Roll No: 25102159 / RTC2025BAI360)
 - **Department**: BTech AI & Data Science (C29 Batch)

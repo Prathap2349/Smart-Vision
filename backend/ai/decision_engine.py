@@ -27,28 +27,35 @@ class DecisionEngine:
 
     def evaluate_gates(
         self,
-        is_human: bool,
-        human_conf: float,
-        dwell_seconds: float,
+        is_human: bool = True,
+        human_confidence: float = 0.0,
+        dwell_seconds: float = 0.0,
         dwell_threshold: Optional[float] = None,
         face_status: str = "UNKNOWN",
         low_light_ir: bool = False,
-        has_package: bool = False
+        has_package: bool = False,
+        **kwargs
     ) -> Dict[str, Any]:
         """
-        Evaluates the Smart Vision Sentry Logic with Ideate stage enhancements:
-        - Idea 1: Two-Gate Fast Mode Fallback for low-light IR conditions
-        - Idea 3: Scheduled Sensitivity Profiles (adaptive time-of-day loitering thresholds)
-        - Idea 6: Package Carrying Sub-Classification
-        - Idea 8: Explainable Alert Cards (Plain-English Reasoning Summary)
+        Evaluates the Triple-Gate Decision Engine Logic:
+        - GATE 1: Human Presence & Confidence Threshold
+        - GATE 2: Dwell / Loitering Threshold Duration
+        - GATE 3: Biometric Identity Verification (Resident vs Unknown Person)
+
+        Returns Decision Dictionary with final_decision: SAFE_RESIDENT | MONITORING | VERIFIED_THREAT | IDLE
         """
+        # Support backward-compatible kwargs for human_conf or confidence
+        if "human_conf" in kwargs and human_confidence == 0.0:
+            human_confidence = float(kwargs["human_conf"])
+        elif "confidence" in kwargs and human_confidence == 0.0:
+            human_confidence = float(kwargs["confidence"])
+
         profile = self.get_current_schedule_profile()
         effective_threshold = dwell_threshold if dwell_threshold is not None else profile["dwell_threshold"]
 
-        # Idea 1: Two-Gate Fast Mode IR Fallback
         fast_mode_active = low_light_ir or (face_status in ["UNCLEAR", "LOW_LIGHT_IR"])
 
-        gate1_pass = is_human and (human_conf >= 0.70)
+        gate1_pass = is_human and (human_confidence >= 0.70)
         gate2_pass = dwell_seconds >= effective_threshold
         gate3_pass = (face_status == "UNKNOWN") or fast_mode_active
 
@@ -71,7 +78,7 @@ class DecisionEngine:
         if final_decision == "VERIFIED_THREAT":
             mode_str = "Two-Gate Fast Mode (Low Light IR)" if fast_mode_active else "Triple-Gate"
             reasoning = (
-                f"🚨 [{mode_str}] {detection_category} detected with {int(human_conf * 100)}% confidence. "
+                f"🚨 [{mode_str}] {detection_category} detected with {int(human_confidence * 100)}% confidence. "
                 f"Lingered in zone for {int(dwell_seconds)}s (exceeding {profile['name']} threshold of {int(effective_threshold)}s). "
                 f"Face status: {face_status} (no whitelisted resident match)."
             )
@@ -85,8 +92,8 @@ class DecisionEngine:
         return {
             "gate1_human": {
                 "pass": gate1_pass,
-                "confidence": human_conf,
-                "label": f"PASS ({int(human_conf * 100)}%)" if gate1_pass else "NO HUMAN"
+                "confidence": human_confidence,
+                "label": f"PASS ({int(human_confidence * 100)}%)" if gate1_pass else "NO HUMAN"
             },
             "gate2_dwell": {
                 "pass": gate2_pass,

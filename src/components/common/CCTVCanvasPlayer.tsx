@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
 
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../../services/api';
 
 interface CCTVCanvasPlayerProps {
   cameraId?: string;

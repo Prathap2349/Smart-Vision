@@ -202,7 +202,18 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const cameraId = cameras[0]?.id ?? 'cam-01';
     let ws: WebSocket | null = null;
     try {
-      ws = new WebSocket(`ws://localhost:8000/ws/cameras/${cameraId}`);
+      const getWsUrl = (camId: string) => {
+        if (import.meta.env.VITE_WS_BASE_URL) {
+          return `${import.meta.env.VITE_WS_BASE_URL}/ws/cameras/${camId}`;
+        }
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'localhost:8000'
+          : window.location.host;
+        return `${protocol}//${host}/ws/cameras/${camId}`;
+      };
+
+      ws = new WebSocket(getWsUrl(cameraId));
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -267,7 +278,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             aiReasoning: { gate1Human: true, gate2Dwell: true, gate3Unknown: true },
           };
           setAlerts(curr => [newAlert, ...curr]);
-          setFeedbackToastMessage(`🚨 VERIFIED THREAT: Subject ${prev.trackId} loitering > 20s. Telegram alert delivered!`);
+          setFeedbackToastMessage(`[SIMULATION] 🚨 VERIFIED THREAT: Subject ${prev.trackId} loitering > 20s. Demo alert triggered.`);
         }
 
         return { ...prev, dwellSeconds: newDwell, x: newX, y: newY };
@@ -293,7 +304,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
     setIsRealCameraMode(false);
     setIsSimulating(true);
-    setFeedbackToastMessage(`SIMULATION STARTED: Unknown subject ${newTrackId} entered corridor protection zone.`);
+    setFeedbackToastMessage(`[SIMULATION STARTED] Unknown subject ${newTrackId} entered corridor protection zone.`);
   };
 
   const triggerResidentSimulation = () => {
