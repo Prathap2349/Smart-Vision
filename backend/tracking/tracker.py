@@ -28,6 +28,9 @@ class TrackedSubject:
         self.face_status = "UNKNOWN"
         self.resident_name: Optional[str] = None
         self.active = True
+        self.snapshot_captured: bool = False
+        self.snapshot_base64: Optional[str] = None
+        self.snapshot_timestamp: Optional[str] = None
 
     @property
     def dwell_seconds(self) -> float:

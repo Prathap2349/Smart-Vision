@@ -125,15 +125,23 @@ async def test_camera_websocket(websocket: WebSocket):
                 break
 
             img_bytes = None
+            dwell_threshold = 10.0
+            user_zones = []
+
             if "bytes" in message and message["bytes"]:
                 img_bytes = message["bytes"]
             elif "text" in message and message["text"]:
                 try:
                     payload = json.loads(message["text"])
                     img_str = payload.get("image", "")
-                    if img_str.startswith("data:image"):
-                        img_str = img_str.split(",")[1]
-                    img_bytes = base64.b64decode(img_str)
+                    if img_str:
+                        if img_str.startswith("data:image"):
+                            img_str = img_str.split(",")[1]
+                        img_bytes = base64.b64decode(img_str)
+                    if "dwell_threshold" in payload:
+                        dwell_threshold = float(payload["dwell_threshold"])
+                    if "zones" in payload and isinstance(payload["zones"], list):
+                        user_zones = payload["zones"]
                 except Exception:
                     pass
 
@@ -153,9 +161,13 @@ async def test_camera_websocket(websocket: WebSocket):
             detections = yolo_detector.detect(frame)
 
             # 2. Real Lightweight IoU Tracker
-            tracks = test_tracker.update_tracks(detections, zones=[], frame_w=w, frame_h=h)
+            tracks = test_tracker.update_tracks(detections, zones=user_zones, frame_w=w, frame_h=h)
 
-            # 3. Real Prototype Resident Matcher
+            eval_tracks = []
+            highest_threat_rank = 0
+            primary_track = None
+
+            # 3. Real Prototype Resident Matcher & Triple-Gate Decision Engine per track
             for t in tracks:
                 x1, y1, x2, y2 = [int(v) for v in t.bbox]
                 crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
@@ -164,22 +176,62 @@ async def test_camera_websocket(websocket: WebSocket):
                     t.face_status = face_status
                     t.resident_name = res_name
 
-            # 4. Real Triple-Gate Decision Engine
-            if tracks:
-                active_track = tracks[0]
+                # Triple-gate decision for this track
+                t_gate_eval = decision_engine.evaluate_gates(
+                    is_human=True,
+                    human_confidence=t.confidence,
+                    dwell_seconds=t.dwell_seconds,
+                    dwell_threshold=dwell_threshold,
+                    face_status=t.face_status
+                )
+
+                # Capture snapshot crop if dwell_seconds >= dwell_threshold and not yet captured
+                if t.dwell_seconds >= dwell_threshold and not t.snapshot_captured:
+                    pad = 20
+                    cx1, cy1 = max(0, x1 - pad), max(0, y1 - pad)
+                    cx2, cy2 = min(w, x2 + pad), min(h, y2 + pad)
+                    snap_crop = frame[cy1:cy2, cx1:cx2]
+                    if snap_crop.size > 0:
+                        _, buf = cv2.imencode('.jpg', snap_crop)
+                        t.snapshot_base64 = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
+                        t.snapshot_captured = True
+                        t.snapshot_timestamp = time.strftime("%H:%M:%S")
+
+                track_dict = {
+                    "track_id": t.track_id,
+                    "bbox": t.bbox,
+                    "dwell_seconds": round(t.dwell_seconds, 1),
+                    "current_zone": t.current_zone,
+                    "face_status": t.face_status,
+                    "resident_name": t.resident_name,
+                    "confidence": round(t.confidence, 3),
+                    "decision": t_gate_eval,
+                    "snapshot_base64": t.snapshot_base64,
+                    "snapshot_captured": t.snapshot_captured,
+                    "snapshot_timestamp": t.snapshot_timestamp
+                }
+                eval_tracks.append(track_dict)
+
+                dec_str = t_gate_eval.get("final_decision", "IDLE")
+                rank = 3 if dec_str == "VERIFIED_THREAT" else 2 if dec_str == "SAFE_RESIDENT" else 1 if dec_str == "MONITORING" else 0
+                if rank >= highest_threat_rank:
+                    highest_threat_rank = rank
+                    primary_track = t
+
+            if primary_track:
                 gate_eval = decision_engine.evaluate_gates(
                     is_human=True,
-                    human_confidence=active_track.confidence,
-                    dwell_seconds=active_track.dwell_seconds,
-                    dwell_threshold=20.0,
-                    face_status=active_track.face_status
+                    human_confidence=primary_track.confidence,
+                    dwell_seconds=primary_track.dwell_seconds,
+                    dwell_threshold=dwell_threshold,
+                    face_status=primary_track.face_status
                 )
             else:
                 gate_eval = decision_engine.evaluate_gates(
                     is_human=False,
                     human_confidence=0.0,
                     dwell_seconds=0.0,
-                    dwell_threshold=20.0,
+                    dwell_threshold=dwell_threshold,
                     face_status="NONE"
                 )
 
@@ -191,16 +243,7 @@ async def test_camera_websocket(websocket: WebSocket):
                 "camera_status": "CONNECTED",
                 "fps": proc_fps,
                 "inference_latency_ms": round(proc_duration * 1000, 1),
-                "tracks": [
-                    {
-                        "track_id": t.track_id,
-                        "bbox": t.bbox,
-                        "dwell_seconds": round(t.dwell_seconds, 1),
-                        "face_status": t.face_status,
-                        "resident_name": t.resident_name,
-                        "confidence": round(t.confidence, 3)
-                    } for t in tracks
-                ],
+                "tracks": eval_tracks,
                 "decision": gate_eval,
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
             }

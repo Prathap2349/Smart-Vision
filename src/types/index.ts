@@ -138,6 +138,32 @@ export interface AISettings {
 
 export type OperatingMode = 'LIVE_CCTV' | 'DEVICE_CAMERA_TEST' | 'DEMO_SIMULATION' | 'OFFLINE';
 
+export interface TestTrack {
+  track_id: string | number;
+  bbox: [number, number, number, number];
+  dwell_seconds: number;
+  current_zone?: string;
+  face_status: string;
+  resident_name?: string | null;
+  confidence: number;
+  decision?: PipelineGateState;
+  snapshot_base64?: string | null;
+  snapshot_captured?: boolean;
+  snapshot_timestamp?: string | null;
+}
+
+export interface TestSnapshotEvent {
+  id: string;
+  trackId: string | number;
+  timestamp: string;
+  dwellSeconds: number;
+  zoneName: string;
+  snapshotUrl: string;
+  faceStatus: string;
+  confidence: number;
+  decision: string;
+}
+
 export interface DeviceCameraTestResult {
   durationSeconds: number;
   framesProcessed: number;
@@ -146,6 +172,7 @@ export interface DeviceCameraTestResult {
   tracksCreatedCount: number;
   maxDwellSeconds: number;
   totalYoloDetections: number;
+  snapshotsCapturedCount?: number;
   pipelineStatus: 'PASS' | 'WARNING' | 'FAIL';
 }
 
