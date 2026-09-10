@@ -93,6 +93,7 @@ export interface SecurityEvent {
 
 export interface SystemMetrics {
   edgeStatus: 'ONLINE' | 'DEGRADED' | 'OFFLINE';
+  edgeConnectionState?: 'NOT_CONNECTED' | 'CONNECTED_NO_CAMERA' | 'CONNECTED_CAMERA_OFFLINE' | 'LIVE';
   cpuUsage: number;
   gpuUsage: number;
   ramUsageGb: number;

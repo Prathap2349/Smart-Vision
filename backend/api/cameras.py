@@ -21,6 +21,7 @@ class CameraCreate(BaseModel):
     channel: str = "101"
     stream_type: str = "RTSP"
     location: Optional[str] = "Perimeter Zone"
+    user_id: Optional[str] = "default_user"
 
 class TestRTSPRequest(BaseModel):
     host: str
@@ -30,10 +31,13 @@ class TestRTSPRequest(BaseModel):
     channel: str = "101"
 
 @router.get("")
-def get_cameras():
+def get_cameras(user_id: Optional[str] = None):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, host, port, channel, username, stream_type, resolution, fps, enabled, status FROM cameras;")
+    if user_id:
+        cursor.execute("SELECT id, name, host, port, channel, username, stream_type, resolution, fps, enabled, status, user_id FROM cameras WHERE user_id = ? OR user_id = 'default_user';", (user_id,))
+    else:
+        cursor.execute("SELECT id, name, host, port, channel, username, stream_type, resolution, fps, enabled, status, user_id FROM cameras;")
     rows = cursor.fetchall()
 
     result = []
@@ -61,7 +65,8 @@ def get_cameras():
             "bitrateMb": 0.0,
             "aiLoadCpu": 0,
             "aiLoadGpu": 0,
-            "recentEventCount": event_count
+            "recentEventCount": event_count,
+            "userId": r["user_id"] if "user_id" in r.keys() else "default_user"
         })
     conn.close()
     return result
@@ -69,6 +74,7 @@ def get_cameras():
 @router.post("")
 def add_camera(cam: CameraCreate):
     cam_id = f"cam-0{int(time.time()) % 100}"
+    user_id = cam.user_id if cam.user_id else "default_user"
     
     # 1. Test RTSP Connection before setting status to ONLINE
     conn_res = rtsp_manager.test_connection(cam.host, cam.port, cam.username, cam.password, cam.channel)
@@ -78,9 +84,9 @@ def add_camera(cam: CameraCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, enabled, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?);
-    """, (cam_id, cam.name, cam.host, cam.port, cam.username, cam.password, cam.channel, cam.stream_type, initial_status))
+    INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, enabled, status, user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?);
+    """, (cam_id, cam.name, cam.host, cam.port, cam.username, cam.password, cam.channel, cam.stream_type, initial_status, user_id))
     conn.commit()
     conn.close()
 

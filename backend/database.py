@@ -38,9 +38,17 @@ def init_db():
         fps INTEGER DEFAULT 10,
         enabled INTEGER DEFAULT 1,
         status TEXT DEFAULT 'OFFLINE',
+        user_id TEXT DEFAULT 'default_user',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
+
+    # Ensure user_id column exists if table was created previously without it
+    try:
+        cursor.execute("ALTER TABLE cameras ADD COLUMN user_id TEXT DEFAULT 'default_user';")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
 
     # 2. Residents table
     cursor.execute("""

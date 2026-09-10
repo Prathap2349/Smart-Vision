@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, signInWithGoogle, signOutSupabase } from '../services/supabase';
 
 export interface UserProfile {
+  id: string;
   name: string;
   role: string;
   department: string;
@@ -35,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const profile: UserProfile = {
+          id: session.user.id,
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Resident Owner',
           role: 'Home Resident Owner',
           department: 'Google Account',
@@ -51,6 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const profile: UserProfile = {
+          id: session.user.id,
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Resident Owner',
           role: 'Home Resident Owner',
           department: 'Google Account',
@@ -71,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (identifier: string) => {
     const profile: UserProfile = {
+      id: identifier || 'default_user',
       name: identifier.includes('@') ? identifier.split('@')[0] : `Resident (${identifier})`,
       role: 'Home Resident Owner',
       department: 'Smart Vision Mobile',

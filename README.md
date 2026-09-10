@@ -105,6 +105,41 @@ IP Camera / Hikvision / USB Webcam
 
 ---
 
+## ⚙️ Edge Backend Setup & Architecture
+
+### **Local Edge Server Architecture**
+Smart Vision Sentry runs its high-performance AI inference engine directly on local premises hardware (Edge Machine) to guarantee sub-1.4 second alert delivery latencies and complete privacy.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                      LOCAL EDGE MACHINE (PYTHON 3.10)            │
+│                                                                  │
+│   ┌───────────────┐     ┌────────────────┐     ┌───────────────┐ │
+│   │ RTSP Capture  │ ──> │ YOLOv8 Human   │ ──> │ Lightweight   │ │
+│   │ (OpenCV Feed) │     │ Detector       │     │ IoU Tracker   │ │
+│   └───────────────┘     └────────────────┘     └───────────────┘ │
+│                                                        │         │
+│   ┌───────────────┐     ┌────────────────┐             ▼         │
+│   │ SQLite DB     │ <── │ Prototype Face │ <── [Triple-Gate    │ │
+│   │ & Audit Log   │     │ Matcher (512D) │     Decision Engine]│ │
+│   └───────────────┘     └────────────────┘                       │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### **Edge Connection States**
+The system explicitly measures and reports edge hardware status across 4 verified states:
+1. **LIVE**: Backend online with active RTSP/Webcam stream producing real-time frames.
+2. **CONNECTED_CAMERA_OFFLINE**: FastAPI backend reachable, but local camera stream is disconnected or unreachable.
+3. **CONNECTED_NO_CAMERA**: FastAPI backend connected on LAN, but no camera is registered to the active profile.
+4. **NOT_CONNECTED**: Backend server unreachable (Vercel static cloud deployment active in Demo Mode).
+
+### **Local Hardware & Network Requirements**
+- **Supported Video Inputs**: RTSP Stream (Hikvision/Dahua/ONVIF, H.264/H.265), USB Webcam (`host: "0"`), or pre-recorded local `.mp4` file.
+- **Port Bindings**: Port `8000` (FastAPI REST API & WebSocket server), Port `554` (Default RTSP Video Stream).
+- **Network Isolation**: Local RTSP camera IP addresses (e.g. `192.168.1.104`) remain strictly on local LAN subnets. Vercel web client connects over local network REST/WebSocket sockets or operates safely in Demo Mode.
+
+---
+
 ## 🚀 Quick Start Guide
 
 ### Prerequisites

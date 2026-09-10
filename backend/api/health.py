@@ -53,11 +53,12 @@ def get_system_metrics():
     if camera_row:
         cam_status = camera_row["status"]
         rtsp_status = "CONNECTED" if cam_status == "ONLINE" else ("DISCONNECTED" if cam_status == "OFFLINE" else "NOT_CONFIGURED")
-        # Honest fix: fps was hardcoded to 10.2; returning real camera target FPS if active, else 0.0
         fps = float(camera_row["fps"]) if cam_status == "ONLINE" else 0.0
+        edge_connection_state = "LIVE" if cam_status == "ONLINE" else "CONNECTED_CAMERA_OFFLINE"
     else:
         rtsp_status = "NOT_CONFIGURED"
         fps = 0.0
+        edge_connection_state = "CONNECTED_NO_CAMERA"
 
     # Honest fix: inferenceLatencyMs (18ms) and networkLatencyMs (14ms) were hardcoded; returning 0.0 when unmeasured/idle
     inference_latency = 0.0
@@ -74,6 +75,7 @@ def get_system_metrics():
 
     return {
         "edgeStatus": "ONLINE",
+        "edgeConnectionState": edge_connection_state,
         "cpuUsage": round(cpu, 1),
         "gpuUsage": gpu_usage,
         "ramUsageGb": round(mem.used / (1024**3), 1),

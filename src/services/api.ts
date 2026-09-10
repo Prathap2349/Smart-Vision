@@ -20,9 +20,10 @@ export const api = {
     }
   },
 
-  async getCameras(): Promise<CameraDevice[]> {
+  async getCameras(userId?: string): Promise<CameraDevice[]> {
     try {
-      const res = await fetch(`${API_BASE}/cameras`);
+      const url = userId ? `${API_BASE}/cameras?user_id=${encodeURIComponent(userId)}` : `${API_BASE}/cameras`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {

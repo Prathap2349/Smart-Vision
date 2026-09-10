@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics, AISettings, SecurityEvent } from '../types';
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface SimulationPerson {
   trackId: string;
@@ -98,6 +99,7 @@ const defaultSettings: AISettings = {
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
 
 export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
   const [residents, setResidents] = useState<ResidentPerson[]>([]);
   const [unknownPersons, setUnknownPersons] = useState<UnknownPerson[]>([]);
@@ -179,7 +181,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setIsRealCameraMode(false);
         setIsSimulating(true);
       }
-      const cams = await api.getCameras();
+      const cams = await api.getCameras(user?.id);
       setCameras(cams);
       const alts = await api.getAlerts();
       setAlerts(alts);
@@ -201,7 +203,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, 5000);
 
     return () => clearInterval(metricsInterval);
-  }, []);
+  }, [user?.id]);
 
   const [activeTracks, setActiveTracks] = useState<any[]>([]);
 
@@ -397,9 +399,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 
   const addCamera = async (cam: Omit<CameraDevice, 'id'>) => {
-    const resp = await api.addCamera(cam);
+    const resp = await api.addCamera({ ...cam, user_id: user?.id || 'default_user' });
     if (resp && !resp.error) {
-      const updated = await api.getCameras();
+      const updated = await api.getCameras(user?.id);
       setCameras(updated);
       setFeedbackToastMessage(`Camera "${cam.name}" connected and saved.`);
     } else {
@@ -423,9 +425,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       password: config.password,
       channel: config.channel,
       stream_type: 'RTSP',
+      user_id: user?.id || 'default_user',
     });
     if (resp && !resp.error) {
-      const updated = await api.getCameras();
+      const updated = await api.getCameras(user?.id);
       setCameras(updated);
       setIsRealCameraMode(true);
       setFeedbackToastMessage(`Camera "${config.name}" connected and saved to backend.`);
