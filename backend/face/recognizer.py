@@ -91,5 +91,5 @@ class PrototypeFaceMatcher:
         return "UNKNOWN", None, round(highest_sim, 2)
 
 # Backward-compatibility aliases
-InsightFaceRecognizer = PrototypeFaceMatcher
+PrototypeFaceRecognizer = PrototypeFaceMatcher
 face_recognizer = PrototypeFaceMatcher()

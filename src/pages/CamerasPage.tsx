@@ -81,6 +81,14 @@ export const CamerasPage: React.FC = () => {
         </button>
       </div>
 
+      {/* Offline Camera Notice Banner */}
+      {cameras.some(c => c.status === 'OFFLINE') && (
+        <div className="p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl text-xs font-mono text-amber-300 flex items-center gap-2.5 shadow-md">
+          <span className="text-base">⚠️</span>
+          <span>No live camera detected — connect an RTSP stream or webcam via the .env configuration to activate detection.</span>
+        </div>
+      )}
+
       {/* Cameras Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {cameras.map(cam => (

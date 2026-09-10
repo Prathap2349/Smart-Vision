@@ -191,10 +191,13 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
         />
       )}
 
-      {(showDisconnectedBanner || (isRealCameraMode && streamError)) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#060a14]/90 z-10">
-          <p className="text-rose-500 font-mono font-bold text-sm md:text-base tracking-wide text-center px-4">
+      {(showDisconnectedBanner || (isRealCameraMode && streamError) || activeCamera?.status === 'OFFLINE') && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#060a14]/92 z-10 p-6 text-center space-y-2">
+          <p className="text-rose-500 font-mono font-bold text-sm md:text-base tracking-wide">
             [ NO CAMERA SIGNAL — RTSP STREAM DISCONNECTED ]
+          </p>
+          <p className="text-xs text-amber-400 max-w-lg font-mono bg-amber-950/50 p-2.5 rounded-lg border border-amber-500/40 shadow-lg">
+            ⚠️ No live camera detected — connect an RTSP stream or webcam via the .env configuration to activate detection.
           </p>
         </div>
       )}

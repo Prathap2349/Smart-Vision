@@ -157,6 +157,15 @@ Smart Vision Sentry includes an interactive **Simulation Mode** designed for dem
 - **Simulate Resident**: Generates a whitelisted resident subject (`Arun Kumar`), demonstrating alert suppression (`SAFE_RESIDENT`).
 - All simulated events carry an explicit `[SIMULATION]` / `[DEMO EVENT]` badge to distinguish generated demonstration data from live camera measurements.
 
+## 📹 Testing Without Camera Hardware
+
+The AI detection pipeline requires a live camera feed (an RTSP stream or attached USB webcam) to execute YOLO object detection and produce security alerts. On a test machine with no camera connected, the dashboard will correctly report an `OFFLINE` camera status and show empty detection lists — **this is the expected behaviour when idle and does not indicate a system error**.
+
+To evaluate the live pipeline on a machine without an IP camera:
+1. **USB Webcam Evaluation**: Attach a standard USB webcam and set `HIKVISION_HOST="0"` or point camera configuration to index `0` in `backend/.env`.
+2. **Video File Evaluation**: Pass a local `.mp4` video file path to the camera configuration to stream pre-recorded test footage through the continuous YOLO + IoU tracking pipeline.
+3. **Interactive Simulation Mode**: If no camera source is available, toggle **Simulation Mode** in the dashboard banner to test interactive intruder loitering alerts and resident verification workflows.
+
 ---
 
 ## ⚠️ Prototype Limitations
