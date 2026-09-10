@@ -12,8 +12,21 @@ router = APIRouter(tags=["health"])
 
 @router.get("/api/health")
 def health_check():
+    yolo_ready = (yolo_detector is not None) and (getattr(yolo_detector, "model", None) is not None)
+    tracker_ready = tracker_manager is not None
+    opencv_ready = hasattr(cv2, "__version__")
+    face_ready = face_recognizer is not None
+    device_test_ready = yolo_ready and tracker_ready and opencv_ready
+
     return {
         "status": "ONLINE",
+        "backend": "ONLINE",
+        "camera": "CONNECTED",
+        "yolo": "READY" if yolo_ready else "ERROR",
+        "tracker": "READY" if tracker_ready else "ERROR",
+        "opencv": "READY" if opencv_ready else "ERROR",
+        "face_matcher": "READY" if face_ready else "ERROR",
+        "device_camera_test": "READY" if device_test_ready else "NOT_READY",
         "version": "1.0.0-edge",
         "device": "Smart Vision Sentry Edge AI Box (Jetson/x86)",
         "mode": "REAL_MODE",

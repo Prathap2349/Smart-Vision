@@ -85,7 +85,11 @@ class LightweightIoUTracker:
         matched_tracks = set()
 
         for det_idx, det in enumerate(detections):
-            det_bbox = det.get("bbox", [400, 200, 520, 500])
+            det_bbox = det.get("bbox")
+            if not det_bbox or len(det_bbox) != 4:
+                continue
+            det_conf = float(det.get("confidence", 0.0))
+
             best_iou = 0.0
             best_tid = None
 
@@ -105,14 +109,18 @@ class LightweightIoUTracker:
 
                 t = self.tracks[best_tid]
                 t.update(det_bbox, now, zone_name)
-                t.confidence = float(det.get("confidence", 0.95))
+                t.confidence = det_conf
                 matched_tracks.add(best_tid)
                 unmatched_detections.remove(det_idx)
 
         # 3. Create new tracks for unmatched detections
         for det_idx in unmatched_detections:
             det = detections[det_idx]
-            det_bbox = det.get("bbox", [400, 200, 520, 500])
+            det_bbox = det.get("bbox")
+            if not det_bbox or len(det_bbox) != 4:
+                continue
+            det_conf = float(det.get("confidence", 0.0))
+
             matched_zones = check_person_zones(det_bbox, frame_w, frame_h, zones)
             zone_name = matched_zones[0]["name"] if matched_zones else "Outside ROI"
 
@@ -120,7 +128,7 @@ class LightweightIoUTracker:
             self.next_id_counter += 1
 
             new_track = TrackedSubject(track_id, det_bbox, now, zone_name=zone_name)
-            new_track.confidence = float(det.get("confidence", 0.95))
+            new_track.confidence = det_conf
             self.tracks[track_id] = new_track
 
         return list(self.tracks.values())

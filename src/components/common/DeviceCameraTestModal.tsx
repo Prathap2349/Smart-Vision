@@ -48,15 +48,16 @@ interface EventLogItem {
 export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ isOpen, onClose }) => {
   const { setOperatingMode } = useSecurity();
 
-  // Media & WebSocket refs
+  // Media, Canvas & WebSocket refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const inFlightRef = useRef<boolean>(false);
 
   // Operating Engine Sub-Mode
-  const [engineMode, setEngineMode] = useState<'FASTAPI_BACKEND' | 'BACKEND_DISCONNECTED'>('FASTAPI_BACKEND');
+  const [engineMode, setEngineMode] = useState<'FASTAPI_BACKEND' | 'BACKEND_DISCONNECTED' | 'BACKEND_NOT_CONFIGURED'>('FASTAPI_BACKEND');
 
   // Test Settings & Controls
   const [dwellThreshold, setDwellThreshold] = useState<number>(10);
@@ -108,6 +109,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     framesProcessed: number;
     humansDetectedCount: number;
     trackIdsSeen: Set<string>;
+    maxSimultaneousPeople: number;
     maxDwellSeconds: number;
     totalYoloDetections: number;
     snapshotsCapturedCount: number;
@@ -116,6 +118,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     framesProcessed: 0,
     humansDetectedCount: 0,
     trackIdsSeen: new Set(),
+    maxSimultaneousPeople: 0,
     maxDwellSeconds: 0.0,
     totalYoloDetections: 0,
     snapshotsCapturedCount: 0,
@@ -144,18 +147,36 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
   // Handle Video Stream Re-attachment when navigating tabs inside modal
   useEffect(() => {
     if (isOpen && activeTab === 'TELEMETRY' && videoRef.current && mediaStreamRef.current) {
-      if (videoRef.current.srcObject !== mediaStreamRef.current) {
-        videoRef.current.srcObject = mediaStreamRef.current;
+      const stream = mediaStreamRef.current;
+      const liveTrack = stream.getVideoTracks().find(t => t.readyState === 'live');
+      if (liveTrack) {
+        if (videoRef.current.srcObject !== stream) {
+          videoRef.current.srcObject = stream;
+        }
+        videoRef.current.play().catch(() => {});
       }
-      videoRef.current.play().catch(() => {});
     }
   }, [isOpen, activeTab]);
+
+  const getWebSocketUrl = (): string | null => {
+    if (import.meta.env.VITE_WS_BASE_URL) {
+      return `${import.meta.env.VITE_WS_BASE_URL}/ws/test-camera`;
+    }
+    if (typeof window !== 'undefined') {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocal) {
+        return 'ws://localhost:8000/ws/test-camera';
+      }
+    }
+    return null; // Deployed HTTPS Vercel without VITE_WS_BASE_URL configured
+  };
 
   const startSelfTestAndCamera = async () => {
     setPermissionError(null);
     setSummaryData(null);
     setSnapshotGallery([]);
     setEventLog([]);
+    inFlightRef.current = false;
 
     setSelfTest({
       permission: 'pending',
@@ -172,6 +193,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       framesProcessed: 0,
       humansDetectedCount: 0,
       trackIdsSeen: new Set(),
+      maxSimultaneousPeople: 0,
       maxDwellSeconds: 0.0,
       totalYoloDetections: 0,
       snapshotsCapturedCount: 0,
@@ -190,7 +212,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
         await videoRef.current.play();
       }
       setSelfTest(prev => ({ ...prev, permission: 'pass', stream: 'pass' }));
-      addLog('Camera access granted successfully. Video stream initialized.', 'info');
+      addLog('Browser camera stream initialized successfully.', 'info');
     } catch (err: any) {
       const errMsg = err?.message || 'Camera access denied or device busy.';
       setPermissionError(errMsg);
@@ -199,51 +221,88 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       return;
     }
 
-    // 2. Check Local Backend Health
+    // 2. Check Connection Architecture & Environment Variables
+    const wsUrl = getWebSocketUrl();
+    if (!wsUrl) {
+      setEngineMode('BACKEND_NOT_CONFIGURED');
+      setSelfTest(prev => ({
+        ...prev,
+        backend: 'fail',
+        openCv: 'fail',
+        yolo: 'fail',
+        tracking: 'fail',
+        decisionEngine: 'fail',
+      }));
+      setIsTestRunning(false);
+      setActiveTracks([]);
+      addLog('EDGE BACKEND NOT CONFIGURED. Deployed HTTPS Vercel requires VITE_WS_BASE_URL (WSS endpoint) environment variable to connect to Edge AI.', 'warning');
+      return;
+    }
+
+    // 3. Verify Health Check Components from Backend
     const health = await api.getHealth();
-    if (health.status !== 'OFFLINE') {
+    if (health.status !== 'OFFLINE' && health.backend === 'ONLINE') {
+      const yoloPass = health.yolo === 'READY';
+      const trackerPass = health.tracker === 'READY';
+      const openCvPass = health.opencv === 'READY';
+
       setEngineMode('FASTAPI_BACKEND');
-      setSelfTest(prev => ({ ...prev, backend: 'pass', openCv: 'pass', yolo: 'pass', tracking: 'pass', decisionEngine: 'pass' }));
-      addLog('Connected to local FastAPI Edge AI Backend (OpenCV + YOLO + Lightweight IoU Tracker).', 'info');
-      connectFastApiWebSocket();
+      setSelfTest(prev => ({
+        ...prev,
+        backend: 'pass',
+        openCv: openCvPass ? 'pass' : 'fail',
+        yolo: yoloPass ? 'pass' : 'fail',
+        tracking: trackerPass ? 'pass' : 'fail',
+        decisionEngine: yoloPass && trackerPass ? 'pass' : 'fail',
+      }));
+
+      addLog(`Connected to FastAPI Edge AI Backend. Components — YOLO: ${health.yolo}, Tracker: ${health.tracker}, OpenCV: ${health.opencv}`, 'info');
+      connectFastApiWebSocket(wsUrl);
     } else {
-      // Backend Disconnected Mode — Zero Fake/Simulated Detections
       setEngineMode('BACKEND_DISCONNECTED');
-      setSelfTest(prev => ({ ...prev, backend: 'fail', openCv: 'fail', yolo: 'fail', tracking: 'fail', decisionEngine: 'fail' }));
+      setSelfTest(prev => ({
+        ...prev,
+        backend: 'fail',
+        openCv: 'fail',
+        yolo: 'fail',
+        tracking: 'fail',
+        decisionEngine: 'fail',
+      }));
       setIsTestRunning(false);
       setActiveTracks([]);
       addLog('EDGE BACKEND NOT CONNECTED. Please start local FastAPI server to process real camera frames.', 'warning');
     }
   };
 
-  const connectFastApiWebSocket = () => {
-    const wsUrl = import.meta.env.VITE_WS_BASE_URL
-      ? `${import.meta.env.VITE_WS_BASE_URL}/ws/test-camera`
-      : 'ws://127.0.0.1:8000/ws/test-camera';
-
+  const connectFastApiWebSocket = (wsUrl: string) => {
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
         setIsTestRunning(true);
-        addLog('WebSocket pipeline session established with local FastAPI Edge server.', 'info');
+        addLog('WebSocket pipeline session established.', 'info');
         startFrameSendingLoop();
       };
 
       ws.onmessage = event => {
+        inFlightRef.current = false; // Reset in-flight guard upon receiving ACK response
         try {
           const data = JSON.parse(event.data);
           if (data.mode === 'DEVICE_CAMERA_TEST') {
             setRealFps(data.fps || 0.0);
             setInferenceLatencyMs(data.inference_latency_ms || 0.0);
-            
+
             // Real YOLO active tracks array directly replaces previous state (no accumulation)
             const tracks: TestTrack[] = data.tracks || [];
             setActiveTracks(tracks);
             setDecision(data.decision || { final_decision: 'CLEAR' });
 
             sessionStatsRef.current.framesProcessed += 1;
+            if (tracks.length > sessionStatsRef.current.maxSimultaneousPeople) {
+              sessionStatsRef.current.maxSimultaneousPeople = tracks.length;
+            }
+
             if (tracks.length > 0) {
               sessionStatsRef.current.humansDetectedCount += 1;
               sessionStatsRef.current.totalYoloDetections += tracks.length;
@@ -259,7 +318,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   sessionStatsRef.current.maxDwellSeconds = t.dwell_seconds;
                 }
 
-                // Handle Real Snapshot capture on threshold crossing
+                // Real Snapshot Guard: Captured ONLY if person is inside ROI and threshold is reached
                 if (t.snapshot_base64 && t.snapshot_captured && t.current_zone !== 'Outside ROI') {
                   setSnapshotGallery(prev => {
                     if (!prev.some(s => s.trackId === t.track_id)) {
@@ -290,12 +349,14 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       };
 
       ws.onerror = () => {
+        inFlightRef.current = false;
         addLog('WebSocket connection failed. EDGE BACKEND NOT CONNECTED.', 'warning');
         setEngineMode('BACKEND_DISCONNECTED');
         setIsTestRunning(false);
         setActiveTracks([]);
       };
     } catch {
+      inFlightRef.current = false;
       setEngineMode('BACKEND_DISCONNECTED');
       setIsTestRunning(false);
       setActiveTracks([]);
@@ -307,6 +368,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
     intervalRef.current = setInterval(() => {
       if (
+        inFlightRef.current ||
         !wsRef.current ||
         wsRef.current.readyState !== WebSocket.OPEN ||
         !videoRef.current ||
@@ -328,14 +390,38 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Send frame together with test config payload
+        // Define normalized zone polygons matching visual overlay boxes
+        let polygonPoints = [
+          { x: 20, y: 15 },
+          { x: 80, y: 15 },
+          { x: 80, y: 85 },
+          { x: 20, y: 85 },
+        ]; // Corridor Protection Zone
+
+        if (selectedZone === 'Main Entrance ROI') {
+          polygonPoints = [
+            { x: 30, y: 10 },
+            { x: 70, y: 10 },
+            { x: 70, y: 55 },
+            { x: 30, y: 55 },
+          ];
+        } else if (selectedZone === 'Full Frame') {
+          polygonPoints = [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+            { x: 100, y: 100 },
+            { x: 0, y: 100 },
+          ];
+        }
+
         const dataUrl = canvas.toDataURL('image/jpeg', 0.70);
         const payload = {
           image: dataUrl,
           dwell_threshold: dwellThreshold,
-          zones: [{ name: selectedZone, polygon: [[0, 0], [100, 0], [100, 100], [0, 100]] }],
+          zones: [{ name: selectedZone, polygon: polygonPoints, enabled: true }],
         };
 
+        inFlightRef.current = true;
         wsRef.current.send(JSON.stringify(payload));
       }
     }, 140);
@@ -343,6 +429,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
   const stopCameraTest = () => {
     setIsTestRunning(false);
+    inFlightRef.current = false;
 
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -371,7 +458,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
         durationSeconds: durationSec,
         framesProcessed: stats.framesProcessed,
         averageFps: avgFps,
-        humansDetectedCount: stats.humansDetectedCount > 0 ? 1 : 0,
+        humansDetectedCount: stats.trackIdsSeen.size,
         tracksCreatedCount: stats.trackIdsSeen.size,
         maxDwellSeconds: Number(stats.maxDwellSeconds.toFixed(1)),
         totalYoloDetections: stats.totalYoloDetections,
@@ -404,14 +491,29 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white tracking-tight">REAL DEVICE CAMERA TEST MODE</h2>
-                <Badge variant={engineMode === 'FASTAPI_BACKEND' ? 'emerald' : 'rose'} pulse={engineMode === 'FASTAPI_BACKEND'}>
-                  {engineMode === 'FASTAPI_BACKEND' ? 'LIVE MAC WEBCAM • FASTAPI ENGINE' : 'EDGE BACKEND NOT CONNECTED'}
+                <Badge
+                  variant={
+                    engineMode === 'FASTAPI_BACKEND'
+                      ? 'emerald'
+                      : engineMode === 'BACKEND_NOT_CONFIGURED'
+                      ? 'amber'
+                      : 'rose'
+                  }
+                  pulse={engineMode === 'FASTAPI_BACKEND'}
+                >
+                  {engineMode === 'FASTAPI_BACKEND'
+                    ? 'LIVE WEBCAM • FASTAPI ENGINE'
+                    : engineMode === 'BACKEND_NOT_CONFIGURED'
+                    ? 'EDGE BACKEND NOT CONFIGURED'
+                    : 'EDGE BACKEND NOT CONNECTED'}
                 </Badge>
               </div>
               <p className="text-xs text-slate-400">
                 {engineMode === 'FASTAPI_BACKEND'
-                  ? 'Real-Time Multi-Person Pipeline (YOLO + IoU Tracker + Decision Engine) • Zero Simulated Data'
-                  : 'Start FastAPI Edge Backend (uvicorn main:app) to run real-time YOLO detection'}
+                  ? 'Real-Time Multi-Person Pipeline (YOLOv8 + Lightweight IoU Tracker + Decision Engine) • Zero Simulated Data'
+                  : engineMode === 'BACKEND_NOT_CONFIGURED'
+                  ? 'HTTPS Vercel deployment requires VITE_WS_BASE_URL (WSS endpoint) environment variable.'
+                  : 'Start local FastAPI server (.venv/bin/python backend/main.py) to process real camera frames'}
               </p>
             </div>
           </div>
@@ -451,7 +553,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
               <RefreshCw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
             )}
             <span className={selfTest.backend === 'pass' ? 'text-emerald-300' : 'text-rose-400'}>
-              {engineMode === 'FASTAPI_BACKEND' ? 'FastAPI Backend' : 'Backend Disconnected'}
+              {engineMode === 'FASTAPI_BACKEND' ? 'FastAPI Backend' : 'Backend Status'}
             </span>
           </div>
 
@@ -482,7 +584,25 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
           </div>
         </div>
 
-        {/* Backend Disconnected Alert Banner */}
+        {/* Backend Not Configured Notice (Vercel HTTPS Deployed Build) */}
+        {engineMode === 'BACKEND_NOT_CONFIGURED' && (
+          <div className="p-4 rounded-2xl bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <Server className="w-4 h-4 text-amber-400" />
+              <span>EDGE BACKEND ENDPOINT NOT CONFIGURED FOR PRODUCTION VERCEL</span>
+            </div>
+            <p>
+              This Vercel frontend is running over HTTPS. Connecting directly to unencrypted <code className="bg-slate-900 px-1 py-0.5 rounded">http://127.0.0.1:8000</code> is blocked by browser security (Mixed Content).
+            </p>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 space-y-1">
+              <strong>To enable Real Device Camera Test Mode in production:</strong>
+              <div>1. Set Vercel environment variables: <code className="text-cyan-300">VITE_WS_BASE_URL=wss://your-edge-tunnel.example.com</code></div>
+              <div>2. Or test locally by running Vite: <code className="text-amber-300">npm run dev</code> on <code className="text-amber-300">http://localhost:3000</code> with FastAPI running on port 8000.</div>
+            </div>
+          </div>
+        )}
+
+        {/* Backend Disconnected Notice (Local Development Server Down) */}
         {engineMode === 'BACKEND_DISCONNECTED' && (
           <div className="p-4 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -666,7 +786,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 {/* Status Header Overlay */}
                 <div className="absolute top-3 left-3 flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
                   <span className={`w-2 h-2 rounded-full ${engineMode === 'FASTAPI_BACKEND' ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
-                  <span>{engineMode === 'FASTAPI_BACKEND' ? 'LIVE DEVICE CAMERA' : 'CAMERA CONNECTED • BACKEND DISCONNECTED'}</span>
+                  <span>{engineMode === 'FASTAPI_BACKEND' ? 'LIVE DEVICE CAMERA' : 'CAMERA CONNECTED • EDGE BACKEND NOT CONNECTED'}</span>
                 </div>
 
                 {/* Telemetry Footer Overlay */}
@@ -960,13 +1080,13 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
                 <span className="text-[10px] text-slate-400 block uppercase">WEBCAM STREAM</span>
-                <span className="font-bold text-emerald-400">{mediaStreamRef.current ? 'CONNECTED' : 'DISCONNECTED'}</span>
+                <span className="font-bold text-emerald-400">{mediaStreamRef.current ? 'LIVE' : 'DISCONNECTED'}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
                 <span className="text-[10px] text-slate-400 block uppercase">EDGE BACKEND</span>
                 <span className={`font-bold ${engineMode === 'FASTAPI_BACKEND' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {engineMode === 'FASTAPI_BACKEND' ? 'CONNECTED (8000)' : 'OFFLINE'}
+                  {engineMode === 'FASTAPI_BACKEND' ? 'CONNECTED' : 'OFFLINE'}
                 </span>
               </div>
 
@@ -982,7 +1102,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-slate-400">
-              <strong className="text-slate-200 block">Strict Real-Time Data Pipeline Protocol:</strong>
+              <strong className="text-slate-200 block">Real-Time Data Pipeline Specification:</strong>
               <ul className="list-disc pl-4 space-y-1 text-[11px]">
                 <li>Zero fake / simulated detections exist in Device Camera Test Mode.</li>
                 <li>Camera empty state returns 0 active tracks, 0 bounding boxes, 0 dwell timers, 0 snapshots.</li>
@@ -1059,7 +1179,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block uppercase">Tracks Created</span>
+                <span className="text-[10px] text-slate-400 block uppercase">Unique People</span>
                 <span className="text-sm font-bold text-amber-400">{summaryData.tracksCreatedCount}</span>
               </div>
 

@@ -1,19 +1,49 @@
 import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics } from '../types';
 
-export const API_BASE = import.meta.env.VITE_API_BASE_URL || (
-  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8000/api'
-    : 'http://127.0.0.1:8000/api'
-);
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocal) {
+      return 'http://localhost:8000/api';
+    }
+  }
+  return null;
+};
+
+export const API_BASE = getApiBase();
 
 export const api = {
   async getHealth() {
+    if (!API_BASE) {
+      return {
+        status: 'OFFLINE',
+        backend: 'NOT_CONFIGURED',
+        yolo: 'ERROR',
+        tracker: 'ERROR',
+        opencv: 'ERROR',
+        face_matcher: 'ERROR',
+        device_camera_test: 'NOT_READY',
+        message: 'EDGE BACKEND NOT CONFIGURED',
+      };
+    }
     try {
       const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined });
       if (!res.ok) throw new Error('Backend offline');
       return await res.json();
     } catch {
-      return { status: 'OFFLINE', mode: 'STANDALONE', edgeStatus: 'OFFLINE', message: 'EDGE BACKEND NOT CONNECTED' };
+      return {
+        status: 'OFFLINE',
+        backend: 'OFFLINE',
+        yolo: 'ERROR',
+        tracker: 'ERROR',
+        opencv: 'ERROR',
+        face_matcher: 'ERROR',
+        device_camera_test: 'NOT_READY',
+        message: 'EDGE BACKEND NOT CONNECTED',
+      };
     }
   },
 

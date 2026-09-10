@@ -238,12 +238,17 @@ async def test_camera_websocket(websocket: WebSocket):
             proc_duration = time.time() - proc_start
             proc_fps = round(1.0 / proc_duration, 1) if proc_duration > 0 else 10.0
 
+            yolo_ready = (yolo_detector is not None) and (getattr(yolo_detector, "model", None) is not None)
             res_payload = {
                 "mode": "DEVICE_CAMERA_TEST",
                 "camera_status": "CONNECTED",
+                "ai_status": "PROCESSING",
+                "yolo_status": "READY" if yolo_ready else "ERROR",
+                "tracker_status": "READY",
+                "tracks": eval_tracks,
+                "people_count": len(eval_tracks),
                 "fps": proc_fps,
                 "inference_latency_ms": round(proc_duration * 1000, 1),
-                "tracks": eval_tracks,
                 "decision": gate_eval,
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
             }
