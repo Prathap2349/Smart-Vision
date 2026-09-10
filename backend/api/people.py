@@ -113,6 +113,25 @@ def add_resident(req: ResidentCreate):
     conn.commit()
     conn.close()
 
+    # Dual Sync to Supabase Cloud Database if configured
+    try:
+        from database import get_supabase_client
+        sp_client = get_supabase_client()
+        if sp_client:
+            sp_client.table("residents").insert({
+                "id": res_id,
+                "name": req.name,
+                "resident_id": resident_code,
+                "role": req.role,
+                "face_status": face_status,
+                "avatar_url": req.avatar_url,
+                "embedding_json": embedding_json,
+                "detection_count": 0,
+                "added_date": today_str
+            }).execute()
+    except Exception as e:
+        print(f"Supabase sync warning: {e}")
+
     return {
         "id": res_id,
         "name": req.name,
@@ -129,5 +148,15 @@ def delete_resident(id: str):
     cursor.execute("DELETE FROM residents WHERE id = ?;", (id,))
     conn.commit()
     conn.close()
+
+    # Dual Sync to Supabase Cloud Database
+    try:
+        from database import get_supabase_client
+        sp_client = get_supabase_client()
+        if sp_client:
+            sp_client.table("residents").delete().eq("id", id).execute()
+    except Exception as e:
+        print(f"Supabase delete sync warning: {e}")
+
     return {"success": True, "message": f"Resident {id} removed."}
 

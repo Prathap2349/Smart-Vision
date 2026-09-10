@@ -8,6 +8,13 @@ EVIDENCE_DIR = DATA_DIR / "evidence"
 DATA_DIR.mkdir(exist_ok=True)
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 
+# Load environment variables from backend/.env if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
+
 DB_PATH = DATA_DIR / "smart_vision.db"
 
 # Default Hikvision Environment settings
@@ -28,7 +35,7 @@ ALERT_COOLDOWN_SECONDS = 60
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
-# Scheduled Sensitivity Profile Settings (Idea 3)
+# Scheduled Sensitivity Profile Settings
 ENABLE_SCHEDULED_PROFILES = True
 NIGHT_START_HOUR = 23  # 11 PM
 NIGHT_END_HOUR = 6     # 6 AM
@@ -38,6 +45,3 @@ DAY_DWELL_THRESHOLD = 20    # Standard 20-second loitering during day
 # Supabase Integration Settings (Cloud Database)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://phiboawjlfnzlrdcsddv.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-
-
-

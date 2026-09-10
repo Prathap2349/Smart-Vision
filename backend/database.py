@@ -2,12 +2,22 @@ import sqlite3
 import json
 import time
 from typing import List, Dict, Any, Optional
-from config import DB_PATH
+from config import DB_PATH, SUPABASE_URL, SUPABASE_KEY
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def get_supabase_client():
+    if not SUPABASE_KEY:
+        return None
+    try:
+        from supabase import create_client, Client
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"Supabase client initialization warning: {e}")
+        return None
 
 def init_db():
     conn = get_db_connection()
@@ -109,9 +119,6 @@ def init_db():
         INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, resolution, fps, enabled, status)
         VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'admin', 'admin123', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE');
         """)
-
-    # No fake default residents seeded — starts 100% clean for real enrollment
-
 
     # Seed Default Detection Zones if empty
     cursor.execute("SELECT COUNT(*) FROM detection_zones;")
