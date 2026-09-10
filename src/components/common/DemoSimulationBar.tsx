@@ -25,7 +25,7 @@ export const DemoSimulationBar: React.FC = () => {
           </Badge>
         ) : (
           <Badge variant="amber" pulse>
-            SIMULATION MODE ACTIVE
+            EDGE BACKEND NOT CONNECTED • DEMO MODE
           </Badge>
         )}
 

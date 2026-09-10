@@ -174,6 +174,11 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Load initial data & poll metrics from backend
   useEffect(() => {
     async function loadData() {
+      const health = await api.getHealth();
+      if (health.status === 'OFFLINE' || health.edgeStatus === 'OFFLINE') {
+        setIsRealCameraMode(false);
+        setIsSimulating(true);
+      }
       const cams = await api.getCameras();
       setCameras(cams);
       const alts = await api.getAlerts();
@@ -189,8 +194,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadData();
 
     const metricsInterval = setInterval(async () => {
-      const m = await api.getSystemMetrics();
-      setMetrics(m);
+      if (import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))) {
+        const m = await api.getSystemMetrics();
+        setMetrics(m);
+      }
     }, 5000);
 
     return () => clearInterval(metricsInterval);
@@ -202,21 +209,29 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (!isRealCameraMode) return;
 
+    const getWsUrl = (camId: string) => {
+      if (import.meta.env.VITE_WS_BASE_URL) {
+        return `${import.meta.env.VITE_WS_BASE_URL}/ws/cameras/${camId}`;
+      }
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//localhost:8000/ws/cameras/${camId}`;
+      }
+      return null;
+    };
+
     const cameraId = cameras[0]?.id ?? 'cam-01';
+    const wsUrl = getWsUrl(cameraId);
+
+    if (!wsUrl) {
+      setIsRealCameraMode(false);
+      setIsSimulating(true);
+      return;
+    }
+
     let ws: WebSocket | null = null;
     try {
-      const getWsUrl = (camId: string) => {
-        if (import.meta.env.VITE_WS_BASE_URL) {
-          return `${import.meta.env.VITE_WS_BASE_URL}/ws/cameras/${camId}`;
-        }
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-          ? 'localhost:8000'
-          : window.location.host;
-        return `${protocol}//${host}/ws/cameras/${camId}`;
-      };
-
-      ws = new WebSocket(getWsUrl(cameraId));
+      ws = new WebSocket(wsUrl);
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -251,7 +266,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         } catch {}
       };
-    } catch {}
+      ws.onerror = () => {
+        setIsRealCameraMode(false);
+        setIsSimulating(true);
+      };
+    } catch {
+      setIsRealCameraMode(false);
+      setIsSimulating(true);
+    }
 
     return () => {
       if (ws) ws.close();
