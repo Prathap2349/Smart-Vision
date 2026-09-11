@@ -18,10 +18,25 @@ def health_check():
     face_ready = face_recognizer is not None
     device_test_ready = yolo_ready and tracker_ready and opencv_ready
 
+    # Fix #1: query actual camera status from DB instead of hardcoding "CONNECTED"
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT status FROM cameras WHERE enabled = 1 LIMIT 1;")
+        cam_row = cursor.fetchone()
+        conn.close()
+        if cam_row:
+            cam_status = cam_row["status"]
+            camera_health = "CONNECTED" if cam_status == "ONLINE" else ("OFFLINE" if cam_status == "OFFLINE" else "NOT_CONFIGURED")
+        else:
+            camera_health = "NOT_CONFIGURED"
+    except Exception:
+        camera_health = "UNKNOWN"
+
     return {
         "status": "ONLINE",
         "backend": "ONLINE",
-        "camera": "CONNECTED",
+        "camera": camera_health,
         "yolo": "READY" if yolo_ready else "ERROR",
         "tracker": "READY" if tracker_ready else "ERROR",
         "opencv": "READY" if opencv_ready else "ERROR",
@@ -100,8 +115,8 @@ def get_system_metrics():
         "queueSize": 0,
         "uptimeSeconds": int(time.time() - psutil.boot_time()),
         "yoloStatus": yolo_status,
-        "byteTrackStatus": tracker_status,
-        "insightFaceStatus": face_status,
+        "trackerStatus": tracker_status,
+        "faceMatcherStatus": face_status,
         "openCvStatus": open_cv_status,
         "rtspStatus": rtsp_status,
         "telegramStatus": telegram_status

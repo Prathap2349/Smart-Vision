@@ -105,8 +105,8 @@ export interface SystemMetrics {
   queueSize: number;
   uptimeSeconds: number;
   yoloStatus: 'ACTIVE' | 'WARNING' | 'OFFLINE';
-  byteTrackStatus: 'ACTIVE' | 'WARNING' | 'OFFLINE';
-  insightFaceStatus: 'ACTIVE' | 'WARNING' | 'OFFLINE';
+  trackerStatus: 'ACTIVE' | 'WARNING' | 'OFFLINE';
+  faceMatcherStatus: 'ACTIVE' | 'WARNING' | 'OFFLINE';
   openCvStatus: 'ACTIVE' | 'WARNING' | 'OFFLINE';
   rtspStatus: 'CONNECTED' | 'DISCONNECTED';
   telegramStatus: 'CONNECTED' | 'DISCONNECTED';

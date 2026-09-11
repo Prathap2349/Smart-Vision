@@ -17,14 +17,14 @@ def compute_iou(boxA: List[float], boxB: List[float]) -> float:
     return iou
 
 class TrackedSubject:
-    def __init__(self, track_id: str, initial_bbox: List[float], timestamp: float, zone_name: str = "Outside ROI"):
+    def __init__(self, track_id: str, initial_bbox: List[float], timestamp: float, zone_name: str = "Outside ROI", confidence: float = 0.0):
         self.track_id = track_id
         self.bbox = initial_bbox
         self.first_seen = timestamp
         self.last_seen = timestamp
         self.current_zone = zone_name
         self.zone_entry_time: Optional[float] = timestamp if zone_name != "Outside ROI" else None
-        self.confidence = 0.95
+        self.confidence = confidence  # real YOLO detection confidence — no hardcoded placeholder
         self.face_status = "UNKNOWN"
         self.resident_name: Optional[str] = None
         self.active = True
@@ -127,12 +127,10 @@ class LightweightIoUTracker:
             track_id = f"#{self.next_id_counter}"
             self.next_id_counter += 1
 
-            new_track = TrackedSubject(track_id, det_bbox, now, zone_name=zone_name)
-            new_track.confidence = det_conf
+            new_track = TrackedSubject(track_id, det_bbox, now, zone_name=zone_name, confidence=det_conf)
             self.tracks[track_id] = new_track
 
         return list(self.tracks.values())
 
-# Backward compatibility alias
-ByteTrackerManager = LightweightIoUTracker
+# Singleton tracker instance used by detection pipeline
 tracker_manager = LightweightIoUTracker()
