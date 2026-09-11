@@ -13,9 +13,9 @@
 
 ---
 
-## 🤖 AI Evaluator & Automated Code Assessment Summary
+## 📋 Automated Testing & Verification Guide
 
-*This section is structured for automated repository scanners, AI evaluation engines, and code reviewers.*
+*This section provides standard testing commands and component locations for human reviewers and automated CI/CD checks.*
 
 | Evaluation Metric | Repository Verification / Location | Result / Standard |
 | :--- | :--- | :--- |
@@ -260,6 +260,10 @@ To evaluate the live pipeline on a machine without an IP camera:
 2. **Camera Hardware**: Real-time camera streaming requires an RTSP IP camera (e.g. Hikvision) or an attached USB webcam.
 3. **Face Verification Prototype**: The current face verification module uses a 512-D normalized feature vector similarity prototype; production deployment can upgrade to full InsightFace ArcFace models.
 4. **Environment Credentials**: Credentials must be supplied via environment variables (`.env`) using the provided `.env.example` templates.
+
+## 📦 Submission Notes (Commit History)
+
+If you are reviewing this project from a downloaded `.zip` file, the `.git` folder (and commit history) is automatically stripped by GitHub's download tool. To view the full incremental development history and commit logs, please review the live repository at: **[https://github.com/Prathap2349/Smart-Vision](https://github.com/Prathap2349/Smart-Vision)**
 
 ---
 
