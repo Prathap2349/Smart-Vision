@@ -61,7 +61,7 @@ class LightweightIoUTracker:
     Performs frame-to-frame bounding box association, maintains independent track IDs,
     dwell timers, and cleans up stale tracks.
     """
-    def __init__(self, iou_threshold: float = 0.3, max_staleness_seconds: float = 2.0):
+    def __init__(self, iou_threshold: float = 0.15, max_staleness_seconds: float = 2.0):
         self.tracks: Dict[str, TrackedSubject] = {}
         self.lost_tracks: Dict[str, dict] = {}
         self.next_id_counter = 1
@@ -87,6 +87,7 @@ class LightweightIoUTracker:
         expired_ids = [tid for tid, t in self.tracks.items() if now - t.last_seen > self.max_staleness_seconds]
         for tid in expired_ids:
             t = self.tracks[tid]
+            print(f"[Tracker Debug] Track {tid} EXPIRED due to staleness (> {self.max_staleness_seconds}s).")
             if t.last_embedding is not None:
                 self.lost_tracks[tid] = {
                     "expiry_time": now,
@@ -170,6 +171,7 @@ class LightweightIoUTracker:
             if best_lost_tid is not None and highest_sim >= 0.7:
                 # Re-attach to lost track history!
                 track_id = best_lost_tid
+                print(f"[Tracker Debug] RE-ID SUCCESS: Unmatched detection recovered track {track_id} (sim: {highest_sim:.2f}).")
                 l_data = self.lost_tracks.pop(best_lost_tid)
                 new_track = TrackedSubject(track_id, det_bbox, now, zone_name=zone_name, confidence=det_conf)
                 # Restore history
@@ -183,6 +185,7 @@ class LightweightIoUTracker:
                 new_track.last_embedding = new_emb
             else:
                 track_id = f"#{self.next_id_counter}"
+                print(f"[Tracker Debug] NEW TRACK CREATED: {track_id} (No active IoU match >= {self.iou_threshold} and no Re-ID match).")
                 self.next_id_counter += 1
                 new_track = TrackedSubject(track_id, det_bbox, now, zone_name=zone_name, confidence=det_conf)
                 new_track.last_embedding = new_emb
