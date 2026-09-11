@@ -21,3 +21,11 @@ export async function signInWithGoogle() {
 export async function signOutSupabase() {
   await supabase.auth.signOut();
 }
+
+export async function signInWithEmailPassword(email: string, password: string) {
+  return await supabase.auth.signInWithPassword({ email, password });
+}
+
+export async function signUpWithEmailPassword(email: string, password: string) {
+  return await supabase.auth.signUp({ email, password });
+}

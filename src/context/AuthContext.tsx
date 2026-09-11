@@ -72,11 +72,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const login = async (identifier: string) => {
+  const login = async (identifier: string, password?: string) => {
+    // If email + password provided, attempt real Supabase authentication first
+    if (identifier.includes('@') && password && password.length >= 6) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: identifier,
+        password: password,
+      });
+
+      if (!error && data.session?.user) {
+        const profile: UserProfile = {
+          id: data.session.user.id,
+          name: data.session.user.user_metadata?.full_name || identifier.split('@')[0],
+          role: 'Home Resident Owner',
+          department: 'Verified Supabase Account',
+          institution: 'Smart Vision Home',
+          email: data.session.user.email || identifier,
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
+        };
+        setUser(profile);
+        setIsAuthenticated(true);
+        localStorage.setItem('svs_user_session', JSON.stringify(profile));
+        return;
+      }
+    }
+
+    // Graceful Prototype/Demo Fallback
     const profile: UserProfile = {
       id: identifier || 'default_user',
       name: identifier.includes('@') ? identifier.split('@')[0] : `Resident (${identifier})`,
-      role: 'Home Resident Owner',
+      role: 'Home Resident Owner (Prototype)',
       department: 'Smart Vision Mobile',
       institution: 'Smart Vision Home',
       email: identifier.includes('@') ? identifier : `${identifier}@mobile.user`,
