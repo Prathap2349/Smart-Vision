@@ -56,7 +56,7 @@ class LightweightIoUTracker:
     Performs frame-to-frame bounding box association, maintains independent track IDs,
     dwell timers, and cleans up stale tracks.
     """
-    def __init__(self, iou_threshold: float = 0.3, max_staleness_seconds: float = 0.8):
+    def __init__(self, iou_threshold: float = 0.3, max_staleness_seconds: float = 2.0):
         self.tracks: Dict[str, TrackedSubject] = {}
         self.next_id_counter = 1
         self.iou_threshold = iou_threshold

@@ -20,7 +20,7 @@ class YOLOv8PersonDetector:
     def is_ready(self) -> bool:
         return self.model is not None
 
-    def detect(self, frame: np.ndarray, conf_threshold: float = 0.85) -> List[Dict[str, Any]]:
+    def detect(self, frame: np.ndarray, conf_threshold: float = 0.65) -> List[Dict[str, Any]]:
         """
         Strict YOLO human presence detection (COCO class 0 = person).
         Returns a list of standardized detection dictionaries:
@@ -56,7 +56,7 @@ class YOLOv8PersonDetector:
             print(f"[Detector Error] YOLO inference error: {e}")
             return []
 
-    def detect_people(self, frame: np.ndarray, conf_threshold: float = 0.85) -> List[Dict[str, Any]]:
+    def detect_people(self, frame: np.ndarray, conf_threshold: float = 0.65) -> List[Dict[str, Any]]:
         """Backward-compatible wrapper method."""
         return self.detect(frame, conf_threshold)
 
