@@ -117,7 +117,6 @@ from face.recognizer import face_recognizer
 async def test_camera_websocket(websocket: WebSocket):
     await websocket.accept()
     test_tracker = LightweightIoUTracker()
-    zone_last_snapshot = {}
 
     try:
         while True:
@@ -162,7 +161,7 @@ async def test_camera_websocket(websocket: WebSocket):
             detections = yolo_detector.detect(frame)
 
             # 2. Real Lightweight IoU Tracker
-            tracks = test_tracker.update_tracks(detections, zones=user_zones, frame_w=w, frame_h=h)
+            tracks = test_tracker.update_tracks(detections, zones=user_zones, frame_w=w, frame_h=h, frame=frame)
 
             eval_tracks = []
             highest_threat_rank = 0
@@ -176,6 +175,8 @@ async def test_camera_websocket(websocket: WebSocket):
                     face_status, res_name, face_conf = face_recognizer.match_face(crop)
                     t.face_status = face_status
                     t.resident_name = res_name
+                    # Save embedding for occlusion recovery
+                    t.last_embedding = face_recognizer.generate_embedding(crop)
 
                 # Triple-gate decision for this track
                 t_gate_eval = decision_engine.evaluate_gates(
@@ -187,14 +188,10 @@ async def test_camera_websocket(websocket: WebSocket):
                 )
 
                 # Capture snapshot crop if person is inside ROI zone, dwell_seconds >= dwell_threshold, and not yet captured
-                current_time = time.time()
-                last_snap_time = zone_last_snapshot.get(t.current_zone, 0.0)
-                snapshot_cooldown_seconds = 20.0
-
+                # Removed zone_last_snapshot cooldown so multiple people in the same zone don't block each other.
                 if (t.current_zone != "Outside ROI" and 
                     t.dwell_seconds >= dwell_threshold and 
-                    not t.snapshot_captured and 
-                    (current_time - last_snap_time >= snapshot_cooldown_seconds)):
+                    not t.snapshot_captured):
                     pad = 20
                     cx1, cy1 = max(0, x1 - pad), max(0, y1 - pad)
                     cx2, cy2 = min(w, x2 + pad), min(h, y2 + pad)
@@ -204,7 +201,6 @@ async def test_camera_websocket(websocket: WebSocket):
                         t.snapshot_base64 = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
                         t.snapshot_captured = True
                         t.snapshot_timestamp = time.strftime("%H:%M:%S")
-                        zone_last_snapshot[t.current_zone] = current_time
 
                 track_dict = {
                     "track_id": t.track_id,
