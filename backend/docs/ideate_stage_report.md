@@ -1,6 +1,9 @@
 # Design Thinking: Ideate Stage Report
 ## Smart Vision Sentry — AI-Powered CCTV False-Alarm Elimination System
 
+> [!NOTE]
+> **Design Phase Document Disclaimer**: This report reflects the original design thinking and theoretical proposal evaluated during the initial project ideation phase. The shipped production prototype implements a custom **Lightweight IoU Tracker** and **Prototype Visual Feature Matcher (512-D Cosine Similarity)** in place of full ByteTrack/InsightFace weight packages for privacy, edge-computational efficiency, and real-time browser test capability.
+
 ### Project Context & Core Architecture
 - **Problem Statement**: Standard PIR and pixel-motion CCTV alert systems generate 99+ false alarms per day due to environmental triggers (wind, foliage, shadows, lighting shifts). Residents mute notifications, destroying the real-time security value.
 - **Chosen Baseline Solution**: A 3-Gate Edge AI Pipeline:
