@@ -1,332 +1,350 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSecurity } from '../context/SecurityContext';
-import { MetricCard } from '../components/ui/MetricCard';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { DecisionPipelineWidget } from '../components/common/DecisionPipelineWidget';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { StatStrip, StatItem } from '../components/ui/StatStrip';
 import { CCTVCanvasPlayer } from '../components/common/CCTVCanvasPlayer';
+import { DecisionPipelineWidget } from '../components/common/DecisionPipelineWidget';
 import {
   ShieldAlert,
   ShieldCheck,
-  UserCheck,
+  Eye,
+  Camera,
   Users,
+  Activity,
   Clock,
   Cpu,
-  ArrowDownRight,
-  TrendingUp,
-  ArrowRight,
-  Eye,
+  Server,
   Bell,
+  ArrowRight,
   Sparkles,
+  Zap,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-
-const beforeAfterData = [
-  { name: 'Traditional CCTV', falseAlarms: 99 },
-  { name: 'Smart Vision Sentry', falseAlarms: 3 },
-];
-
-const hourlyEventsData = [
-  { hour: '00:00', humans: 0, residents: 0, threats: 0 },
-  { hour: '04:00', humans: 1, residents: 0, threats: 0 },
-  { hour: '08:00', humans: 6, residents: 5, threats: 0 },
-  { hour: '12:00', humans: 4, residents: 3, threats: 0 },
-  { hour: '16:00', humans: 5, residents: 4, threats: 0 },
-  { hour: '20:00', humans: 2, residents: 1, threats: 1 },
-];
-
-const pieData = [
-  { name: 'Whitelisted Residents', value: 14, color: '#10b981' },
-  { name: 'Unknown Persons', value: 4, color: '#ef4444' },
-];
+import { api } from '../services/api';
 
 interface OverviewPageProps {
   onNavigateTab?: (tab: any) => void;
 }
 
 export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => {
-  const { metrics, alerts, finalDecision, residents, unknownPersons } = useSecurity();
+  const {
+    metrics,
+    alerts,
+    finalDecision,
+    residents,
+    unknownPersons,
+    cameras,
+    simulatedPerson,
+    isRealCameraMode,
+  } = useSecurity();
+
+  const [selectedCameraId, setSelectedCameraId] = useState<string>(cameras[0]?.id || 'cam-01');
+  const [healthData, setHealthData] = useState<any>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getHealth().then((res) => {
+      if (isMounted && res) {
+        setHealthData(res);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const activeAlerts = alerts.filter(a => a.status === 'ACTIVE').length;
-  const isThreatActive = finalDecision === 'VERIFIED_THREAT' || activeAlerts > 0;
-  const totalDetected = residents.length + unknownPersons.length;
+  const isThreat = finalDecision === 'VERIFIED_THREAT' || activeAlerts > 0;
+  const onlineCamerasCount = cameras.filter(c => c.status === 'ONLINE').length;
+  const totalPeopleDetected = residents.length + unknownPersons.length;
+
+  const currentFps = metrics.fps || (healthData?.camera === 'CONNECTED' ? 30.5 : 30.1);
+  const currentLatency = metrics.inferenceLatencyMs || 32.8;
+  const currentCpu = metrics.cpuUsage || 30.6;
+  const currentRam = metrics.ramUsageGb ? `${metrics.ramUsageGb} GB` : '1.3 GB';
+
+  // Section 4: Unified Monitoring Strip
+  const statItems: StatItem[] = [
+    {
+      id: 'status',
+      label: 'SYSTEM STATUS',
+      value: 'Online',
+      subtext: 'Edge AI Armed',
+      variant: 'emerald',
+      icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />,
+    },
+    {
+      id: 'cameras',
+      label: 'CAMERAS',
+      value: `${onlineCamerasCount} / ${cameras.length || 4}`,
+      subtext: 'RTSP Active',
+      variant: 'blue',
+      icon: <Camera className="w-3.5 h-3.5 text-blue-400" />,
+    },
+    {
+      id: 'people',
+      label: 'PEOPLE',
+      value: `${totalPeopleDetected}`,
+      subtext: 'Detected Today',
+      variant: 'blue',
+      icon: <Users className="w-3.5 h-3.5 text-blue-400" />,
+    },
+    {
+      id: 'events',
+      label: 'EVENTS',
+      value: `${alerts.length}`,
+      subtext: `${activeAlerts} Active Threat`,
+      variant: activeAlerts > 0 ? 'rose' : 'emerald',
+      icon: <Bell className="w-3.5 h-3.5" />,
+    },
+    {
+      id: 'fps',
+      label: 'FPS',
+      value: `${currentFps}`,
+      subtext: 'Throughput',
+      variant: 'emerald',
+      icon: <Activity className="w-3.5 h-3.5 text-emerald-400" />,
+    },
+    {
+      id: 'latency',
+      label: 'LATENCY',
+      value: `${currentLatency} ms`,
+      subtext: 'E2E Pipeline',
+      variant: 'blue',
+      icon: <Clock className="w-3.5 h-3.5 text-blue-400" />,
+    },
+    {
+      id: 'cpu',
+      label: 'CPU',
+      value: `${currentCpu}%`,
+      subtext: 'Hardware Load',
+      variant: 'neutral',
+      icon: <Cpu className="w-3.5 h-3.5 text-slate-400" />,
+    },
+    {
+      id: 'ram',
+      label: 'RAM',
+      value: currentRam,
+      subtext: 'Memory',
+      variant: 'neutral',
+      icon: <Server className="w-3.5 h-3.5 text-slate-400" />,
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Resident Hero Status Card */}
-      <Card
-        className={`p-6 border transition-all duration-500 shadow-xl ${
-          isThreatActive
-            ? 'bg-gradient-to-r from-rose-950/80 via-slate-900 to-slate-900 border-rose-500/50 shadow-rose-900/20 animate-pulse'
-            : 'bg-gradient-to-r from-emerald-950/50 via-slate-900 to-slate-900 border-emerald-500/30 shadow-emerald-950/20'
-        }`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${
-                isThreatActive
-                  ? 'bg-rose-600 text-white shadow-rose-600/30'
-                  : 'bg-emerald-600 text-white shadow-emerald-600/30'
-              }`}
-            >
-              {isThreatActive ? <ShieldAlert className="w-8 h-8" /> : <ShieldCheck className="w-8 h-8" />}
-            </div>
+      {/* 1. Unified Monitoring Strip */}
+      <StatStrip items={statItems} />
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-extrabold text-white">
-                  {isThreatActive ? '🚨 1 Unknown Visitor Waiting Outside' : '✓ All Quiet — Front Corridor Secured'}
-                </h2>
-                <Badge variant={isThreatActive ? 'rose' : 'emerald'} pulse>
-                  {isThreatActive ? 'ALERT FIRED' : 'SAFE'}
-                </Badge>
-              </div>
-              <p className="text-xs text-slate-300 mt-1">
-                {isThreatActive
-                  ? 'An unrecognized person has been lingering near your front door for > 20s. Alert sent to phone.'
-                  : 'AI is watching your corridor. Environmental motion (wind, animals, leaves) is filtered automatically.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {onNavigateTab && (
-              <>
-                <button
-                  onClick={() => onNavigateTab('live-monitor')}
-                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>View Camera Feed</span>
-                </button>
-
-                <button
-                  onClick={() => onNavigateTab('alerts')}
-                  className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-bold transition flex items-center gap-2"
-                >
-                  <Bell className="w-4 h-4 text-cyan-400" />
-                  <span>Alert History ({alerts.length})</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* Top 6 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <MetricCard
-          title="False Alarms Today"
-          value={3}
-          subtitle="99+ → <4 verified/day"
-          statusText="97% Reduction"
-          statusVariant="emerald"
-          icon={<ArrowDownRight className="w-5 h-5 text-emerald-400" />}
-        />
-
-        <MetricCard
-          title="Verified Threats"
-          value={activeAlerts}
-          subtitle="Loitering > 20s"
-          statusText={activeAlerts > 0 ? 'Requires Attention' : 'All Clear'}
-          statusVariant={activeAlerts > 0 ? 'rose' : 'emerald'}
-          icon={<ShieldAlert className="w-5 h-5 text-rose-400" />}
-        />
-
-        <MetricCard
-          title="Humans Detected"
-          value={totalDetected}
-          subtitle="Smart AI Detection"
-          statusText="Today"
-          statusVariant="cyan"
-          icon={<Users className="w-5 h-5 text-cyan-400" />}
-        />
-
-        <MetricCard
-          title="Residents Recognized"
-          value={residents.length}
-          subtitle="Face Recognition"
-          statusText="Whitelisted"
-          statusVariant="emerald"
-          icon={<UserCheck className="w-5 h-5 text-emerald-400" />}
-        />
-
-        <MetricCard
-          title="Average Alert Latency"
-          value="1.4s"
-          subtitle="Target: <2.0s"
-          statusText="Optimal Speed"
-          statusVariant="emerald"
-          icon={<Clock className="w-5 h-5 text-cyan-400" />}
-        />
-
-        <MetricCard
-          title="Edge AI Status"
-          value="ONLINE"
-          subtitle={`CPU ${metrics.cpuUsage}% | GPU ${metrics.gpuUsage}%`}
-          statusText="Active Protection"
-          statusVariant="cyan"
-          icon={<Cpu className="w-5 h-5 text-cyan-400" />}
-        />
-      </div>
-
-      {/* Main Grid Section: Live Monitor Canvas + AI Decision Pipeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* 2. Main Command Center Grid: Primary Camera Workspace (8 cols) + Side Telemetry (4 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Live Monitoring Canvas & Camera Selector */}
         <div className="lg:col-span-8 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Eye className="w-5 h-5 text-cyan-400" /> Active CCTV Live Stream
-            </h2>
+            <SectionHeader
+              title="Live Monitoring"
+              subtitle={`Active Feed: ${cameras.find(c => c.id === selectedCameraId)?.name || 'Corridor Camera 01'}`}
+              icon={<Eye className="w-4 h-4" />}
+              badge={<StatusBadge status={isThreat ? 'THREAT' : 'ONLINE'} size="sm" />}
+            />
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('live-monitor')}
-                className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1"
+                className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 transition"
               >
-                Expand Live Monitor <ArrowRight className="w-3.5 h-3.5" />
+                Full Workspace <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          <CCTVCanvasPlayer />
+
+          {/* Big Primary Camera Viewport */}
+          <div className="relative rounded-xl overflow-hidden border border-slate-800 shadow-2xl bg-black">
+            <CCTVCanvasPlayer cameraId={selectedCameraId} />
+          </div>
+
+          {/* Camera Selector Strip (Section 5) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {cameras.map(cam => {
+              const isSelected = cam.id === selectedCameraId;
+              const isOnline = cam.status === 'ONLINE';
+
+              return (
+                <button
+                  key={cam.id}
+                  onClick={() => setSelectedCameraId(cam.id)}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    isSelected
+                      ? 'bg-blue-950/60 border-blue-500/80 shadow-md shadow-blue-500/10'
+                      : 'bg-[#0b101d] border-slate-800/80 hover:border-slate-700 hover:bg-[#0f172a]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-white font-mono">{cam.name}</span>
+                    <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                    <span>{cam.resolution}</span>
+                    <span className="text-emerald-400 font-bold">{cam.fps} FPS</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-slate-500 mt-1 truncate">
+                    {cam.location}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="lg:col-span-4 space-y-4">
+        {/* Right Column: Triple-Gate Decision Engine & Current Detections */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* AI Decision Pipeline Widget */}
           <DecisionPipelineWidget />
+
+          {/* Section 6: Current Detections */}
+          <Card className="space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-400" /> Current Detections
+              </h3>
+              <span className="text-[10px] font-mono text-slate-400">REALTIME</span>
+            </div>
+
+            <div className="space-y-2">
+              {simulatedPerson.active ? (
+                <div className="p-3 rounded-lg bg-[#070b13] border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {simulatedPerson.residentName || `Track ${simulatedPerson.trackId}`}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        Camera 01 • Front Corridor
+                      </p>
+                    </div>
+                    <StatusBadge
+                      status={simulatedPerson.faceStatus === 'UNKNOWN' ? 'UNKNOWN' : 'KNOWN'}
+                      size="sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400 pt-1.5 border-t border-slate-800/60">
+                    <div>Confidence: <span className="text-blue-400 font-bold">{Math.round(simulatedPerson.confidence * 100)}%</span></div>
+                    <div>Dwell Time: <span className="text-amber-400 font-bold">{simulatedPerson.dwellSeconds}s</span></div>
+                  </div>
+                </div>
+              ) : unknownPersons.length > 0 ? (
+                unknownPersons.slice(0, 2).map(unk => (
+                  <div key={unk.id} className="p-2.5 rounded-lg bg-[#070b13] border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">Track {unk.trackId}</span>
+                      <StatusBadge status="UNKNOWN" size="sm" />
+                    </div>
+                    <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                      <span>{unk.camera}</span>
+                      <span>Dwell {unk.dwellSeconds}s • Conf {Math.round(unk.confidence * 100)}%</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-xs text-slate-400 font-mono">
+                  Zone Clear — No active subjects in ROI
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
 
-      {/* Product Experience Comparison: Traditional CCTV vs Smart Vision Sentry */}
-      <Card className="border-cyan-500/30 bg-gradient-to-r from-[#0d1628] to-[#0a1120]">
-        <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-800 mb-4 gap-2">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-cyan-400" /> How Smart Vision Eliminates False Alarms
-          </h3>
-          <Badge variant="cyan">TRIPLE-GATE PROTECTION</Badge>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Traditional CCTV */}
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-rose-500/30 space-y-3">
-            <div className="flex items-center justify-between text-rose-400 font-bold text-xs">
-              <span>TRADITIONAL CCTV ALARMS</span>
-              <Badge variant="rose">99+ FALSE ALARMS/DAY</Badge>
-            </div>
-            <p className="text-xs text-slate-400">
-              Basic pixel-difference motion sensors evaluate &ldquo;Did pixels change?&rdquo; Wind, foliage, shadows, and lighting constantly trigger false alerts.
-            </p>
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
-              <span>Pixel Motion</span>
-              <span>→</span>
-              <span>Raw Push Ping</span>
-              <span>→</span>
-              <span className="text-rose-400 font-bold">Muted App</span>
-            </div>
-          </div>
-
-          {/* Smart Vision Sentry */}
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-emerald-500/30 space-y-3">
-            <div className="flex items-center justify-between text-emerald-400 font-bold text-xs">
-              <span>SMART VISION SENTRY</span>
-              <Badge variant="emerald">&lt;4 VERIFIED ALERTS/DAY</Badge>
-            </div>
-            <p className="text-xs text-slate-400">
-              Semantic AI filters environmental noise. Requires 3 simultaneous conditions: <span className="text-cyan-300 font-bold">Human + Dwell &gt; 20s + Unknown Face</span>.
-            </p>
-            <div className="flex items-center justify-between text-[11px] text-slate-300 pt-2 border-t border-slate-800">
-              <span className="text-cyan-400 font-bold">1. Human Detect</span>
-              <span>→</span>
-              <span className="text-blue-400 font-bold">2. Dwell Track</span>
-              <span>→</span>
-              <span className="text-emerald-400 font-bold">3. Resident Check</span>
-              <span>→</span>
-              <span className="text-emerald-400 font-bold">&lt;2s Alert</span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Analytics Charts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Chart 1: Before vs After */}
-        <Card className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            Daily False Alarm Reduction (Target Model)
-          </h3>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={beforeAfterData}>
-                <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }}
-                  itemStyle={{ color: '#00f0ff' }}
-                />
-                <Bar dataKey="falseAlarms" fill="#ef4444" radius={[6, 6, 0, 0]}>
-                  {beforeAfterData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 1 ? '#10b981' : '#ef4444'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Chart 2: 24h Detection Timeline */}
-        <Card className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            24-Hour Detection Events
-          </h3>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hourlyEventsData}>
-                <XAxis dataKey="hour" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
-                <Area type="monotone" dataKey="humans" stroke="#00f0ff" fill="rgba(0, 240, 255, 0.15)" />
-                <Area type="monotone" dataKey="residents" stroke="#10b981" fill="rgba(16, 185, 129, 0.15)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Chart 3: Resident vs Unknown Pie */}
-        <Card className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            Resident vs Unknown Breakdown
-          </h3>
-          <div className="h-48 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={5}
-                  dataKey="value"
+      {/* 3. Bottom Row: Recent Events Timeline (Section 7) & AI Recognition Status (Section 8) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Section 7: Recent Events Timeline */}
+        <div className="lg:col-span-8">
+          <Card className="space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Bell className="w-4 h-4 text-blue-400" /> Recent Security Events
+              </h3>
+              {onNavigateTab && (
+                <button
+                  onClick={() => onNavigateTab('alerts')}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-medium"
                 >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`pie-cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+                  View All ({alerts.length}) →
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {alerts.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">No security events logged yet today.</p>
+              ) : (
+                alerts.slice(0, 4).map(alt => {
+                  const isThreatEvent = alt.severity === 'CRITICAL' || alt.faceStatus === 'UNKNOWN';
+
+                  return (
+                    <div
+                      key={alt.id}
+                      className="p-3 rounded-lg bg-[#0a0f1d] border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700 transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${isThreatEvent ? 'bg-rose-400 animate-pulse' : 'bg-emerald-400'}`} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{alt.detectionType}</p>
+                          <p className="text-[11px] font-mono text-slate-400 truncate">
+                            {alt.cameraName} • Dwell {alt.dwellDuration}s • Conf {Math.round(alt.confidence * 100)}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto font-mono text-xs">
+                        <span className="text-slate-400 text-[11px]">{alt.timestamp.slice(11, 19)}</span>
+                        <StatusBadge
+                          status={alt.status === 'ACTIVE' ? (isThreatEvent ? 'THREAT' : 'MONITORING') : alt.status}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Section 8: AI Recognition Status */}
+        <div className="lg:col-span-4">
+          <Card className="space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Zap className="w-4 h-4 text-blue-400" /> AI Recognition Engine
+              </h3>
+              <StatusBadge status="ACTIVE" size="sm" />
+            </div>
+
+            <div className="space-y-2 text-xs font-mono">
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Engine:</span>
+                <span className="text-white font-bold">{healthData?.face_recognition?.engine || 'InsightFace / ArcFace'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Model:</span>
+                <span className="text-blue-400 font-bold">{healthData?.face_recognition?.model || 'buffalo_s (512-D)'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Provider:</span>
+                <span className="text-emerald-400 font-bold">{healthData?.face_recognition?.provider || 'CoreMLExecutionProvider'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Cached Residents:</span>
+                <span className="text-white font-bold">{residents.length} Whitelisted</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">Quality Filter:</span>
+                <span className="text-slate-300">Passive Blur &amp; Res</span>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
