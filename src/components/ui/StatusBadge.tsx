@@ -13,7 +13,8 @@ export type StatusVariant =
   | 'cyan'
   | 'slate'
   | 'indigo'
-  | 'blue';
+  | 'blue'
+  | 'violet';
 
 export interface StatusBadgeProps {
   status?: string;
@@ -36,7 +37,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 }) => {
   const normalized = (status || label || (typeof children === 'string' ? children : '') || '').toUpperCase();
   
-  // Format display text nicely
+  // Format display text nicely into plain English
   let displayLabel = label || children || normalized.replace(/_/g, ' ');
   if (typeof displayLabel === 'string') {
     if (displayLabel.toUpperCase() === 'ONLINE') displayLabel = 'Online';
@@ -49,7 +50,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     else if (displayLabel.toUpperCase() === 'PROTECTION ACTIVE') displayLabel = 'Protected';
   }
 
-  let colorClasses = 'bg-slate-100 text-slate-700 border-slate-200';
+  let colorClasses = 'bg-slate-800/80 text-text-secondary border-white/10';
   let dotColor = 'bg-slate-400';
 
   if (
@@ -57,63 +58,62 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     variant === 'emerald' ||
     ['ONLINE', 'KNOWN', 'SAFE', 'HEALTHY', 'VERIFIED', 'VERIFIED_RESIDENT', 'PASS', 'ACTIVE', 'PROTECTED', 'HOUSEHOLD SAFE'].includes(normalized)
   ) {
-    colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200/80';
-    dotColor = 'bg-emerald-500';
+    colorClasses = 'bg-brand-success/10 text-brand-success border-brand-success/30 shadow-[0_0_12px_rgba(52,211,153,0.15)]';
+    dotColor = 'bg-brand-success';
   } else if (
     variant === 'danger' ||
     variant === 'rose' ||
-    ['THREAT', 'CRITICAL', 'UNKNOWN', 'ALERT FIRED', 'ALERT', 'FAIL', 'DANGER', 'SECURITY ALERT', 'VERIFIED_THREAT'].includes(normalized)
+    ['THREAT', 'CRITICAL', 'FAILED', 'HIGH', 'ALARM', 'VERIFIED_THREAT', 'SECURITY ALERT'].includes(normalized)
   ) {
-    colorClasses = 'bg-rose-50 text-rose-700 border-rose-200/80';
-    dotColor = 'bg-rose-500';
+    colorClasses = 'bg-brand-alert/15 text-rose-400 border-brand-alert/40 shadow-rose-glow';
+    dotColor = 'bg-brand-alert';
   } else if (
     variant === 'warning' ||
     variant === 'amber' ||
-    ['WARNING', 'RE_ENROLLMENT_REQUIRED', 'RE-ENROLLMENT REQUIRED', 'PENDING', 'DEGRADED', 'ATTENTION'].includes(normalized)
+    ['WARNING', 'MEDIUM', 'DEGRADED', 'RECONNECTING', 'LOW_QUALITY', 'ATTENTION'].includes(normalized)
   ) {
-    colorClasses = 'bg-amber-50 text-amber-700 border-amber-200/80';
-    dotColor = 'bg-amber-500';
+    colorClasses = 'bg-brand-warning/15 text-amber-300 border-brand-warning/30';
+    dotColor = 'bg-brand-warning';
+  } else if (
+    variant === 'cyan' ||
+    ['PROCESSING', 'FACE MATCH', 'CONNECTING', 'DEVICE_TEST'].includes(normalized)
+  ) {
+    colorClasses = 'bg-brand-cyan/15 text-cyan-300 border-brand-cyan/30 shadow-cyan-glow';
+    dotColor = 'bg-brand-cyan';
   } else if (
     variant === 'info' ||
-    variant === 'cyan' ||
     variant === 'blue' ||
-    variant === 'indigo' ||
-    ['MONITORING', 'RTSP LIVE', 'EVALUATING', 'CONNECTED', 'INFO', 'LIVE'].includes(normalized)
+    ['MONITORING', 'CLEAR', 'INFO', 'LOW'].includes(normalized)
   ) {
-    colorClasses = 'bg-blue-50 text-blue-700 border-blue-200/80';
-    dotColor = 'bg-blue-500';
+    colorClasses = 'bg-brand-blue/15 text-blue-300 border-brand-blue/30';
+    dotColor = 'bg-brand-blue';
   } else if (
-    variant === 'neutral' ||
-    variant === 'slate' ||
-    ['OFFLINE', 'DISCONNECTED', 'IDLE', 'STANDBY', 'NOT_CONNECTED'].includes(normalized)
+    variant === 'violet' ||
+    ['AI', 'INTELLIGENCE', 'ARC FACE'].includes(normalized)
   ) {
-    colorClasses = 'bg-slate-100 text-slate-600 border-slate-200';
-    dotColor = 'bg-slate-400';
+    colorClasses = 'bg-brand-violet/15 text-violet-300 border-brand-violet/30';
+    dotColor = 'bg-brand-violet';
   }
 
-  const isPulsing = pulse || ['THREAT', 'CRITICAL', 'ALERT FIRED', 'SECURITY ALERT', 'VERIFIED_THREAT'].includes(normalized);
+  const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs';
 
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 rounded-full font-medium border select-none transition-colors',
-        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+        'inline-flex items-center gap-1.5 rounded-full border font-medium tracking-wide transition-colors',
+        sizeClasses,
         colorClasses,
         className
       )}
     >
-      <span className="relative flex h-1.5 w-1.5 shrink-0">
-        {isPulsing && (
-          <span
-            className={clsx(
-              'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
-              dotColor
-            )}
-          />
+      <span
+        className={clsx(
+          'h-1.5 w-1.5 rounded-full',
+          dotColor,
+          pulse && 'animate-ping'
         )}
-        <span className={clsx('relative inline-flex rounded-full h-1.5 w-1.5', dotColor)} />
-      </span>
-      <span>{displayLabel}</span>
+      />
+      {displayLabel}
     </span>
   );
 };

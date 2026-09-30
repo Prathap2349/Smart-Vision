@@ -4,8 +4,9 @@ import { clsx } from 'clsx';
 interface CardProps {
   children: React.ReactNode;
   className?: string;
-  variant?: 'default' | 'subtle' | 'highlight' | 'critical' | 'success';
-  glow?: 'cyan' | 'rose' | 'emerald' | 'blue' | 'none';
+  variant?: 'default' | 'elevated' | 'glass' | 'highlight' | 'critical' | 'success';
+  glow?: 'cyan' | 'rose' | 'emerald' | 'blue' | 'violet' | 'none';
+  interactive?: boolean;
   onClick?: () => void;
 }
 
@@ -14,36 +15,45 @@ export const Card: React.FC<CardProps> = ({
   className,
   variant = 'default',
   glow = 'none',
+  interactive = false,
   onClick,
 }) => {
   const variantStyles = {
-    default: 'bg-white border-slate-200/80 shadow-sm',
-    subtle: 'bg-slate-50/80 border-slate-200/60',
-    highlight: 'bg-blue-50/50 border-blue-200 shadow-sm',
-    critical: 'bg-rose-50/50 border-rose-200 shadow-sm',
-    success: 'bg-emerald-50/50 border-emerald-200 shadow-sm',
+    default: 'bg-aurora-surface/90 border-white/10 shadow-card-glass',
+    elevated: 'bg-aurora-elevated/95 border-white/15 shadow-xl shadow-black/40',
+    glass: 'glass-panel',
+    highlight: 'bg-aurora-surface/95 border-brand-cyan/30 shadow-cyan-glow',
+    critical: 'bg-aurora-surface/95 border-brand-alert/40 shadow-rose-glow',
+    success: 'bg-aurora-surface/95 border-brand-success/30 shadow-[0_0_20px_rgba(52,211,153,0.15)]',
   };
 
   const glowStyles = {
-    cyan: 'border-cyan-300 shadow-md shadow-cyan-500/10',
-    blue: 'border-blue-300 shadow-md shadow-blue-500/10',
-    rose: 'border-rose-300 shadow-md shadow-rose-500/10',
-    emerald: 'border-emerald-300 shadow-md shadow-emerald-500/10',
+    cyan: 'border-brand-cyan/40 shadow-cyan-glow',
+    blue: 'border-brand-blue/40 shadow-blue-glow',
+    violet: 'border-brand-violet/40 shadow-violet-glow',
+    rose: 'border-brand-alert/40 shadow-rose-glow',
+    emerald: 'border-brand-success/40 shadow-[0_0_20px_rgba(52,211,153,0.2)]',
     none: '',
   };
+
+  const isClickable = Boolean(onClick || interactive);
 
   return (
     <div
       onClick={onClick}
       className={clsx(
-        'rounded-2xl border p-5 transition-all duration-200 text-slate-800',
+        'rounded-2xl border p-5 transition-all duration-200 text-text-primary backdrop-blur-md',
         variantStyles[variant],
         glowStyles[glow],
-        onClick && 'cursor-pointer hover:border-slate-300 hover:shadow-md active:scale-[0.995]',
+        isClickable && 'cursor-pointer hover:border-brand-blue/40 hover:bg-aurora-elevated hover:shadow-aurora-glow hover:-translate-y-0.5 active:scale-[0.995]',
         className
       )}
     >
       {children}
     </div>
   );
+};
+
+export const GlassCard: React.FC<CardProps> = (props) => {
+  return <Card {...props} variant="glass" />;
 };

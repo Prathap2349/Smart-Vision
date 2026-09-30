@@ -80,7 +80,7 @@ export const PeoplePage: React.FC = () => {
           action={
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-2"
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500/100 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" /> Add Household Member
             </button>
@@ -91,11 +91,11 @@ export const PeoplePage: React.FC = () => {
           <EmptyState
             title="No Household Members Added"
             description="Add your family members or roommates so Smart Vision recognizes them and never sends unnecessary false alarms when they are at home."
-            icon={<UserCheck className="w-8 h-8 text-slate-400" />}
+            icon={<UserCheck className="w-8 h-8 text-text-muted" />}
             action={
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl transition inline-flex items-center gap-1.5 shadow-xs"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500/100 text-white font-semibold text-xs rounded-xl transition inline-flex items-center gap-1.5 shadow-xs"
               >
                 <Plus className="w-4 h-4" /> Add First Member
               </button>
@@ -106,7 +106,7 @@ export const PeoplePage: React.FC = () => {
             {residents.map((res) => (
               <Card
                 key={res.id}
-                className="space-y-4 relative group bg-white border-slate-200/80 shadow-xs hover:shadow-md transition"
+                className="space-y-4 relative group bg-aurora-surface/90 border-white/10 shadow-xs hover:shadow-md transition"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -117,13 +117,13 @@ export const PeoplePage: React.FC = () => {
                           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80'
                         }
                         alt={res.name}
-                        className="w-12 h-12 rounded-full border border-slate-200 object-cover bg-slate-100 shadow-xs"
+                        className="w-12 h-12 rounded-full border border-white/10 object-cover bg-white/5 shadow-xs"
                       />
-                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
+                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500/100 border-2 border-white" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-slate-900">{res.name}</h3>
-                      <p className="text-xs text-blue-600 font-medium">{res.role}</p>
+                      <h3 className="font-bold text-sm text-text-primary">{res.name}</h3>
+                      <p className="text-xs text-blue-300 font-medium">{res.role}</p>
                     </div>
                   </div>
 
@@ -133,13 +133,13 @@ export const PeoplePage: React.FC = () => {
                       setDeleteModalOpen(true);
                     }}
                     title="Remove household member"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                    className="p-1.5 rounded-lg text-text-muted hover:text-rose-300 hover:bg-rose-500/10 transition"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="space-y-2 text-xs text-slate-500 pt-3 border-t border-slate-100">
+                <div className="space-y-2 text-xs text-text-muted pt-3 border-t border-white/10">
                   <div className="flex justify-between items-center">
                     <span>Status:</span>
                     <StatusBadge
@@ -150,11 +150,11 @@ export const PeoplePage: React.FC = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Last seen at home:</span>
-                    <span className="text-slate-800 font-medium">{res.lastDetected || 'Recently'}</span>
+                    <span className="text-text-primary font-medium">{res.lastDetected || 'Recently'}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Visits recorded:</span>
-                    <span className="text-slate-800 font-bold">{res.detectionCount} times</span>
+                    <span className="text-text-primary font-bold">{res.detectionCount} times</span>
                   </div>
                 </div>
               </Card>
@@ -164,7 +164,7 @@ export const PeoplePage: React.FC = () => {
       </div>
 
       {/* Unrecognized People Section */}
-      <div className="space-y-4 pt-6 border-t border-slate-200/80">
+      <div className="space-y-4 pt-6 border-t border-white/10">
         <SectionHeader
           title="Unrecognized People (Recent Visitors)"
           subtitle="Visitors or strangers detected around your home who are not currently on your household list"
@@ -175,44 +175,44 @@ export const PeoplePage: React.FC = () => {
           <EmptyState
             title="No Unrecognized Persons"
             description="No unfamiliar people have been spotted in your protected areas."
-            icon={<UserCheck className="w-8 h-8 text-emerald-600" />}
+            icon={<UserCheck className="w-8 h-8 text-emerald-300" />}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {unknownPersons.map((unk) => (
               <Card
                 key={unk.id}
-                className="space-y-4 bg-white border-slate-200/80 shadow-xs hover:shadow-md transition"
+                className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs hover:shadow-md transition"
               >
                 <div className="flex items-center gap-3">
                   <img
                     src={unk.snapshotUrl}
                     alt={unk.trackId}
-                    className="w-14 h-14 rounded-2xl border border-slate-200 object-cover bg-slate-100"
+                    className="w-14 h-14 rounded-2xl border border-white/10 object-cover bg-white/5"
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm text-slate-900">Unrecognized Visitor</h3>
+                      <h3 className="font-bold text-sm text-text-primary">Unrecognized Visitor</h3>
                       <StatusBadge variant="danger" label="Unknown" size="sm" />
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-text-muted mt-0.5">
                       Seen at {unk.camera}
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100">
+                <div className="space-y-1.5 text-xs text-text-muted pt-2 border-t border-white/10">
                   <div className="flex justify-between">
                     <span>Stay duration:</span>
-                    <span className="text-amber-600 font-bold">{unk.dwellSeconds} seconds</span>
+                    <span className="text-amber-300 font-bold">{unk.dwellSeconds} seconds</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Camera location:</span>
-                    <span className="text-slate-800 font-medium">{unk.camera}</span>
+                    <span className="text-text-primary font-medium">{unk.camera}</span>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100">
+                <div className="pt-2 border-t border-white/10">
                   <button
                     onClick={() => {
                       addResident({
@@ -221,7 +221,7 @@ export const PeoplePage: React.FC = () => {
                         avatarUrl: unk.snapshotUrl,
                       });
                     }}
-                    className="w-full py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                    className="w-full py-2 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15 border border-blue-400/20 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
                   >
                     <UserPlus className="w-4 h-4" /> Add as Household Member
                   </button>
@@ -240,23 +240,23 @@ export const PeoplePage: React.FC = () => {
       >
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1">Full Name</label>
             <input
               type="text"
               placeholder="e.g. Sarah Jenkins"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+              className="w-full bg-aurora-elevated/70 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-text-primary focus:border-blue-500 focus:bg-aurora-surface/90 outline-none"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Household Role</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1">Household Role</label>
             <select
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as any)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+              className="w-full bg-aurora-elevated/70 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-text-primary focus:border-blue-500 focus:bg-aurora-surface/90 outline-none"
             >
               <option value="Primary Resident">Primary Resident</option>
               <option value="Family Member">Family Member</option>
@@ -266,7 +266,7 @@ export const PeoplePage: React.FC = () => {
 
           {/* Photo File Upload Field */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-text-secondary mb-1">
               Face Photo for Recognition
             </label>
             <div className="flex items-center gap-3">
@@ -279,38 +279,38 @@ export const PeoplePage: React.FC = () => {
               />
               <label
                 htmlFor="face-photo-input"
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer border border-slate-200 flex items-center gap-2 transition"
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-secondary font-semibold text-xs cursor-pointer border border-white/10 flex items-center gap-2 transition"
               >
-                <Upload className="w-4 h-4 text-blue-600" /> Choose Photo
+                <Upload className="w-4 h-4 text-blue-300" /> Choose Photo
               </label>
               {faceBase64 && (
-                <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" /> Photo selected
+                <span className="text-xs text-emerald-300 font-semibold flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-300" /> Photo selected
                 </span>
               )}
             </div>
           </div>
 
-          <div className="p-3.5 bg-blue-50 border border-blue-200/80 rounded-xl text-xs text-slate-700">
+          <div className="p-3.5 bg-blue-500/10 border border-blue-400/20/80 rounded-xl text-xs text-text-secondary">
             <p className="font-semibold text-blue-900 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-blue-600" /> How recognition works:
+              <ShieldCheck className="w-4 h-4 text-blue-300" /> How recognition works:
             </p>
-            <p className="text-slate-600 mt-1 leading-relaxed">
+            <p className="text-text-secondary mt-1 leading-relaxed">
               When this person appears on your security cameras, Smart Vision recognizes them immediately and suppresses false alarms so your notifications stay quiet and relevant.
             </p>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-3">
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-text-secondary hover:bg-white/5 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-xs"
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500/100 transition shadow-xs"
             >
               Save Member
             </button>
@@ -325,28 +325,28 @@ export const PeoplePage: React.FC = () => {
         title="Remove Member"
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-700">
+          <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-400/20 rounded-2xl">
+            <AlertTriangle className="w-5 h-5 text-rose-300 shrink-0 mt-0.5" />
+            <div className="text-xs text-text-secondary">
               <p className="font-bold text-rose-900 text-sm">Remove from Household?</p>
-              <p className="mt-1 text-slate-600 leading-relaxed">
+              <p className="mt-1 text-text-secondary leading-relaxed">
                 Are you sure you want to remove{' '}
-                <strong className="text-slate-900">{residentToDelete?.name}</strong>?
+                <strong className="text-text-primary">{residentToDelete?.name}</strong>?
                 Smart Vision will treat them as an unfamiliar visitor if they stay near your home entrances.
               </p>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-3">
             <button
               onClick={() => setDeleteModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-text-secondary hover:bg-white/5 transition"
             >
               Cancel
             </button>
             <button
               onClick={confirmDelete}
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs"
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500/100 transition shadow-xs"
             >
               Remove Member
             </button>

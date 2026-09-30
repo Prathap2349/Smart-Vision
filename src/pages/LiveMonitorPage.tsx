@@ -58,7 +58,7 @@ export const LiveMonitorPage: React.FC = () => {
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition border ${
                   isSelected
                     ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    : 'bg-aurora-surface/90 text-text-secondary border-white/10 hover:bg-aurora-elevated/70'
                 }`}
               >
                 <Camera className="w-3.5 h-3.5" />
@@ -73,27 +73,27 @@ export const LiveMonitorPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left 8 Cols: Live Stream Canvas & AI Overlay Switches */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-xs bg-slate-950">
+          <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-xs bg-slate-950">
             <CCTVCanvasPlayer cameraId={activeCam.id} />
           </div>
 
           {/* AI Stream Overlay Controls */}
-          <Card className="space-y-3 bg-white border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+          <Card className="space-y-3 bg-aurora-surface/90 border-white/10 shadow-xs">
+            <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-blue-600" />
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <Sliders className="w-4 h-4 text-blue-300" />
+                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                   Visual Video Overlays
                 </h3>
               </div>
-              <span className="text-xs text-slate-500 font-medium">
+              <span className="text-xs text-text-muted font-medium">
                 Customize live camera metadata
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-1">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-                <span className="text-xs text-slate-700 font-medium">Person Outlines</span>
+              <div className="p-3 rounded-xl bg-aurora-elevated/70 border border-white/10 flex items-center justify-between">
+                <span className="text-xs text-text-secondary font-medium">Person Outlines</span>
                 <Switch
                   checked={overlayToggles.boundingBoxes}
                   onChange={(checked) =>
@@ -102,8 +102,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-                <span className="text-xs text-slate-700 font-medium">Subject Tags</span>
+              <div className="p-3 rounded-xl bg-aurora-elevated/70 border border-white/10 flex items-center justify-between">
+                <span className="text-xs text-text-secondary font-medium">Subject Tags</span>
                 <Switch
                   checked={overlayToggles.trackIds}
                   onChange={(checked) =>
@@ -112,8 +112,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-                <span className="text-xs text-slate-700 font-medium">Protected Zones</span>
+              <div className="p-3 rounded-xl bg-aurora-elevated/70 border border-white/10 flex items-center justify-between">
+                <span className="text-xs text-text-secondary font-medium">Protected Zones</span>
                 <Switch
                   checked={overlayToggles.zones}
                   onChange={(checked) =>
@@ -122,8 +122,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-                <span className="text-xs text-slate-700 font-medium">Family Match</span>
+              <div className="p-3 rounded-xl bg-aurora-elevated/70 border border-white/10 flex items-center justify-between">
+                <span className="text-xs text-text-secondary font-medium">Family Match</span>
                 <Switch
                   checked={overlayToggles.faceRecognition}
                   onChange={(checked) =>
@@ -132,8 +132,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-                <span className="text-xs text-slate-700 font-medium">Detection Score</span>
+              <div className="p-3 rounded-xl bg-aurora-elevated/70 border border-white/10 flex items-center justify-between">
+                <span className="text-xs text-text-secondary font-medium">Detection Score</span>
                 <Switch
                   checked={overlayToggles.aiLabels}
                   onChange={(checked) =>
@@ -150,11 +150,11 @@ export const LiveMonitorPage: React.FC = () => {
           <DecisionPipelineWidget />
 
           {/* Active Subject Telemetry */}
-          <Card className="space-y-3 bg-white border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+          <Card className="space-y-3 bg-aurora-surface/90 border-white/10 shadow-xs">
+            <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-blue-600" />
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <Activity className="w-4 h-4 text-blue-300" />
+                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                   Active Subject Details
                 </h3>
               </div>
@@ -171,39 +171,39 @@ export const LiveMonitorPage: React.FC = () => {
             </div>
 
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                <span className="text-slate-500">Detected Object:</span>
-                <span className="text-slate-900 font-bold">Human presence</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/10">
+                <span className="text-text-muted">Detected Object:</span>
+                <span className="text-text-primary font-bold">Human presence</span>
               </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                <span className="text-slate-500">Recognition Confidence:</span>
-                <span className="text-blue-600 font-bold">
+              <div className="flex justify-between items-center py-1.5 border-b border-white/10">
+                <span className="text-text-muted">Recognition Confidence:</span>
+                <span className="text-blue-300 font-bold">
                   {Math.round(simulatedPerson.confidence * 100)}%
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                <span className="text-slate-500">Duration in View:</span>
-                <span className="text-amber-600 font-bold">
+              <div className="flex justify-between items-center py-1.5 border-b border-white/10">
+                <span className="text-text-muted">Duration in View:</span>
+                <span className="text-amber-300 font-bold">
                   {simulatedPerson.dwellSeconds} seconds
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                <span className="text-slate-500">Identity:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/10">
+                <span className="text-text-muted">Identity:</span>
                 <span
                   className={
                     simulatedPerson.faceStatus === 'UNKNOWN'
-                      ? 'text-rose-600 font-bold'
+                      ? 'text-rose-300 font-bold'
                       : simulatedPerson.faceStatus === 'VERIFIED_RESIDENT'
-                      ? 'text-emerald-600 font-bold'
-                      : 'text-slate-500'
+                      ? 'text-emerald-300 font-bold'
+                      : 'text-text-muted'
                   }
                 >
                   {simulatedPerson.residentName || (simulatedPerson.faceStatus === 'UNKNOWN' ? 'Unrecognized visitor' : 'Searching...')}
                 </span>
               </div>
               <div className="flex justify-between items-center py-1.5">
-                <span className="text-slate-500">Location In Frame:</span>
-                <span className="text-slate-700 font-medium">
+                <span className="text-text-muted">Location In Frame:</span>
+                <span className="text-text-secondary font-medium">
                   Center zone
                 </span>
               </div>

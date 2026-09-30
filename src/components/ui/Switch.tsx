@@ -20,16 +20,16 @@ export const Switch: React.FC<SwitchProps> = ({ checked, onChange, label, disabl
         />
         <div
           className={`w-11 h-6 rounded-full transition-colors ${
-            checked ? 'bg-blue-600' : 'bg-slate-200'
+            checked ? 'bg-brand-blue shadow-blue-glow' : 'bg-slate-700'
           } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
         <div
-          className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform shadow-xs ${
+          className={`absolute left-1 top-1 bg-aurora-surface/90 w-4 h-4 rounded-full transition-transform shadow-sm ${
             checked ? 'transform translate-x-5' : ''
           }`}
         />
       </div>
-      {label && <span className="text-sm font-medium text-slate-700">{label}</span>}
+      {label && <span className="text-sm font-medium text-text-primary">{label}</span>}
     </label>
   );
 };

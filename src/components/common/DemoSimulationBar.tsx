@@ -18,32 +18,32 @@ export const DemoSimulationBar: React.FC = () => {
   } = useSecurity();
 
   return (
-    <div className="bg-white border-b border-slate-200/90 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs select-none shadow-2xs">
+    <div className="bg-aurora-surface/60 backdrop-blur-md border-b border-white/10 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs select-none">
       <div className="flex items-center gap-3">
         {isRealCameraMode ? (
-          <Badge variant="emerald" pulse>
+          <Badge variant="success">
             Live Camera Connected
           </Badge>
         ) : (
-          <Badge variant="amber" pulse>
+          <Badge variant="warning">
             Demo Preview Mode
           </Badge>
         )}
 
-        <span className="text-slate-500 hidden md:inline">
+        <span className="text-text-muted hidden md:inline">
           {isRealCameraMode
             ? 'Real-time camera feed active • Smart home security enabled'
-            : 'Interactive demo environment • Test real-time intruder and resident scenarios'}
+            : 'Interactive demo environment • Test intruder and resident scenarios'}
         </span>
       </div>
 
       {feedbackToastMessage && (
-        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-blue-800 text-[11px] animate-fadeIn">
-          <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-1 bg-brand-blue/15 border border-brand-blue/30 rounded-full text-blue-300 text-[11px]">
+          <Info className="w-3.5 h-3.5 text-brand-cyan shrink-0" />
           <span className="truncate max-w-md">{feedbackToastMessage}</span>
           <button
             onClick={() => setFeedbackToastMessage(null)}
-            className="ml-2 text-slate-400 hover:text-slate-700 font-bold"
+            className="ml-2 text-text-muted hover:text-text-primary font-bold"
           >
             ×
           </button>
@@ -53,7 +53,7 @@ export const DemoSimulationBar: React.FC = () => {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setDeviceCameraModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition shadow-xs"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-blue hover:bg-blue-600 text-white font-semibold transition shadow-blue-glow"
         >
           <Camera className="w-3.5 h-3.5" />
           Test Webcam
@@ -63,17 +63,17 @@ export const DemoSimulationBar: React.FC = () => {
           <>
             <button
               onClick={() => setHikvisionSetupModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold hover:bg-slate-200 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-text-secondary font-semibold hover:bg-white/10 transition"
             >
-              <Video className="w-3.5 h-3.5 text-slate-500" />
+              <Video className="w-3.5 h-3.5 text-text-muted" />
               Configure Camera
             </button>
 
             <button
               onClick={() => setIsRealCameraMode(false)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 font-medium hover:bg-slate-200 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 text-text-secondary font-medium hover:bg-white/10 transition"
             >
-              Switch to Demo Mode
+              Switch to Demo
             </button>
           </>
         ) : (
@@ -83,9 +83,9 @@ export const DemoSimulationBar: React.FC = () => {
                 setHikvisionSetupModalOpen(true);
                 setIsRealCameraMode(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold hover:bg-slate-200 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-text-secondary font-semibold hover:bg-white/10 transition"
             >
-              <Video className="w-3.5 h-3.5 text-blue-600" />
+              <Video className="w-3.5 h-3.5 text-brand-cyan" />
               Connect Camera
             </button>
 
@@ -93,8 +93,8 @@ export const DemoSimulationBar: React.FC = () => {
               onClick={toggleSimulation}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition border ${
                 isSimulating
-                  ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
-                  : 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500'
+                  ? 'bg-brand-warning/15 border-brand-warning/30 text-amber-300 hover:bg-brand-warning/25'
+                  : 'bg-brand-success/15 border-brand-success/30 text-brand-success hover:bg-brand-success/25'
               }`}
             >
               {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -103,17 +103,17 @@ export const DemoSimulationBar: React.FC = () => {
 
             <button
               onClick={triggerThreatSimulation}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-semibold hover:bg-rose-100 transition shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-alert/15 border border-brand-alert/30 text-rose-400 font-semibold hover:bg-brand-alert/25 transition shadow-rose-glow"
             >
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <AlertTriangle className="w-3.5 h-3.5" />
               Simulate Intruder
             </button>
 
             <button
               onClick={triggerResidentSimulation}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold hover:bg-emerald-100 transition shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-success/15 border border-brand-success/30 text-brand-success font-semibold hover:bg-brand-success/25 transition"
             >
-              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <UserCheck className="w-3.5 h-3.5" />
               Simulate Resident
             </button>
           </>

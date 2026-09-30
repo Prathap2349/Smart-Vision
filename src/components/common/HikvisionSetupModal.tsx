@@ -143,7 +143,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Connect Any Home CCTV Camera">
       <form onSubmit={handleSaveAndConnect} className="space-y-5">
         <div>
-          <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">
             Select Your Camera Brand
           </label>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
@@ -155,7 +155,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
                 className={`p-2.5 rounded-xl border font-bold flex flex-col items-center gap-1.5 transition ${
                   selectedBrand === bKey
                     ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                    : 'bg-slate-900 border-slate-800 text-text-muted hover:text-slate-200'
                 }`}
               >
                 <Video className="w-4 h-4" />
@@ -171,7 +171,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
               <Radar className="w-4 h-4 text-cyan-400 shrink-0" />
               <div>
                 <p className="text-xs font-bold text-white">ONVIF Network Scan</p>
-                <p className="text-[10px] text-slate-400">Scan LAN for local IP cameras</p>
+                <p className="text-[10px] text-text-muted">Scan LAN for local IP cameras</p>
               </div>
             </div>
             <button
@@ -189,13 +189,13 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
               <Video className="w-4 h-4 text-emerald-400 shrink-0" />
               <div>
                 <p className="text-xs font-bold text-white">Instant Webcam Test</p>
-                <p className="text-[10px] text-slate-400">Use built-in camera</p>
+                <p className="text-[10px] text-text-muted">Use built-in camera</p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleUseWebcam}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shrink-0"
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500/100 text-white font-bold text-xs transition shrink-0"
             >
               Use Webcam
             </button>
@@ -203,7 +203,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
         </div>
 
         <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs flex items-center justify-between">
-          <span className="text-slate-400 font-mono">Stream Path Template:</span>
+          <span className="text-text-muted font-mono">Stream Path Template:</span>
           <code className="text-cyan-300 font-mono text-[11px] bg-slate-900 px-2 py-1 rounded">
             rtsp://{username}:***@{host}:{port}{brandTemplates[selectedBrand].pathTemplate}
           </code>
@@ -211,7 +211,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="block text-slate-400 mb-1">Camera Name</label>
+            <label className="block text-text-muted mb-1">Camera Name</label>
             <input
               type="text"
               value={cameraName}
@@ -222,7 +222,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">IP Address (Host)</label>
+            <label className="block text-text-muted mb-1">IP Address (Host)</label>
             <input
               type="text"
               value={host}
@@ -234,7 +234,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">RTSP Port</label>
+            <label className="block text-text-muted mb-1">RTSP Port</label>
             <input
               type="number"
               value={port}
@@ -245,7 +245,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">Local Username</label>
+            <label className="block text-text-muted mb-1">Local Username</label>
             <input
               type="text"
               value={username}
@@ -257,7 +257,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-slate-400 mb-1">Local Camera Password</label>
+            <label className="block text-text-muted mb-1">Local Camera Password</label>
             <input
               type="password"
               placeholder="••••••••••••"
@@ -303,7 +303,7 @@ export const HikvisionSetupModal: React.FC<HikvisionSetupModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800"
+              className="px-4 py-2.5 rounded-xl text-xs font-medium text-text-muted hover:bg-slate-800"
             >
               Cancel
             </button>

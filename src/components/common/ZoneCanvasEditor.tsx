@@ -53,7 +53,7 @@ export const ZoneCanvasEditor: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Canvas Preview Area */}
         <div className="lg:col-span-2 space-y-4">
-          <Card className="p-0 overflow-hidden bg-white border-slate-200/80 shadow-xs">
+          <Card className="p-0 overflow-hidden bg-aurora-surface/90 border-white/10 shadow-xs">
             <div className="relative w-full aspect-video bg-slate-950 flex items-center justify-center">
               {/* Visual Canvas Representation */}
               <svg className="absolute inset-0 w-full h-full">
@@ -111,12 +111,12 @@ export const ZoneCanvasEditor: React.FC = () => {
           </Card>
 
           {/* Explanation Banner */}
-          <div className="p-4 bg-blue-50 border border-blue-200/80 rounded-2xl text-xs text-slate-700 flex items-start gap-3">
-            <Shield className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="p-4 bg-blue-500/10 border border-blue-400/20/80 rounded-2xl text-xs text-text-secondary flex items-start gap-3">
+            <Shield className="w-5 h-5 text-blue-300 shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-blue-900">How Protected Areas Work:</p>
-              <p className="text-slate-600 mt-1 leading-relaxed">
-                Smart Vision only sends an alert when an unfamiliar person stays inside this boundary longer than your set duration (default: <strong className="text-slate-900">20 seconds</strong>). Recognized family members pass freely without causing false alarms.
+              <p className="text-text-secondary mt-1 leading-relaxed">
+                Smart Vision only sends an alert when an unfamiliar person stays inside this boundary longer than your set duration (default: <strong className="text-text-primary">20 seconds</strong>). Recognized family members pass freely without causing false alarms.
               </p>
             </div>
           </div>
@@ -126,30 +126,30 @@ export const ZoneCanvasEditor: React.FC = () => {
         <div className="space-y-6">
           {/* Active Zone Parameter Editor */}
           {activeZone && (
-            <Card className="space-y-4 bg-white border-slate-200/80 shadow-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-blue-600" /> Boundary Settings
+            <Card className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-blue-300" /> Boundary Settings
                 </h3>
                 <StatusBadge variant="info" label={activeZone.type} />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Zone Name</label>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Zone Name</label>
                 <input
                   type="text"
                   value={activeZone.name}
                   onChange={(e) => updateZone(activeZone.id, { name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+                  className="w-full bg-aurora-elevated/70 border border-white/15 rounded-xl px-3.5 py-2 text-sm text-text-primary focus:border-blue-500 focus:bg-aurora-surface/90 outline-none"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-700">
+                  <label className="text-xs font-semibold text-text-secondary">
                     Stay Duration Threshold
                   </label>
-                  <span className="text-xs font-bold text-blue-600">{activeZone.dwellThreshold}s</span>
+                  <span className="text-xs font-bold text-blue-300">{activeZone.dwellThreshold}s</span>
                 </div>
                 <input
                   type="range"
@@ -161,11 +161,11 @@ export const ZoneCanvasEditor: React.FC = () => {
                   }
                   className="w-full accent-blue-600 cursor-pointer"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Recommended duration: 20 seconds</p>
+                <p className="text-[11px] text-text-muted mt-1">Recommended duration: 20 seconds</p>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <span className="text-xs font-medium text-slate-700">Active Protection</span>
+              <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                <span className="text-xs font-medium text-text-secondary">Active Protection</span>
                 <Switch
                   checked={activeZone.enabled}
                   onChange={(checked) => updateZone(activeZone.id, { enabled: checked })}
@@ -175,9 +175,9 @@ export const ZoneCanvasEditor: React.FC = () => {
           )}
 
           {/* Add New Zone Form */}
-          <Card className="space-y-4 bg-white border-slate-200/80 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Plus className="w-4 h-4 text-blue-600" /> Create New Boundary
+          <Card className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs">
+            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+              <Plus className="w-4 h-4 text-blue-300" /> Create New Boundary
             </h3>
             <form onSubmit={handleCreateZone} className="space-y-3">
               <div>
@@ -186,7 +186,7 @@ export const ZoneCanvasEditor: React.FC = () => {
                   placeholder="e.g. Backyard Patio Area"
                   value={newZoneName}
                   onChange={(e) => setNewZoneName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+                  className="w-full bg-aurora-elevated/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-text-primary focus:border-blue-500 focus:bg-aurora-surface/90 outline-none"
                 />
               </div>
 
@@ -195,7 +195,7 @@ export const ZoneCanvasEditor: React.FC = () => {
                   <select
                     value={newZoneType}
                     onChange={(e) => setNewZoneType(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-700 focus:border-blue-500 focus:bg-white outline-none"
+                    className="w-full bg-aurora-elevated/70 border border-white/15 rounded-xl px-2.5 py-2 text-xs text-text-secondary focus:border-blue-500 focus:bg-aurora-surface/90 outline-none"
                   >
                     <option value="CORRIDOR">Entrance</option>
                     <option value="ENTRY">Doorstep</option>
@@ -210,14 +210,14 @@ export const ZoneCanvasEditor: React.FC = () => {
                     value={newDwell}
                     onChange={(e) => setNewDwell(Number(e.target.value))}
                     placeholder="Duration (s)"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+                    className="w-full bg-aurora-elevated/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-text-primary focus:border-blue-500 focus:bg-aurora-surface/90 outline-none"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs transition shadow-xs"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500/100 text-white font-semibold rounded-xl text-xs transition shadow-xs"
               >
                 Add Boundary
               </button>

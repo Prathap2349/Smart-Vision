@@ -1,61 +1,53 @@
 import React from 'react';
 import { clsx } from 'clsx';
 
-interface BadgeProps {
+export interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'cyan' | 'blue' | 'emerald' | 'rose' | 'amber' | 'slate' | 'purple';
+  variant?: 'default' | 'success' | 'danger' | 'warning' | 'info' | 'cyan' | 'violet' | 'outline' | 'emerald' | 'rose' | 'amber' | 'slate' | 'blue' | 'purple';
+  size?: 'sm' | 'md';
   pulse?: boolean;
   className?: string;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
   children,
-  variant = 'slate',
+  variant = 'default',
+  size = 'md',
   pulse = false,
   className,
 }) => {
   const variantStyles = {
-    cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    blue: 'bg-blue-50 text-blue-700 border-blue-200',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    rose: 'bg-rose-50 text-rose-700 border-rose-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-    slate: 'bg-slate-100 text-slate-700 border-slate-200',
-    purple: 'bg-purple-50 text-purple-700 border-purple-200',
+    default: 'bg-slate-800/80 text-text-secondary border-white/10',
+    success: 'bg-brand-success/15 text-brand-success border-brand-success/30',
+    danger: 'bg-brand-alert/15 text-rose-400 border-brand-alert/30',
+    warning: 'bg-brand-warning/15 text-amber-300 border-brand-warning/30',
+    info: 'bg-brand-blue/15 text-blue-300 border-brand-blue/30',
+    cyan: 'bg-brand-cyan/15 text-cyan-300 border-brand-cyan/30 shadow-cyan-glow',
+    violet: 'bg-brand-violet/15 text-violet-300 border-brand-violet/30',
+    outline: 'border-white/15 text-text-muted bg-transparent',
+    emerald: 'bg-brand-success/15 text-emerald-300 border-brand-success/30',
+    rose: 'bg-brand-alert/15 text-rose-300 border-brand-alert/30',
+    amber: 'bg-brand-warning/15 text-amber-300 border-brand-warning/30',
+    slate: 'bg-slate-800/80 text-text-secondary border-white/10',
+    blue: 'bg-brand-blue/15 text-blue-300 border-brand-blue/30',
+    purple: 'bg-brand-violet/15 text-violet-300 border-brand-violet/30',
+  };
+
+  const sizeStyles = {
+    sm: 'px-2 py-0.5 text-xs',
+    md: 'px-2.5 py-1 text-xs',
   };
 
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+        'inline-flex items-center rounded-full border font-medium tracking-wide',
         variantStyles[variant],
+        sizeStyles[size],
         className
       )}
     >
-      {pulse && (
-        <span className="relative flex h-2 w-2">
-          <span
-            className={clsx(
-              'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
-              variant === 'rose' && 'bg-rose-400',
-              variant === 'emerald' && 'bg-emerald-400',
-              (variant === 'cyan' || variant === 'blue') && 'bg-blue-400',
-              variant === 'amber' && 'bg-amber-400',
-              variant === 'slate' && 'bg-slate-400'
-            )}
-          />
-          <span
-            className={clsx(
-              'relative inline-flex rounded-full h-2 w-2',
-              variant === 'rose' && 'bg-rose-500',
-              variant === 'emerald' && 'bg-emerald-500',
-              (variant === 'cyan' || variant === 'blue') && 'bg-blue-500',
-              variant === 'amber' && 'bg-amber-500',
-              variant === 'slate' && 'bg-slate-500'
-            )}
-          />
-        </span>
-      )}
+      {pulse && <span aria-hidden="true" className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
       {children}
     </span>
   );

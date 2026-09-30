@@ -37,31 +37,31 @@ export const FalsePositiveModal: React.FC = () => {
     <Modal
       isOpen={!!feedbackModalAlert}
       onClose={() => setFeedbackModalAlert(null)}
-      title="False Alert Feedback Loop"
+      title="Report false alarm"
     >
       {submitted ? (
         <div className="py-8 text-center space-y-3">
-          <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
-          <h4 className="text-lg font-bold text-white">Feedback Recorded</h4>
-          <p className="text-sm text-slate-300">
-            Edge model confidence threshold updated. Future false alerts from this environmental trigger will be suppressed.
+          <CheckCircle className="w-12 h-12 text-brand-success mx-auto animate-bounce" />
+          <h4 className="text-lg font-bold text-text-primary">Feedback Recorded</h4>
+          <p className="text-sm text-text-secondary">
+            Thank you. Future similar alerts will be better filtered based on your feedback.
           </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="flex items-center gap-3 p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl text-amber-300 text-xs">
-            <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0" />
+          <div className="flex items-center gap-3 p-3 bg-brand-warning/10 border border-brand-warning/30 rounded-xl text-amber-300 text-xs">
+            <ShieldAlert className="w-5 h-5 text-amber-300 shrink-0" />
             <div>
               <p className="font-semibold">Was this alert a false alarm?</p>
-              <p className="text-amber-400/80">
-                Flagging false alarms trains local edge thresholds to distinguish foliage, wind, and shadows from true human threats.
+              <p className="text-text-secondary">
+                Flagging false alarms helps Smart Vision learn to distinguish real events from environmental motion.
               </p>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
-              Select Primary Cause of False Positive:
+            <label className="block text-xs font-semibold text-text-secondary mb-2">
+              What caused the false alert?
             </label>
             <div className="grid grid-cols-2 gap-2">
               {REASON_OPTIONS.map(opt => (
@@ -71,8 +71,8 @@ export const FalsePositiveModal: React.FC = () => {
                   onClick={() => setSelectedReason(opt.id)}
                   className={`p-3 rounded-xl text-left text-xs font-medium border transition-all ${
                     selectedReason === opt.id
-                      ? 'bg-indigo-950/80 border-indigo-500 text-indigo-200 shadow-md shadow-indigo-500/20'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-brand-blue/15 border-brand-blue/40 text-blue-300 shadow-blue-glow'
+                      : 'bg-aurora-bg/80 border-white/10 text-text-secondary hover:border-white/20'
                   }`}
                 >
                   {opt.label}
@@ -83,28 +83,28 @@ export const FalsePositiveModal: React.FC = () => {
 
           {selectedReason === 'Other' && (
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Specify Details:</label>
+              <label className="block text-xs text-text-secondary mb-1">Describe what happened:</label>
               <input
                 type="text"
                 value={customNote}
                 onChange={e => setCustomNote(e.target.value)}
                 placeholder="e.g. Car headlight beam flare..."
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 outline-none"
+                className="w-full bg-aurora-bg border border-white/15 rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-cyan/50 focus:outline-none"
               />
             </div>
           )}
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-3">
             <button
               type="button"
               onClick={() => setFeedbackModalAlert(null)}
-              className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800 transition"
+              className="px-4 py-2.5 rounded-xl text-xs font-medium text-text-muted hover:bg-white/10 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/20"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-blue hover:bg-blue-600 transition shadow-blue-glow"
             >
               Submit Feedback
             </button>

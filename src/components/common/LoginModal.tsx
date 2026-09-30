@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSecurity } from '../../context/SecurityContext';
-import { Shield, ArrowRight, X, Phone, Mail, Camera } from 'lucide-react';
+import { Shield, ArrowRight, X, Camera } from 'lucide-react';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -28,26 +28,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative text-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-aurora-elevated border border-white/15 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl shadow-black/50 space-y-5 relative text-text-primary">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition"
+          className="absolute top-4 right-4 p-2 text-text-muted hover:text-text-primary rounded-xl hover:bg-white/10 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-blue to-brand-violet flex items-center justify-center shadow-lg shadow-brand-blue/25 shrink-0">
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 leading-tight">
+            <h2 className="text-lg font-bold text-text-primary leading-tight">
               Sign In to Smart Vision
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">Use your mobile number, email, or Google account</p>
+            <p className="text-xs text-text-muted mt-0.5">Use your mobile number, email, or Google account</p>
           </div>
         </div>
 
@@ -55,7 +55,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition shadow-2xs flex items-center justify-center gap-2.5"
+          className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 border border-white/15 text-text-primary font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2.5"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -78,16 +78,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <span>Continue with Google</span>
         </button>
 
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <div className="flex-1 h-px bg-slate-200" />
+        <div className="flex items-center gap-3 text-xs text-text-muted">
+          <div className="flex-1 h-px bg-white/10" />
           <span>or sign in with phone / email</span>
-          <div className="flex-1 h-px bg-slate-200" />
+          <div className="flex-1 h-px bg-white/10" />
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-text-secondary mb-1">
               Mobile Phone or Email
             </label>
             <input
@@ -95,25 +95,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               value={identifier}
               onChange={e => setIdentifier(e.target.value)}
               placeholder="e.g. 8838523456 or name@gmail.com"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+              className="w-full bg-aurora-bg border border-white/15 rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-cyan/50 focus:outline-none transition"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+              className="w-full bg-aurora-bg border border-white/15 rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-cyan/50 focus:outline-none transition"
               required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 group"
+            className="w-full py-3 bg-brand-blue hover:bg-blue-600 text-white font-bold rounded-xl text-sm transition shadow-blue-glow flex items-center justify-center gap-2 group"
           >
             <span>Sign In to Dashboard</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -121,8 +121,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         </form>
 
         {/* Device Camera Test Section */}
-        <div className="pt-2 border-t border-slate-100 space-y-2 text-center">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+        <div className="pt-2 border-t border-white/10 space-y-2 text-center">
+          <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider block">
             Try Without Logging In
           </span>
 
@@ -132,9 +132,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               onClose();
               setDeviceCameraModalOpen(true);
             }}
-            className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-text-secondary font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2"
           >
-            <Camera className="w-4 h-4 text-blue-600" />
+            <Camera className="w-4 h-4 text-brand-cyan" />
             <span>Test with Device Camera</span>
           </button>
         </div>

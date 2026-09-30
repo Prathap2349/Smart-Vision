@@ -508,7 +508,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                     : 'EDGE BACKEND NOT CONNECTED'}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-text-muted">
                 {engineMode === 'FASTAPI_BACKEND'
                   ? 'Real-Time Multi-Person Pipeline (YOLOv8 + Lightweight IoU Tracker + Decision Engine) • Zero Simulated Data'
                   : engineMode === 'BACKEND_NOT_CONFIGURED'
@@ -523,7 +523,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
               stopCameraTest();
               onClose();
             }}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
+            className="p-2 text-text-muted hover:text-white rounded-xl hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -539,7 +539,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             ) : (
               <RefreshCw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
             )}
-            <span className={selfTest.permission === 'pass' ? 'text-emerald-300' : 'text-slate-400'}>
+            <span className={selfTest.permission === 'pass' ? 'text-emerald-300' : 'text-text-muted'}>
               Camera Access
             </span>
           </div>
@@ -565,7 +565,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             ) : (
               <RefreshCw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
             )}
-            <span className={selfTest.yolo === 'pass' ? 'text-emerald-300' : 'text-slate-400'}>
+            <span className={selfTest.yolo === 'pass' ? 'text-emerald-300' : 'text-text-muted'}>
               Multi-Person YOLO
             </span>
           </div>
@@ -578,7 +578,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             ) : (
               <RefreshCw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
             )}
-            <span className={selfTest.tracking === 'pass' ? 'text-emerald-300' : 'text-slate-400'}>
+            <span className={selfTest.tracking === 'pass' ? 'text-emerald-300' : 'text-text-muted'}>
               IoU Tracker
             </span>
           </div>
@@ -671,7 +671,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             <button
               onClick={() => setActiveTab('TELEMETRY')}
               className={`px-3 py-1 rounded-lg font-bold transition ${
-                activeTab === 'TELEMETRY' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                activeTab === 'TELEMETRY' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-text-muted hover:text-white'
               }`}
             >
               LIVE TELEMETRY
@@ -679,7 +679,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             <button
               onClick={() => setActiveTab('GALLERY')}
               className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'GALLERY' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                activeTab === 'GALLERY' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-text-muted hover:text-white'
               }`}
             >
               <ImageIcon className="w-3.5 h-3.5" />
@@ -688,7 +688,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             <button
               onClick={() => setActiveTab('LOGS')}
               className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'LOGS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                activeTab === 'LOGS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-text-muted hover:text-white'
               }`}
             >
               <ListFilter className="w-3.5 h-3.5" />
@@ -697,7 +697,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             <button
               onClick={() => setActiveTab('DIAGNOSTICS')}
               className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'DIAGNOSTICS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                activeTab === 'DIAGNOSTICS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-text-muted hover:text-white'
               }`}
             >
               <Info className="w-3.5 h-3.5" />
@@ -740,7 +740,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 <div
                   className={`absolute border-2 border-dashed pointer-events-none transition-all duration-300 ${
                     selectedZone === 'Corridor Protection Zone'
-                      ? 'top-[15%] left-[20%] w-[60%] h-[70%] border-amber-400/70 bg-amber-500/5'
+                      ? 'top-[15%] left-[20%] w-[60%] h-[70%] border-amber-400/70 bg-amber-500/100/5'
                       : selectedZone === 'Main Entrance ROI'
                       ? 'top-[10%] left-[30%] w-[40%] h-[45%] border-cyan-400/70 bg-cyan-500/5'
                       : 'top-[2%] left-[2%] w-[96%] h-[96%] border-indigo-400/70 bg-indigo-500/5'
@@ -785,7 +785,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
                 {/* Status Header Overlay */}
                 <div className="absolute top-3 left-3 flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
-                  <span className={`w-2 h-2 rounded-full ${engineMode === 'FASTAPI_BACKEND' ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
+                  <span className={`w-2 h-2 rounded-full ${engineMode === 'FASTAPI_BACKEND' ? 'bg-emerald-400 animate-ping' : 'bg-rose-500/100'}`} />
                   <span>{engineMode === 'FASTAPI_BACKEND' ? 'LIVE DEVICE CAMERA' : 'CAMERA CONNECTED • EDGE BACKEND NOT CONNECTED'}</span>
                 </div>
 
@@ -802,11 +802,11 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   <span className="flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-cyan-400" /> ACTIVE TRACKED SUBJECTS ({activeTracks.length})
                   </span>
-                  <span className="text-[10px] text-slate-400">REAL YOLO TRACKS</span>
+                  <span className="text-[10px] text-text-muted">REAL YOLO TRACKS</span>
                 </div>
 
                 {activeTracks.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center text-xs font-mono text-slate-500">
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center text-xs font-mono text-text-muted">
                     {engineMode === 'FASTAPI_BACKEND'
                       ? '— 0 PEOPLE DETECTED • NO ACTIVE TRACKS IN CAMERA VIEW —'
                       : '— EDGE BACKEND NOT CONNECTED • 0 PEOPLE DETECTED —'}
@@ -830,26 +830,26 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                               <Activity className="w-3.5 h-3.5 text-indigo-400" /> TRACK {String(t.track_id)}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              isThreat ? 'bg-rose-950 text-rose-400 border border-rose-500/40' : isInsideROI ? 'bg-amber-950 text-amber-300 border border-amber-500/40' : 'bg-slate-950 text-slate-400 border border-slate-800'
+                              isThreat ? 'bg-rose-950 text-rose-400 border border-rose-500/40' : isInsideROI ? 'bg-amber-950 text-amber-300 border border-amber-500/40' : 'bg-slate-950 text-text-muted border border-slate-800'
                             }`}>
                               {isThreat ? '🚨 THREAT' : isInsideROI ? '👁️ MONITORING' : 'OUTSIDE ROI'}
                             </span>
                           </div>
 
                           <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] text-slate-400">
+                            <div className="flex justify-between text-[11px] text-text-muted">
                               <span>Dwell Duration:</span>
                               <span className="font-bold text-white">{isInsideROI ? `${t.dwell_seconds.toFixed(1)}s / ${dwellThreshold}s` : '—'}</span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                               <div
                                 style={{ width: `${pct}%` }}
-                                className={`h-full transition-all duration-300 ${isThreat ? 'bg-rose-500' : 'bg-amber-400'}`}
+                                className={`h-full transition-all duration-300 ${isThreat ? 'bg-rose-500/100' : 'bg-amber-400'}`}
                               />
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
+                          <div className="grid grid-cols-2 gap-1 text-[10px] text-text-muted pt-1 border-t border-slate-800/60">
                             <div>Confidence: <strong className="text-slate-200">{(t.confidence * 100).toFixed(1)}%</strong></div>
                             <div>Zone: <strong className="text-slate-200">{t.current_zone || selectedZone}</strong></div>
                           </div>
@@ -880,10 +880,10 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                     {activeTracks.length > 0 ? (
                       <span className="text-emerald-400 font-mono text-[11px]">✓ PASS ({activeTracks.length})</span>
                     ) : (
-                      <span className="text-slate-500 font-mono text-[11px]">— IDLE</span>
+                      <span className="text-text-muted font-mono text-[11px]">— IDLE</span>
                     )}
                   </div>
-                  <p className="text-[10px] text-slate-400 font-mono">
+                  <p className="text-[10px] text-text-muted font-mono">
                     {activeTracks.length > 0
                       ? `${activeTracks.length} human silhouette(s) detected by YOLO`
                       : '0 human silhouettes in camera frame'}
@@ -899,12 +899,12 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                     {activeTracks.some(t => t.current_zone !== 'Outside ROI' && t.dwell_seconds >= dwellThreshold) ? (
                       <span className="text-rose-400 font-mono text-[11px]">✓ TRIGGERED</span>
                     ) : (
-                      <span className="text-slate-500 font-mono text-[11px]">
+                      <span className="text-text-muted font-mono text-[11px]">
                         {activeTracks.length > 0 ? `${Math.max(...activeTracks.map(t => t.dwell_seconds)).toFixed(1)}s / ${dwellThreshold}s` : `0s / ${dwellThreshold}s`}
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-slate-400 font-mono">
+                  <p className="text-[10px] text-text-muted font-mono">
                     {activeTracks.some(t => t.current_zone !== 'Outside ROI' && t.dwell_seconds >= dwellThreshold)
                       ? `Loitering threshold exceeded (${dwellThreshold}s)`
                       : 'Monitoring loitering dwell duration'}
@@ -924,17 +924,17 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                         <span className="text-amber-400 font-mono text-[11px]">⚠ UNKNOWN</span>
                       )
                     ) : (
-                      <span className="text-slate-500 font-mono text-[11px]">— IDLE</span>
+                      <span className="text-text-muted font-mono text-[11px]">— IDLE</span>
                     )}
                   </div>
-                  <p className="text-[10px] text-slate-400 font-mono">
+                  <p className="text-[10px] text-text-muted font-mono">
                     Prototype Visual Feature Vector Matcher
                   </p>
                 </div>
 
                 {/* Final Decision Banner */}
                 <div className="p-3 rounded-xl bg-gradient-to-r from-slate-950 to-slate-900 border border-slate-700 text-center space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">PIPELINE DECISION</span>
+                  <span className="text-[10px] text-text-muted uppercase font-bold block">PIPELINE DECISION</span>
                   <span
                     className={`text-base font-extrabold tracking-tight block ${
                       decision.final_decision === 'VERIFIED_THREAT'
@@ -943,7 +943,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                         ? 'text-emerald-400'
                         : activeTracks.length > 0
                         ? 'text-amber-300'
-                        : 'text-slate-400'
+                        : 'text-text-muted'
                     }`}
                   >
                     {decision.final_decision === 'VERIFIED_THREAT'
@@ -963,7 +963,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   stopCameraTest();
                   onClose();
                 }}
-                className="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-rose-600 hover:bg-rose-500/100 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
               >
                 <Square className="w-4 h-4" />
                 <span>STOP CAMERA TEST</span>
@@ -979,7 +979,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-cyan-400" />
                 <span className="font-bold text-white uppercase">TEMPORARY EVENT SNAPSHOT GALLERY</span>
-                <span className="text-slate-400">({snapshotGallery.length} Captured Events)</span>
+                <span className="text-text-muted">({snapshotGallery.length} Captured Events)</span>
               </div>
 
               {snapshotGallery.length > 0 && (
@@ -994,9 +994,9 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
             {snapshotGallery.length === 0 ? (
               <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-2">
-                <ImageIcon className="w-8 h-8 text-slate-600 mx-auto" />
+                <ImageIcon className="w-8 h-8 text-text-secondary mx-auto" />
                 <h4 className="text-sm font-bold text-slate-300">No Snapshot Events Triggered Yet</h4>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                <p className="text-xs text-text-muted max-w-md mx-auto">
                   When a real tracked person remains inside the selected ROI zone for &ge; {dwellThreshold}s, a real webcam frame snapshot will be captured and displayed here.
                 </p>
               </div>
@@ -1018,7 +1018,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-text-muted">
                       <span>Time: <strong className="text-slate-200">{snap.timestamp}</strong></span>
                       <span className="text-amber-400">{snap.zoneName}</span>
                     </div>
@@ -1037,12 +1037,12 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 <ListFilter className="w-4 h-4 text-cyan-400" />
                 <span className="font-bold text-white uppercase">LIVE MULTI-TRACK EVENT TIMELINE LOG</span>
               </div>
-              <span className="text-slate-400 text-[11px]">{eventLog.length} Events</span>
+              <span className="text-text-muted text-[11px]">{eventLog.length} Events</span>
             </div>
 
             <div className="h-64 overflow-y-auto space-y-1.5 p-2 bg-slate-950 rounded-2xl border border-slate-800 font-mono text-xs">
               {eventLog.length === 0 ? (
-                <div className="text-slate-500 text-center py-10">— LOG INITIALIZING —</div>
+                <div className="text-text-muted text-center py-10">— LOG INITIALIZING —</div>
               ) : (
                 eventLog.map(item => (
                   <div
@@ -1055,7 +1055,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                         : 'bg-slate-900 border-slate-800 text-slate-300'
                     } flex items-start gap-2 text-[11px]`}
                   >
-                    <span className="text-slate-500 font-bold shrink-0">[{item.timestamp}]</span>
+                    <span className="text-text-muted font-bold shrink-0">[{item.timestamp}]</span>
                     <span className="flex-1">{item.message}</span>
                   </div>
                 ))
@@ -1079,29 +1079,29 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-[10px] text-slate-400 block uppercase">WEBCAM STREAM</span>
+                <span className="text-[10px] text-text-muted block uppercase">WEBCAM STREAM</span>
                 <span className="font-bold text-emerald-400">{mediaStreamRef.current ? 'LIVE' : 'DISCONNECTED'}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-[10px] text-slate-400 block uppercase">EDGE BACKEND</span>
+                <span className="text-[10px] text-text-muted block uppercase">EDGE BACKEND</span>
                 <span className={`font-bold ${engineMode === 'FASTAPI_BACKEND' ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {engineMode === 'FASTAPI_BACKEND' ? 'CONNECTED' : 'OFFLINE'}
                 </span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-[10px] text-slate-400 block uppercase">ACTIVE TRACKS</span>
+                <span className="text-[10px] text-text-muted block uppercase">ACTIVE TRACKS</span>
                 <span className="font-bold text-cyan-400">{activeTracks.length}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-[10px] text-slate-400 block uppercase">PROCESSING FPS</span>
+                <span className="text-[10px] text-text-muted block uppercase">PROCESSING FPS</span>
                 <span className="font-bold text-indigo-400">{engineMode === 'FASTAPI_BACKEND' ? `${realFps.toFixed(1)} FPS` : '—'}</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-slate-400">
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-text-muted">
               <strong className="text-slate-200 block">Real-Time Data Pipeline Specification:</strong>
               <ul className="list-disc pl-4 space-y-1 text-[11px]">
                 <li>Zero fake / simulated detections exist in Device Camera Test Mode.</li>
@@ -1122,7 +1122,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   <ShieldAlert className="w-5 h-5 text-rose-400" />
                   <h3 className="text-sm font-bold text-white">SNAPSHOT EVENT DETAIL — TRACK {String(selectedSnapshot.trackId)}</h3>
                 </div>
-                <button onClick={() => setSelectedSnapshot(null)} className="p-1 text-slate-400 hover:text-white rounded-lg">
+                <button onClick={() => setSelectedSnapshot(null)} className="p-1 text-text-muted hover:text-white rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1133,16 +1133,16 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
               <div className="grid grid-cols-2 gap-2 font-mono text-xs text-slate-300">
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">TRIGGER DWELL</span>
+                  <span className="text-[10px] text-text-muted block">TRIGGER DWELL</span>
                   <span className="font-bold text-rose-400">{selectedSnapshot.dwellSeconds.toFixed(1)}s</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">PROTECTION ZONE</span>
+                  <span className="text-[10px] text-text-muted block">PROTECTION ZONE</span>
                   <span className="font-bold text-cyan-300">{selectedSnapshot.zoneName}</span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <p className="text-[11px] text-text-muted bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                 ℹ️ <strong>Temporary Storage Note:</strong> This webcam snapshot is saved only in local application memory for test verification and will be auto-deleted when test mode is exited.
               </p>
             </div>
@@ -1164,39 +1164,39 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono">
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block uppercase">Duration</span>
+                <span className="text-[10px] text-text-muted block uppercase">Duration</span>
                 <span className="text-sm font-bold text-white">{summaryData.durationSeconds}s</span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block uppercase">Frames</span>
+                <span className="text-[10px] text-text-muted block uppercase">Frames</span>
                 <span className="text-sm font-bold text-cyan-400">{summaryData.framesProcessed}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block uppercase">Average AI FPS</span>
+                <span className="text-[10px] text-text-muted block uppercase">Average AI FPS</span>
                 <span className="text-sm font-bold text-indigo-400">{summaryData.averageFps}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block uppercase">Unique People</span>
+                <span className="text-[10px] text-text-muted block uppercase">Unique People</span>
                 <span className="text-sm font-bold text-amber-400">{summaryData.tracksCreatedCount}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block uppercase">Snapshots</span>
+                <span className="text-[10px] text-text-muted block uppercase">Snapshots</span>
                 <span className="text-sm font-bold text-rose-400">{summaryData.snapshotsCapturedCount || 0}</span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-400 bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <p className="text-xs text-text-muted bg-slate-950 p-3 rounded-xl border border-slate-800">
               ℹ️ <strong>Honest Evaluation Note:</strong> Live webcam frames were processed locally by FastAPI Edge AI Engine. Temporary test snapshots have been purged from active memory.
             </p>
           </div>
         )}
 
         {/* Privacy Notice Banner */}
-        <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3 text-xs text-slate-400">
+        <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3 text-xs text-text-muted">
           <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
           <p className="leading-tight">
             <strong>100% Local Privacy Notice:</strong> Camera frames are processed locally by the Edge AI engine and are not uploaded to cloud storage. Camera access ends immediately when Test Mode is stopped.

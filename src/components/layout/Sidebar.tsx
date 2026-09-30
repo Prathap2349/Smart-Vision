@@ -12,11 +12,9 @@ import {
   MapPin,
   Settings,
   Shield,
-  ShieldCheck,
   LogOut,
-  Sparkles,
 } from 'lucide-react';
-import { StatusBadge } from '../ui/StatusBadge';
+import { AIStatusOrb } from '../ui/AIStatusOrb';
 
 export type NavTab =
   | 'overview'
@@ -41,10 +39,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
 
   const activeAlertCount = alerts.filter(a => a.status === 'ACTIVE').length;
   const onlineCameras = cameras.filter(c => c.status === 'ONLINE').length;
+  const allOnline = cameras.length > 0 && onlineCameras === cameras.length;
 
   const primaryNav = [
     { id: 'overview', label: 'Home', icon: Home },
-    { id: 'cameras', label: 'Cameras', icon: Camera, badge: `${onlineCameras} Online` },
+    { id: 'cameras', label: 'Cameras', icon: Camera, badge: cameras.length > 0 ? `${onlineCameras}/${cameras.length}` : undefined },
     { id: 'history', label: 'Activity', icon: ActivityIcon },
     { id: 'alerts', label: 'Alerts', icon: Bell, count: activeAlertCount },
     { id: 'people', label: 'People', icon: Users },
@@ -58,18 +57,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between h-screen sticky top-0 z-40 select-none shadow-xs">
+    <>
+    <aside className="hidden md:flex w-64 bg-aurora-surface/80 backdrop-blur-xl border-r border-white/10 flex-col justify-between h-screen sticky top-0 z-40 select-none">
       <div>
         {/* Top Logo & Title */}
-        <div className="p-5 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+        <div className="p-5 border-b border-white/10 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-blue to-brand-violet flex items-center justify-center shadow-lg shadow-brand-blue/25 shrink-0">
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0">
-            <h1 className="font-bold text-sm tracking-tight text-slate-900 leading-tight">
+            <h1 className="font-bold text-sm tracking-tight text-text-primary leading-tight">
               Smart Vision
             </h1>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
+            <p className="text-xs text-text-muted font-medium mt-0.5">
               Smart home protection
             </p>
           </div>
@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
 
         {/* Navigation Items */}
         <nav className="p-3 space-y-1">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1.5">
+          <div className="text-[11px] font-semibold text-text-muted uppercase tracking-wider px-3 py-1.5">
             Menu
           </div>
 
@@ -89,25 +89,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id as NavTab)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
                   isActive
-                    ? 'bg-blue-50 text-blue-600 font-bold border border-blue-100 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'bg-brand-blue/15 text-brand-cyan font-bold border border-brand-blue/30 shadow-blue-glow'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-brand-cyan' : 'text-text-muted'}`} />
                   <span className="truncate">{item.label}</span>
                 </div>
 
                 {item.badge && !isActive && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-brand-success/15 text-brand-success border border-brand-success/30">
                     {item.badge}
                   </span>
                 )}
 
                 {item.count !== undefined && item.count > 0 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-600 text-white shadow-xs">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand-alert text-white shadow-rose-glow">
                     {item.count}
                   </span>
                 )}
@@ -115,8 +115,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
             );
           })}
 
-          <div className="pt-3 border-t border-slate-100 mt-3">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1.5">
+          <div className="pt-3 border-t border-white/10 mt-3">
+            <div className="text-[11px] font-semibold text-text-muted uppercase tracking-wider px-3 py-1.5">
               Preferences
             </div>
             {secondaryNav.map(item => {
@@ -127,13 +127,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
                 <button
                   key={item.id}
                   onClick={() => onSelectTab(item.id as NavTab)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600 font-bold border border-blue-100 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-brand-blue/15 text-brand-cyan font-bold border border-brand-blue/30 shadow-blue-glow'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-brand-cyan' : 'text-text-muted'}`} />
                   <span className="truncate">{item.label}</span>
                 </button>
               );
@@ -143,42 +143,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       </div>
 
       {/* Bottom Status & Profile */}
-      <div className="p-3 border-t border-slate-100 space-y-2.5 bg-slate-50/70">
-        {/* System Protected Card */}
-        <div className="p-3 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between shadow-xs">
+      <div className="p-3 border-t border-white/10 space-y-2.5 bg-aurora-bg/50">
+        {/* System Status Card */}
+        <div className="p-3 rounded-xl bg-aurora-elevated/80 border border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+            <AIStatusOrb status={activeAlertCount > 0 ? 'ALERT' : allOnline ? 'ACTIVE' : 'WARNING'} size="sm" />
             <div className="truncate">
-              <p className="text-xs font-bold text-slate-800 leading-tight">System protected</p>
-              <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
-                {onlineCameras} cameras online
+              <p className="text-xs font-bold text-text-primary leading-tight">
+                {activeAlertCount > 0 ? 'Attention needed' : 'Home protected'}
+              </p>
+              <p className="text-[11px] text-text-muted leading-tight mt-0.5">
+                {cameras.length === 0 ? 'No cameras' : `${onlineCameras} camera${onlineCameras !== 1 ? 's' : ''} online`}
               </p>
             </div>
           </div>
-          <StatusBadge variant="success" size="sm" label="Active" />
         </div>
 
         {/* User Profile Card */}
         <div className="flex items-center justify-between pt-1 px-1">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-xs font-bold text-blue-700 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-brand-blue/20 border border-brand-blue/30 flex items-center justify-center text-xs font-bold text-brand-cyan shrink-0">
               {user?.name ? user.name[0].toUpperCase() : 'H'}
             </div>
             <div className="truncate min-w-0">
-              <p className="text-xs font-bold text-slate-800 truncate leading-tight">{user?.name || 'Homeowner'}</p>
-              <p className="text-[11px] text-slate-500 truncate leading-tight">Household admin</p>
+              <p className="text-xs font-bold text-text-primary truncate leading-tight">{user?.name || 'Homeowner'}</p>
+              <p className="text-[11px] text-text-muted truncate leading-tight">Household admin</p>
             </div>
           </div>
 
           <button
             onClick={logout}
             title="Log Out"
-            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-slate-200/60 transition shrink-0"
+            className="p-1.5 text-text-muted hover:text-brand-alert rounded-xl hover:bg-white/10 transition shrink-0"
           >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
     </aside>
+    <nav aria-label="Primary navigation" className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch justify-around border-t border-white/10 bg-aurora-surface/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+      {[...primaryNav.slice(0, 6), secondaryNav[1]].map(item => {
+        const Icon = item.icon;
+        const isActive = currentTab === item.id || (item.id === 'cameras' && currentTab === 'live-monitor');
+        return <button key={item.id} onClick={() => onSelectTab(item.id as NavTab)} aria-current={isActive ? 'page' : undefined} className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors ${isActive ? 'text-brand-cyan' : 'text-text-muted hover:text-text-primary'}`}>
+          <Icon className="h-5 w-5" aria-hidden="true" />
+          <span className="truncate">{item.label}</span>
+        </button>;
+      })}
+    </nav>
+    </>
   );
 };

@@ -169,18 +169,18 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
 
       {(showDisconnectedBanner || (isRealCameraMode && streamError) || activeCamera?.status === 'OFFLINE') && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 z-10 p-6 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/100/20 text-amber-400 flex items-center justify-center text-xl">
             📷
           </div>
           <div>
             <h3 className="text-white font-bold text-sm md:text-base">Camera Not Connected</h3>
-            <p className="text-xs text-slate-400 max-w-md mt-1 leading-relaxed">
+            <p className="text-xs text-text-muted max-w-md mt-1 leading-relaxed">
               No live camera feed detected. Connect an RTSP IP camera in settings or test directly with your computer webcam.
             </p>
           </div>
           <button
             onClick={() => setDeviceCameraModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500/100 text-white rounded-xl text-xs font-semibold shadow-xs transition"
           >
             Test Webcam Feed
           </button>

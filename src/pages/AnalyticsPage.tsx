@@ -59,8 +59,8 @@ const householdVsVisitorData = [
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-lg text-xs">
-        <p className="text-slate-800 font-bold mb-1">{label}</p>
+      <div className="bg-aurora-surface/90 border border-white/10 p-3 rounded-xl shadow-lg text-xs">
+        <p className="text-text-primary font-bold mb-1">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} style={{ color: entry.color || entry.fill }}>
             {entry.name || 'Count'}: <span className="font-bold">{entry.value}</span>
@@ -113,7 +113,7 @@ export const AnalyticsPage: React.FC = () => {
           subtitle="Family members passed silently"
           statusText="Optimal"
           statusVariant="emerald"
-          icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />}
+          icon={<ShieldCheck className="w-5 h-5 text-emerald-300" />}
         />
 
         <MetricCard
@@ -122,7 +122,7 @@ export const AnalyticsPage: React.FC = () => {
           subtitle="65% of daily motion events"
           statusText="Normal"
           statusVariant="blue"
-          icon={<Camera className="w-5 h-5 text-blue-600" />}
+          icon={<Camera className="w-5 h-5 text-blue-300" />}
         />
 
         <MetricCard
@@ -131,7 +131,7 @@ export const AnalyticsPage: React.FC = () => {
           subtitle="Enrolled for quiet passage"
           statusText="Recognized"
           statusVariant="emerald"
-          icon={<Users className="w-5 h-5 text-purple-600" />}
+          icon={<Users className="w-5 h-5 text-violet-300" />}
         />
 
         <MetricCard
@@ -140,18 +140,18 @@ export const AnalyticsPage: React.FC = () => {
           subtitle="Instant phone notification"
           statusText="Fast"
           statusVariant="emerald"
-          icon={<Clock className="w-5 h-5 text-emerald-600" />}
+          icon={<Clock className="w-5 h-5 text-emerald-300" />}
         />
       </div>
 
       {/* Useful Household Activity Visualizations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Chart 1: Activity by Time of Day */}
-        <Card className="space-y-4 bg-white border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <Card className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Activity by Time of Day</h3>
-              <p className="text-xs text-slate-500">Typical movement around your home</p>
+              <h3 className="text-sm font-bold text-text-primary">Activity by Time of Day</h3>
+              <p className="text-xs text-text-muted">Typical movement around your home</p>
             </div>
             <StatusBadge variant="info" label="24-Hour Pattern" size="sm" />
           </div>
@@ -170,11 +170,11 @@ export const AnalyticsPage: React.FC = () => {
         </Card>
 
         {/* Chart 2: Movement by Category */}
-        <Card className="space-y-4 bg-white border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <Card className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Detected People Breakdown</h3>
-              <p className="text-xs text-slate-500">Household family vs unfamiliar visitors</p>
+              <h3 className="text-sm font-bold text-text-primary">Detected People Breakdown</h3>
+              <p className="text-xs text-text-muted">Household family vs unfamiliar visitors</p>
             </div>
             <StatusBadge variant="success" label="Safe Ratio" size="sm" />
           </div>
@@ -194,37 +194,37 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Advanced Diagnostics Section (Collapsible) */}
-      <Card className="bg-white border-slate-200/80 shadow-xs space-y-4">
+      <Card className="bg-aurora-surface/90 border-white/10 shadow-xs space-y-4">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="w-full flex items-center justify-between text-left py-1"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-white/5 text-text-secondary flex items-center justify-center">
               <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Advanced AI Diagnostics &amp; Benchmark Data</h3>
-              <p className="text-xs text-slate-500">Technical inferencing latency, frame rates, and academic dataset benchmarks</p>
+              <h3 className="text-sm font-bold text-text-primary">Advanced AI Diagnostics &amp; Benchmark Data</h3>
+              <p className="text-xs text-text-muted">Technical inferencing latency, frame rates, and academic dataset benchmarks</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-300">
             <span>{showAdvanced ? 'Hide technical data' : 'Show technical data'}</span>
             {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </div>
         </button>
 
         {showAdvanced && (
-          <div className="pt-4 border-t border-slate-100 space-y-6 animate-fadeIn">
+          <div className="pt-4 border-t border-white/10 space-y-6 animate-fadeIn">
             {/* Measured Benchmark Table */}
             <div>
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">
                 Multi-Stream Concurrency Benchmark (Real Hardware)
               </h4>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left font-mono border border-slate-200 rounded-xl overflow-hidden">
-                  <thead className="bg-slate-50 text-slate-600 uppercase">
+                <table className="w-full text-xs text-left font-mono border border-white/10 rounded-xl overflow-hidden">
+                  <thead className="bg-aurora-elevated/70 text-text-secondary uppercase">
                     <tr>
                       <th className="p-3">Streams</th>
                       <th className="p-3">FPS per Stream</th>
@@ -233,25 +233,25 @@ export const AnalyticsPage: React.FC = () => {
                       <th className="p-3">Processor Load</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tbody className="divide-y divide-slate-100 text-text-secondary">
                     <tr>
-                      <td className="p-3 font-bold text-slate-900">1 Stream</td>
-                      <td className="p-3 text-emerald-600 font-bold">41.8 FPS</td>
-                      <td className="p-3 text-emerald-600 font-bold">41.8 FPS</td>
+                      <td className="p-3 font-bold text-text-primary">1 Stream</td>
+                      <td className="p-3 text-emerald-300 font-bold">41.8 FPS</td>
+                      <td className="p-3 text-emerald-300 font-bold">41.8 FPS</td>
                       <td className="p-3">24.0 ms</td>
                       <td className="p-3">25.2% CPU</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-bold text-slate-900">2 Streams</td>
-                      <td className="p-3 text-blue-600 font-bold">25.7 FPS</td>
-                      <td className="p-3 text-blue-600 font-bold">51.2 FPS</td>
+                      <td className="p-3 font-bold text-text-primary">2 Streams</td>
+                      <td className="p-3 text-blue-300 font-bold">25.7 FPS</td>
+                      <td className="p-3 text-blue-300 font-bold">51.2 FPS</td>
                       <td className="p-3">38.9 ms</td>
                       <td className="p-3">29.8% CPU</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-bold text-slate-900">4 Streams</td>
-                      <td className="p-3 text-purple-600 font-bold">13.1 FPS</td>
-                      <td className="p-3 text-purple-600 font-bold">52.3 FPS</td>
+                      <td className="p-3 font-bold text-text-primary">4 Streams</td>
+                      <td className="p-3 text-violet-300 font-bold">13.1 FPS</td>
+                      <td className="p-3 text-violet-300 font-bold">52.3 FPS</td>
                       <td className="p-3">76.3 ms</td>
                       <td className="p-3">30.4% CPU</td>
                     </tr>
@@ -261,8 +261,8 @@ export const AnalyticsPage: React.FC = () => {
             </div>
 
             {/* Dataset evaluation notice */}
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
-              <span className="font-bold text-slate-800">Ground-truth dataset state: </span>
+            <div className="p-4 bg-aurora-elevated/70 rounded-xl border border-white/10 text-xs text-text-secondary">
+              <span className="font-bold text-text-primary">Ground-truth dataset state: </span>
               {evalData?.has_evaluation_results
                 ? `Measured on ${evalData.dataset_size} verified test clips across 11 scenarios.`
                 : 'No synthetic numbers fabricated. Physical scenario dataset recording in progress.'}

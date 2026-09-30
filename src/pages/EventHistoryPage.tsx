@@ -71,24 +71,24 @@ export const EventHistoryPage: React.FC = () => {
         action={
           <button
             onClick={exportCSV}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition flex items-center gap-2 shadow-xs"
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-text-secondary transition flex items-center gap-2 shadow-xs"
           >
-            <Download className="w-4 h-4 text-blue-600" /> Export Activity Log
+            <Download className="w-4 h-4 text-blue-300" /> Export Activity Log
           </button>
         }
       />
 
       {/* Search & Filter Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 bg-aurora-surface/90 border border-white/10 rounded-2xl shadow-xs">
         <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-text-muted absolute left-3.5 top-3" />
             <input
               type="text"
               placeholder="Search by camera, person, or activity..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
+              className="w-full bg-aurora-elevated/70 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-text-primary focus:border-blue-500 focus:bg-aurora-surface/90 outline-none"
             />
           </div>
 
@@ -107,7 +107,7 @@ export const EventHistoryPage: React.FC = () => {
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                      : 'bg-white/5 text-text-secondary hover:bg-white/10'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -118,8 +118,8 @@ export const EventHistoryPage: React.FC = () => {
           </div>
         </div>
 
-        <span className="text-xs text-slate-500 font-medium">
-          Showing <strong className="text-slate-900">{filteredEvents.length}</strong> events
+        <span className="text-xs text-text-muted font-medium">
+          Showing <strong className="text-text-primary">{filteredEvents.length}</strong> events
         </span>
       </div>
 
@@ -128,7 +128,7 @@ export const EventHistoryPage: React.FC = () => {
         <EmptyState
           title="No Activity Found"
           description="No activity matching your search filter was recorded."
-          icon={<Clock className="w-8 h-8 text-slate-400" />}
+          icon={<Clock className="w-8 h-8 text-text-muted" />}
         />
       ) : (
         <div className="space-y-3">
@@ -139,16 +139,16 @@ export const EventHistoryPage: React.FC = () => {
             return (
               <Card
                 key={evt.id}
-                className="p-4 bg-white border-slate-200/80 shadow-xs hover:shadow-md transition flex items-center justify-between gap-4"
+                className="p-4 bg-aurora-surface/90 border-white/10 shadow-xs hover:shadow-md transition flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div
                     className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
                       isAlert
-                        ? 'bg-rose-50 border-rose-200 text-rose-600'
+                        ? 'bg-rose-500/10 border-rose-400/20 text-rose-300'
                         : isResident
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                        : 'bg-blue-50 border-blue-200 text-blue-600'
+                        ? 'bg-emerald-500/10 border-emerald-400/20 text-emerald-300'
+                        : 'bg-blue-500/10 border-blue-400/20 text-blue-300'
                     }`}
                   >
                     {isAlert ? (
@@ -161,14 +161,14 @@ export const EventHistoryPage: React.FC = () => {
                   </div>
 
                   <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-slate-900 truncate">
+                    <h4 className="text-sm font-bold text-text-primary truncate">
                       {isResident
                         ? `Recognized family member sighted at ${evt.camera}`
                         : isAlert
                         ? `Security notice near ${evt.camera}`
                         : evt.eventType}
                     </h4>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">
+                    <p className="text-xs text-text-muted mt-0.5 truncate">
                       {evt.camera} • {evt.personType}
                     </p>
                   </div>
@@ -176,10 +176,10 @@ export const EventHistoryPage: React.FC = () => {
 
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right hidden sm:block">
-                    <p className="text-xs font-semibold text-slate-800">
+                    <p className="text-xs font-semibold text-text-primary">
                       {evt.timestamp.replace('T', ' ').slice(11, 16)}
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-text-muted">
                       {evt.timestamp.slice(0, 10)}
                     </p>
                   </div>

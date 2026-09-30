@@ -33,10 +33,10 @@ export const TripleGate3DStage: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
               activeMode === 'WIND'
                 ? 'bg-slate-800 text-slate-200 border border-slate-700 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-text-muted hover:text-slate-200'
             }`}
           >
-            <Wind className="w-3.5 h-3.5 text-slate-400" />
+            <Wind className="w-3.5 h-3.5 text-text-muted" />
             <span>Wind &amp; Foliage</span>
           </button>
 
@@ -45,7 +45,7 @@ export const TripleGate3DStage: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
               activeMode === 'RESIDENT'
                 ? 'bg-emerald-600/90 text-white shadow-md shadow-emerald-600/20'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-text-muted hover:text-slate-200'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5 text-emerald-300" />
@@ -57,7 +57,7 @@ export const TripleGate3DStage: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
               activeMode === 'INTRUDER'
                 ? 'bg-rose-600/90 text-white shadow-md shadow-rose-600/20'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-text-muted hover:text-slate-200'
             }`}
           >
             <User className="w-3.5 h-3.5 text-rose-300" />
@@ -78,9 +78,9 @@ export const TripleGate3DStage: React.FC = () => {
             className={`flex flex-col items-center gap-2 p-3 rounded-2xl border backdrop-blur-md transition-all duration-500 ${
               step >= 1
                 ? activeMode === 'WIND'
-                  ? 'bg-slate-900/80 border-slate-700 text-slate-400 scale-95 opacity-60'
+                  ? 'bg-slate-900/80 border-slate-700 text-text-muted scale-95 opacity-60'
                   : 'bg-cyan-950/80 border-cyan-500/60 text-cyan-300 shadow-lg shadow-cyan-500/20 scale-105'
-                : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                : 'bg-slate-900/60 border-slate-800 text-text-muted'
             }`}
           >
             <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs">
@@ -104,7 +104,7 @@ export const TripleGate3DStage: React.FC = () => {
             className={`flex flex-col items-center gap-2 p-3 rounded-2xl border backdrop-blur-md transition-all duration-500 ${
               step >= 2 && activeMode !== 'WIND'
                 ? 'bg-blue-950/80 border-blue-500/60 text-blue-300 shadow-lg shadow-blue-500/20 scale-105'
-                : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                : 'bg-slate-900/60 border-slate-800 text-text-muted'
             }`}
           >
             <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs">
@@ -130,7 +130,7 @@ export const TripleGate3DStage: React.FC = () => {
                 ? activeMode === 'RESIDENT'
                   ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300 shadow-lg shadow-emerald-500/20 scale-105'
                   : 'bg-rose-950/80 border-rose-500/60 text-rose-300 shadow-lg shadow-rose-500/20 scale-105'
-                : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                : 'bg-slate-900/60 border-slate-800 text-text-muted'
             }`}
           >
             <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs">
@@ -163,7 +163,7 @@ export const TripleGate3DStage: React.FC = () => {
           }}
         >
           {activeMode === 'WIND' ? (
-            <div className="p-2 rounded-full bg-slate-800/80 text-slate-400 border border-slate-700 animate-bounce">
+            <div className="p-2 rounded-full bg-slate-800/80 text-text-muted border border-slate-700 animate-bounce">
               <Wind className="w-5 h-5" />
             </div>
           ) : activeMode === 'RESIDENT' ? (
@@ -183,7 +183,7 @@ export const TripleGate3DStage: React.FC = () => {
         <div className="flex items-center gap-3">
           {activeMode === 'WIND' ? (
             <div className="p-2 rounded-lg bg-slate-800 text-slate-300">
-              <Wind className="w-4 h-4 text-slate-400" />
+              <Wind className="w-4 h-4 text-text-muted" />
             </div>
           ) : activeMode === 'RESIDENT' ? (
             <div className="p-2 rounded-lg bg-emerald-950 border border-emerald-500/40 text-emerald-400">
@@ -203,7 +203,7 @@ export const TripleGate3DStage: React.FC = () => {
                 ? '✓ Recognized Family Member'
                 : '🚨 Verified Stranger Alert Fired'}
             </p>
-            <p className="text-slate-400 text-[11px]">
+            <p className="text-text-muted text-[11px]">
               {activeMode === 'WIND'
                 ? 'Filtered at Gate 1. Zero notifications sent to your phone.'
                 : activeMode === 'RESIDENT'
