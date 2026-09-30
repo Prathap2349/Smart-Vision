@@ -8,7 +8,7 @@
 [![InsightFace](https://img.shields.io/badge/InsightFace-ArcFace%20512--D-blueviolet)](https://github.com/deepinsight/insightface)
 [![YOLOv8](https://img.shields.io/badge/Ultralytics-YOLOv8-FF6F00?logo=yolo)](https://docs.ultralytics.com)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
-[![Pytest Passing](https://img.shields.io/badge/Pytest-31%2F31%20Passed-brightgreen)](backend/tests)
+[![Pytest Passing](https://img.shields.io/badge/Pytest-35%2F35%20Passed-brightgreen)](backend/tests)
 
 ---
 

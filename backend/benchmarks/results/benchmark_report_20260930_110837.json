@@ -1,0 +1,168 @@
+{
+  "metadata": {
+    "face_engine": "InsightFace / ArcFace",
+    "face_model": "buffalo_s",
+    "execution_provider": "CoreMLExecutionProvider",
+    "detector_model": "YOLOv8-Nano (yolov8n.pt)",
+    "machine": "arm64",
+    "processor": "arm",
+    "os": "Darwin 25.6.0",
+    "os_version": "Darwin Kernel Version 25.6.0: Sun Jun 28 20:27:27 PDT 2026; root:xnu-12377.160.87.0.2~12/RELEASE_ARM64_T8132",
+    "python_version": "3.13.7",
+    "cached_residents_count": 0,
+    "timestamp": "2026-09-30T11:08:37Z"
+  },
+  "single_stream_benchmark": {
+    "stream_count": 1,
+    "processed_frames": 500,
+    "dropped_frames": 0,
+    "total_elapsed_seconds": 16.6,
+    "measured_fps": 30.13,
+    "stage_latencies_ms": {
+      "frame_capture": {
+        "mean": 3.78,
+        "median": 3.64,
+        "p95": 4.19,
+        "p99": 4.26,
+        "min": 3.37,
+        "max": 23.35,
+        "std": 0.9
+      },
+      "yolo_detection": {
+        "mean": 19.06,
+        "median": 17.86,
+        "p95": 19.46,
+        "p99": 23.19,
+        "min": 16.84,
+        "max": 479.6,
+        "std": 20.65
+      },
+      "tracker_update": {
+        "mean": 0.71,
+        "median": 0.02,
+        "p95": 0.02,
+        "p99": 34.1,
+        "min": 0.01,
+        "max": 53.03,
+        "std": 5.09
+      },
+      "decision_engine": {
+        "mean": 0.01,
+        "median": 0.01,
+        "p95": 0.02,
+        "p99": 0.02,
+        "min": 0.01,
+        "max": 0.02,
+        "std": 0.0
+      },
+      "end_to_end": {
+        "mean": 33.19,
+        "median": 21.72,
+        "p95": 47.27,
+        "p99": 104.36,
+        "min": 20.51,
+        "max": 3656.66,
+        "std": 162.96
+      }
+    },
+    "face_inference_metrics": {
+      "face_detection_execution_count": 58,
+      "face_embedding_execution_count": 58,
+      "face_skipped_count": 452,
+      "face_detection_mean": 70.14,
+      "face_detection_median": 13.31,
+      "face_detection_p95": 41.53,
+      "face_detection_p99": 1354.57,
+      "face_embedding_mean": 12.85,
+      "face_embedding_median": 13.86,
+      "face_embedding_p95": 18.12,
+      "face_embedding_p99": 26.9,
+      "face_detection_stats": {
+        "mean": 70.14,
+        "median": 13.31,
+        "p95": 41.53,
+        "p99": 1354.57,
+        "min": 4.03,
+        "max": 3088.19,
+        "std": 399.92
+      },
+      "face_embedding_stats": {
+        "mean": 12.85,
+        "median": 13.86,
+        "p95": 18.12,
+        "p99": 26.9,
+        "min": 3.71,
+        "max": 32.59,
+        "std": 5.36
+      }
+    },
+    "avg_cpu_percent": 30.6,
+    "max_ram_mb": 1336.2
+  },
+  "multi_stream_benchmark": {
+    "source_type": "Concurrent repeated-video source benchmark (Do NOT describe as 8 physical cameras)",
+    "is_repeated_source": true,
+    "scaling": {
+      "1_streams": {
+        "stream_count": 1,
+        "total_processed_frames": 150,
+        "elapsed_seconds": 3.61,
+        "per_stream_fps": 41.59,
+        "aggregate_fps": 41.59,
+        "avg_latency_ms": 24.04,
+        "cpu_percent": 28.0,
+        "ram_usage_mb": 1097.8
+      },
+      "2_streams": {
+        "stream_count": 2,
+        "total_processed_frames": 300,
+        "elapsed_seconds": 5.93,
+        "per_stream_fps": 25.33,
+        "aggregate_fps": 50.62,
+        "avg_latency_ms": 39.48,
+        "cpu_percent": 32.2,
+        "ram_usage_mb": 1098.8
+      },
+      "4_streams": {
+        "stream_count": 4,
+        "total_processed_frames": 600,
+        "elapsed_seconds": 11.53,
+        "per_stream_fps": 13.1,
+        "aggregate_fps": 52.05,
+        "avg_latency_ms": 76.31,
+        "cpu_percent": 38.4,
+        "ram_usage_mb": 888.5
+      },
+      "8_streams": {
+        "stream_count": 8,
+        "total_processed_frames": 1200,
+        "elapsed_seconds": 23.48,
+        "per_stream_fps": 6.41,
+        "aggregate_fps": 51.11,
+        "avg_latency_ms": 156.05,
+        "cpu_percent": 38.4,
+        "ram_usage_mb": 941.5
+      }
+    }
+  },
+  "endurance_benchmark": {
+    "status": "NOT YET MEASURED",
+    "reason": "30-minute continuous mode not triggered in this test invocation."
+  },
+  "baseline_comparison": {
+    "status": "No verified baseline available.",
+    "note": "Initial baseline established under RUN 1 architecture (InsightFace/ArcFace + ResidentCache)."
+  },
+  "artifacts": {
+    "charts": [
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/latency_by_stage_20260930_110837.png",
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/fps_vs_stream_count_20260930_110837.png",
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/fps_latency_over_time_20260930_110837.png"
+    ],
+    "csvs": [
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/benchmark_latencies_20260930_110837.csv",
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/benchmark_face_inference_20260930_110837.csv",
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/benchmark_multistream_20260930_110837.csv"
+    ]
+  }
+}

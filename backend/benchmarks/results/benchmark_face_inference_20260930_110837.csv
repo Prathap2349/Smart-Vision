@@ -1,0 +1,3 @@
+Metric,Executed Count,Skipped Count,Mean (ms),Median (ms),p95 (ms),p99 (ms)
+Face Detection (SCRFD),58,452,70.14,13.31,41.53,1354.57
+Face Embedding & Matching (ArcFace),58,452,12.85,13.86,18.12,26.9

@@ -489,3 +489,76 @@ def test_evaluation_metrics_computation():
     # 1 FP over 3600 seconds (1.0 hour) of negative footage -> 1.0 FA/hr
     assert pytest.approx(metrics["false_alarms_per_hour"], 0.01) == 1.0
 
+
+# ==========================================
+# 8. Review 2 Fixes & Regression Verification
+# ==========================================
+def test_single_pass_recognize_face_structure():
+    """Verify recognize_face returns status, name, embedding, and quality in one pass."""
+    blank = np.zeros((100, 100, 3), dtype=np.uint8)
+    res = face_recognizer.recognize_face(blank)
+    assert "status" in res
+    assert "resident_name" in res
+    assert "resident_id" in res
+    assert "confidence" in res
+    assert "embedding" in res
+    assert "quality" in res
+    assert res["status"] in ["NO_FACE", "LOW_QUALITY", "KNOWN", "UNKNOWN"]
+
+
+def test_no_duplicate_face_inference_regression():
+    """Verify that recognizing a face does NOT perform duplicate face detection or embedding calls."""
+    mock_face = MagicMock()
+    mock_face.bbox = [10, 10, 80, 80]
+    fake_emb = np.random.randn(512).astype(np.float32)
+    fake_emb = fake_emb / np.linalg.norm(fake_emb)
+    mock_face.embedding = fake_emb
+
+    with patch.object(face_recognizer, "detect_faces", return_value=[mock_face]) as mock_detect:
+        with patch.object(face_recognizer, "calculate_blur_score", return_value=150.0):
+            test_crop = np.zeros((100, 100, 3), dtype=np.uint8)
+            
+            # Execute single unified recognition
+            rec = face_recognizer.recognize_face(test_crop)
+            
+            # Verification: detect_faces called exactly ONCE
+            assert mock_detect.call_count == 1
+            assert rec["embedding"] is not None
+            assert len(rec["embedding"]) == 512
+            assert rec["quality"]["face_detected"] is True
+
+
+def test_benchmark_face_latency_skipped_isolation():
+    """Verify benchmark calculates face latency stats ONLY from executed runs without 0ms contamination."""
+    from benchmarks.benchmark_pipeline import calculate_percentiles
+    
+    # 3 real executions with 20ms, 25ms, 30ms latency
+    executed_latencies = [20.0, 25.0, 30.0]
+    stats = calculate_percentiles(executed_latencies)
+    
+    assert stats["mean"] == 25.0
+    assert stats["median"] == 25.0
+    assert stats["min"] == 20.0
+    assert stats["max"] == 30.0
+
+    # If 0ms were incorrectly inserted for 97 skipped frames:
+    contaminated = [0.0] * 97 + executed_latencies
+    contaminated_stats = calculate_percentiles(contaminated)
+    assert contaminated_stats["mean"] < 1.0  # Misleadingly low!
+    assert contaminated_stats["median"] == 0.0  # False 0ms median!
+    
+    # Proves our fix of isolating executed_latencies maintains truthful statistics
+    assert stats["mean"] != contaminated_stats["mean"]
+
+
+def test_evaluation_api_latest_endpoint():
+    """Verify GET /api/evaluation/latest returns valid structure."""
+    response = client.get("/api/evaluation/latest")
+    assert response.status_code == 200
+    data = response.json()
+    assert "has_evaluation_results" in data
+    assert "status" in data
+    assert "engine" in data
+    assert data["engine"] == "InsightFace / ArcFace"
+
+

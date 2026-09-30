@@ -198,10 +198,14 @@ def run_single_stream_benchmark(
     capture_latencies = []
     yolo_latencies = []
     tracker_latencies = []
-    face_det_latencies = []
-    face_emb_latencies = []
+    actual_face_det_latencies = []
+    actual_face_emb_latencies = []
     decision_latencies = []
     e2e_latencies = []
+
+    face_detection_execution_count = 0
+    face_embedding_execution_count = 0
+    face_skipped_count = 0
 
     cpu_samples = []
     ram_samples = []
@@ -249,28 +253,41 @@ def run_single_stream_benchmark(
         t_track_end = time.perf_counter()
         tracker_ms = (t_track_end - t_track_start) * 1000.0
 
-        # 4 & 5. Face Detection & ArcFace Embedding Extraction Stages
-        face_det_ms = 0.0
-        face_emb_ms = 0.0
+        # 4 & 5. Face Detection & ArcFace Feature Extraction (Track-Level Cached)
+        frame_face_executed = False
         
         for t in tracks:
             x1, y1, x2, y2 = [int(v) for v in t.bbox]
             crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
             
             if crop.size > 0 and t.should_verify_face(interval=TRACK_RECOGNITION_INTERVAL):
-                # Face detection timing
+                frame_face_executed = True
+                
+                # Dedicated SCRFD face detection timing
                 t_fdet_start = time.perf_counter()
                 faces = face_recognizer.detect_faces(crop)
                 t_fdet_end = time.perf_counter()
-                face_det_ms += (t_fdet_end - t_fdet_start) * 1000.0
+                f_det_dur = (t_fdet_end - t_fdet_start) * 1000.0
+                actual_face_det_latencies.append(f_det_dur)
+                face_detection_execution_count += 1
 
-                # Face embedding & matching timing
+                # Dedicated ArcFace embedding & matching timing
                 t_femb_start = time.perf_counter()
-                face_status, res_name, face_conf = face_recognizer.match_face(crop)
+                rec = face_recognizer.recognize_face(crop)
                 t_femb_end = time.perf_counter()
-                face_emb_ms += (t_femb_end - t_femb_start) * 1000.0
+                f_emb_dur = (t_femb_end - t_femb_start) * 1000.0
+                actual_face_emb_latencies.append(f_emb_dur)
+                face_embedding_execution_count += 1
 
-                t.record_face_result(face_status, res_name, face_conf)
+                t.record_face_result(
+                    rec["status"],
+                    rec["resident_name"],
+                    rec["confidence"],
+                    embedding=rec["embedding"]
+                )
+
+        if not frame_face_executed:
+            face_skipped_count += 1
 
         # 6. Decision Engine Evaluation Stage
         t_dec_start = time.perf_counter()
@@ -301,15 +318,14 @@ def run_single_stream_benchmark(
         capture_latencies.append(capture_ms)
         yolo_latencies.append(yolo_ms)
         tracker_latencies.append(tracker_ms)
-        face_det_latencies.append(face_det_ms)
-        face_emb_latencies.append(face_emb_ms)
         decision_latencies.append(dec_ms)
         e2e_latencies.append(e2e_ms)
 
         if (i + 1) % 50 == 0:
             cpu_samples.append(psutil.cpu_percent(interval=None))
             ram_samples.append(process.memory_info().rss / (1024 * 1024)) # MB
-            print(f"  Processed {i + 1}/{num_frames} frames | E2E Latency: {e2e_ms:.1f}ms | YOLO: {yolo_ms:.1f}ms | Face: {face_det_ms+face_emb_ms:.1f}ms")
+            last_face_lat = (actual_face_det_latencies[-1] + actual_face_emb_latencies[-1]) if actual_face_det_latencies else 0.0
+            print(f"  Processed {i + 1}/{num_frames} frames | E2E Latency: {e2e_ms:.1f}ms | YOLO: {yolo_ms:.1f}ms | Last Face Inference: {last_face_lat:.1f}ms (Executed: {face_detection_execution_count}, Skipped: {face_skipped_count})")
 
     total_elapsed = time.perf_counter() - start_total_time
     source.release()
@@ -317,14 +333,31 @@ def run_single_stream_benchmark(
     effective_frames = len(e2e_latencies)
     measured_fps = round(effective_frames / total_elapsed, 2) if total_elapsed > 0 else 0.0
 
+    det_stats = calculate_percentiles(actual_face_det_latencies)
+    emb_stats = calculate_percentiles(actual_face_emb_latencies)
+
     stage_metrics = {
         "frame_capture": calculate_percentiles(capture_latencies),
         "yolo_detection": calculate_percentiles(yolo_latencies),
         "tracker_update": calculate_percentiles(tracker_latencies),
-        "face_detection": calculate_percentiles(face_det_latencies),
-        "face_embedding": calculate_percentiles(face_emb_latencies),
         "decision_engine": calculate_percentiles(decision_latencies),
         "end_to_end": calculate_percentiles(e2e_latencies)
+    }
+
+    face_inference_metrics = {
+        "face_detection_execution_count": face_detection_execution_count,
+        "face_embedding_execution_count": face_embedding_execution_count,
+        "face_skipped_count": face_skipped_count,
+        "face_detection_mean": det_stats["mean"],
+        "face_detection_median": det_stats["median"],
+        "face_detection_p95": det_stats["p95"],
+        "face_detection_p99": det_stats["p99"],
+        "face_embedding_mean": emb_stats["mean"],
+        "face_embedding_median": emb_stats["median"],
+        "face_embedding_p95": emb_stats["p95"],
+        "face_embedding_p99": emb_stats["p99"],
+        "face_detection_stats": det_stats,
+        "face_embedding_stats": emb_stats
     }
 
     result = {
@@ -334,6 +367,7 @@ def run_single_stream_benchmark(
         "total_elapsed_seconds": round(total_elapsed, 2),
         "measured_fps": measured_fps,
         "stage_latencies_ms": stage_metrics,
+        "face_inference_metrics": face_inference_metrics,
         "avg_cpu_percent": round(float(np.mean(cpu_samples)), 1) if cpu_samples else 0.0,
         "max_ram_mb": round(float(np.max(ram_samples)), 1) if ram_samples else 0.0,
         "raw_e2e_latencies": e2e_latencies
@@ -369,8 +403,13 @@ def run_stream_worker(
                 x1, y1, x2, y2 = [int(v) for v in t.bbox]
                 crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
                 if crop.size > 0:
-                    st, nm, cf = face_recognizer.match_face(crop)
-                    t.record_face_result(st, nm, cf)
+                    rec = face_recognizer.recognize_face(crop)
+                    t.record_face_result(
+                        rec["status"],
+                        rec["resident_name"],
+                        rec["confidence"],
+                        embedding=rec["embedding"]
+                    )
         latencies.append((time.perf_counter() - t0) * 1000.0)
 
     elapsed = time.perf_counter() - t_start
@@ -489,8 +528,13 @@ def run_endurance_mode(duration_seconds: int = 1800, source_path: Optional[str] 
                 x1, y1, x2, y2 = [int(v) for v in t.bbox]
                 crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
                 if crop.size > 0:
-                    st, nm, cf = face_recognizer.match_face(crop)
-                    t.record_face_result(st, nm, cf)
+                    rec = face_recognizer.recognize_face(crop)
+                    t.record_face_result(
+                        rec["status"],
+                        rec["resident_name"],
+                        rec["confidence"],
+                        embedding=rec["embedding"]
+                    )
 
         interval_frames += 1
         total_frames += 1
@@ -635,7 +679,34 @@ def save_csv_results(
             writer.writerow([stage, p["mean"], p["median"], p["p95"], p["p99"], p["min"], p["max"], p["std"]])
     saved_csvs.append(str(csv1_path))
 
-    # CSV 2: Multi-stream scaling
+    # CSV 2: Dedicated Face Inference Latencies (Excluding 0ms skipped frames)
+    if "face_inference_metrics" in single_res:
+        f_metrics = single_res["face_inference_metrics"]
+        csv_face_path = RESULTS_DIR / f"benchmark_face_inference_{timestamp_str}.csv"
+        with open(csv_face_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Metric", "Executed Count", "Skipped Count", "Mean (ms)", "Median (ms)", "p95 (ms)", "p99 (ms)"])
+            writer.writerow([
+                "Face Detection (SCRFD)",
+                f_metrics.get("face_detection_execution_count", 0),
+                f_metrics.get("face_skipped_count", 0),
+                f_metrics.get("face_detection_mean", 0.0),
+                f_metrics.get("face_detection_median", 0.0),
+                f_metrics.get("face_detection_p95", 0.0),
+                f_metrics.get("face_detection_p99", 0.0)
+            ])
+            writer.writerow([
+                "Face Embedding & Matching (ArcFace)",
+                f_metrics.get("face_embedding_execution_count", 0),
+                f_metrics.get("face_skipped_count", 0),
+                f_metrics.get("face_embedding_mean", 0.0),
+                f_metrics.get("face_embedding_median", 0.0),
+                f_metrics.get("face_embedding_p95", 0.0),
+                f_metrics.get("face_embedding_p99", 0.0)
+            ])
+        saved_csvs.append(str(csv_face_path))
+
+    # CSV 3: Multi-stream scaling
     if "scaling" in multi_res and multi_res["scaling"]:
         csv2_path = RESULTS_DIR / f"benchmark_multistream_{timestamp_str}.csv"
         with open(csv2_path, "w", newline="") as f:

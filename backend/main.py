@@ -173,9 +173,13 @@ async def test_camera_websocket(websocket: WebSocket):
                 x1, y1, x2, y2 = [int(v) for v in t.bbox]
                 crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
                 if crop.size > 0 and t.should_verify_face():
-                    face_status, res_name, face_conf = face_recognizer.match_face(crop)
-                    emb = face_recognizer.generate_embedding(crop) if face_status == "KNOWN" else None
-                    t.record_face_result(face_status, res_name, face_conf, embedding=emb)
+                    rec = face_recognizer.recognize_face(crop)
+                    t.record_face_result(
+                        rec["status"],
+                        rec["resident_name"],
+                        rec["confidence"],
+                        embedding=rec["embedding"]
+                    )
 
                 # Triple-gate decision for this track
                 t_gate_eval = decision_engine.evaluate_gates(

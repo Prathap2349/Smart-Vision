@@ -205,45 +205,44 @@ class InsightFaceRecognizer:
             emb = emb / norm
         return emb.tolist()
 
-    def verify_identity(self, person_crop: np.ndarray) -> Dict[str, Any]:
+    def recognize_face(self, person_crop: np.ndarray) -> Dict[str, Any]:
         """
-        Structured face verification endpoint.
+        Unified End-to-End Single-Pass Face Biometric Recognition Pipeline:
+        1. Person Crop -> SCRFD Face Detection & 5-point alignment (single execution)
+        2. If no face detected -> Return NO_FACE
+        3. Quality checks (size & blur variance) -> Return LOW_QUALITY if substandard
+        4. Extract 512-D ArcFace deep normalized embedding vector (single execution)
+        5. Cosine similarity against RAM-cached resident embeddings (0 SQLite I/O)
+        6. Return complete recognition state INCLUDING the embedding to eliminate duplicate inference.
+
         Returns:
-        {
-            "matched": bool,
-            "resident_id": Optional[str],
-            "resident_name": Optional[str],
-            "confidence": float,
-            "status": "KNOWN" | "UNKNOWN" | "NO_FACE" | "LOW_QUALITY"
-        }
+            Dict containing status, resident_name, resident_id, confidence, embedding, quality.
         """
-        status, name, conf = self.match_face(person_crop)
-        return {
-            "matched": status == "KNOWN",
-            "resident_name": name,
-            "confidence": conf,
-            "status": status
+        default_res: Dict[str, Any] = {
+            "status": "NO_FACE",
+            "resident_name": None,
+            "resident_id": None,
+            "confidence": 0.0,
+            "embedding": None,
+            "quality": {
+                "face_detected": False,
+                "face_bbox": None,
+                "face_size": (0, 0),
+                "blur_score": 0.0,
+                "is_blurry": False,
+                "is_small": False
+            }
         }
 
-    def match_face(self, person_crop: np.ndarray) -> Tuple[str, Optional[str], float]:
-        """
-        End-to-End Face Biometric Matching Pipeline:
-        1. Person Crop -> Face Detection (SCRFD)
-        2. If no face detected -> Return ("NO_FACE", None, 0.0)
-        3. Quality checks (size & blur) -> Return ("LOW_QUALITY", None, 0.0) if substandard
-        4. Extract 512-D ArcFace embedding
-        5. Cosine similarity against RAM-cached resident embeddings
-        6. Return ("KNOWN" / "UNKNOWN", resident_name, confidence)
-        """
         if not self.is_ready:
-            return "NO_FACE", None, 0.0
+            return default_res
 
         if person_crop is None or not isinstance(person_crop, np.ndarray) or person_crop.size == 0:
-            return "NO_FACE", None, 0.0
+            return default_res
 
         faces = self.detect_faces(person_crop)
         if not faces or len(faces) == 0:
-            return "NO_FACE", None, 0.0
+            return default_res
 
         primary_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
         
@@ -251,32 +250,88 @@ class InsightFaceRecognizer:
         w = int(bbox[2] - bbox[0])
         h = int(bbox[3] - bbox[1])
 
-        if w < self.min_face_size or h < self.min_face_size:
-            return "LOW_QUALITY", None, 0.0
-
-        # Passive face-quality filtering; not full liveness detection.
+        # Crop face for blur calculation
         img_h, img_w = person_crop.shape[:2]
         x1, y1, x2, y2 = max(0, int(bbox[0])), max(0, int(bbox[1])), min(img_w, int(bbox[2])), min(img_h, int(bbox[3]))
         face_crop = person_crop[y1:y2, x1:x2]
-        
         blur_score = self.calculate_blur_score(face_crop)
-        if blur_score < self.min_blur_score:
-            return "LOW_QUALITY", None, 0.0
+
+        is_small = (w < self.min_face_size or h < self.min_face_size)
+        is_blurry = (blur_score < self.min_blur_score)
+
+        quality_info = {
+            "face_detected": True,
+            "face_bbox": [x1, y1, x2, y2],
+            "face_size": (w, h),
+            "blur_score": round(blur_score, 2),
+            "is_blurry": is_blurry,
+            "is_small": is_small
+        }
+
+        if is_small or is_blurry:
+            return {
+                "status": "LOW_QUALITY",
+                "resident_name": None,
+                "resident_id": None,
+                "confidence": 0.0,
+                "embedding": None,
+                "quality": quality_info
+            }
 
         if primary_face.embedding is None or len(primary_face.embedding) == 0:
-            return "NO_FACE", None, 0.0
+            return {
+                "status": "NO_FACE",
+                "resident_name": None,
+                "resident_id": None,
+                "confidence": 0.0,
+                "embedding": None,
+                "quality": quality_info
+            }
 
         emb = primary_face.embedding.astype(np.float32)
         norm = np.linalg.norm(emb)
         if norm > 0:
             emb = emb / norm
+        emb_list = emb.tolist()
 
         # Match against in-memory resident cache (Vectorized, 0 SQLite queries)
         status, res_name, res_id, conf = resident_cache.match(
             query_embedding=emb,
             similarity_threshold=self.similarity_threshold
         )
-        return status, res_name, conf
+
+        return {
+            "status": status,
+            "resident_name": res_name,
+            "resident_id": res_id,
+            "confidence": conf,
+            "embedding": emb_list,
+            "quality": quality_info
+        }
+
+    def verify_identity(self, person_crop: np.ndarray) -> Dict[str, Any]:
+        """
+        Structured face verification endpoint.
+        """
+        res = self.recognize_face(person_crop)
+        return {
+            "matched": res["status"] == "KNOWN",
+            "resident_name": res["resident_name"],
+            "resident_id": res["resident_id"],
+            "confidence": res["confidence"],
+            "status": res["status"],
+            "embedding": res["embedding"],
+            "quality": res["quality"]
+        }
+
+    def match_face(self, person_crop: np.ndarray) -> Tuple[str, Optional[str], float]:
+        """
+        End-to-End Face Biometric Matching Pipeline (wrapper around single-pass recognize_face).
+        Returns:
+            ("KNOWN" / "UNKNOWN" / "NO_FACE" / "LOW_QUALITY", resident_name, confidence)
+        """
+        res = self.recognize_face(person_crop)
+        return res["status"], res["resident_name"], res["confidence"]
 
 
 # =====================================================================
