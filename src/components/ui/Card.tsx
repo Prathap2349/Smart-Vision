@@ -5,7 +5,7 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   variant?: 'default' | 'subtle' | 'highlight' | 'critical' | 'success';
-  glow?: 'cyan' | 'rose' | 'emerald' | 'none';
+  glow?: 'cyan' | 'rose' | 'emerald' | 'blue' | 'none';
   onClick?: () => void;
 }
 
@@ -17,17 +17,18 @@ export const Card: React.FC<CardProps> = ({
   onClick,
 }) => {
   const variantStyles = {
-    default: 'bg-[#0d1424] border-slate-800/80',
-    subtle: 'bg-[#0a0f1d] border-slate-800/60',
-    highlight: 'bg-[#0f172a] border-blue-500/30 shadow-lg shadow-blue-500/5',
-    critical: 'bg-[#150d18] border-rose-500/40 shadow-lg shadow-rose-500/5',
-    success: 'bg-[#0c1918] border-emerald-500/30 shadow-lg shadow-emerald-500/5',
+    default: 'bg-white border-slate-200/80 shadow-sm',
+    subtle: 'bg-slate-50/80 border-slate-200/60',
+    highlight: 'bg-blue-50/50 border-blue-200 shadow-sm',
+    critical: 'bg-rose-50/50 border-rose-200 shadow-sm',
+    success: 'bg-emerald-50/50 border-emerald-200 shadow-sm',
   };
 
   const glowStyles = {
-    cyan: 'shadow-[0_0_20px_rgba(6,182,212,0.12)] border-cyan-500/40',
-    rose: 'shadow-[0_0_20px_rgba(244,63,94,0.15)] border-rose-500/50',
-    emerald: 'shadow-[0_0_20px_rgba(16,185,129,0.12)] border-emerald-500/40',
+    cyan: 'border-cyan-300 shadow-md shadow-cyan-500/10',
+    blue: 'border-blue-300 shadow-md shadow-blue-500/10',
+    rose: 'border-rose-300 shadow-md shadow-rose-500/10',
+    emerald: 'border-emerald-300 shadow-md shadow-emerald-500/10',
     none: '',
   };
 
@@ -35,10 +36,10 @@ export const Card: React.FC<CardProps> = ({
     <div
       onClick={onClick}
       className={clsx(
-        'rounded-xl border p-5 transition-all duration-200',
+        'rounded-2xl border p-5 transition-all duration-200 text-slate-800',
         variantStyles[variant],
         glowStyles[glow],
-        onClick && 'cursor-pointer hover:border-slate-700 hover:bg-[#111a30]',
+        onClick && 'cursor-pointer hover:border-slate-300 hover:shadow-md active:scale-[0.995]',
         className
       )}
     >

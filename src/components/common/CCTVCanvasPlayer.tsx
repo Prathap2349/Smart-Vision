@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
-
 import { API_BASE } from '../../services/api';
 
 interface CCTVCanvasPlayerProps {
@@ -18,6 +17,7 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
     isSimulating,
     cameras,
     metrics,
+    setDeviceCameraModalOpen,
   } = useSecurity();
   const [streamError, setStreamError] = useState(false);
 
@@ -41,9 +41,9 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
       const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
 
-      // Demo mode only: plain dark background (no synthetic corridor)
+      // Demo mode only: plain clean dark background
       if (!isRealCameraMode) {
-        ctx.fillStyle = '#070a12';
+        ctx.fillStyle = '#090d16';
         ctx.fillRect(0, 0, width, height);
       }
 
@@ -51,9 +51,9 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
       if (overlayToggles.zones) {
         zones.forEach(zone => {
           if (!zone.enabled) return;
-          ctx.fillStyle = `${zone.color}15`;
+          ctx.fillStyle = `${zone.color}20`;
           ctx.strokeStyle = zone.color;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 2;
           ctx.setLineDash([6, 4]);
 
           ctx.beginPath();
@@ -72,8 +72,8 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
             const labelX = (zone.polygonPoints[0].x / 100) * width + 8;
             const labelY = (zone.polygonPoints[0].y / 100) * height + 18;
             ctx.fillStyle = zone.color;
-            ctx.font = '600 10px JetBrains Mono, monospace';
-            ctx.fillText(`[ZONE] ${zone.name.toUpperCase()} (DWELL > ${zone.dwellThreshold}s)`, labelX, labelY);
+            ctx.font = '600 11px Inter, sans-serif';
+            ctx.fillText(`${zone.name} (${zone.dwellThreshold}s rule)`, labelX, labelY);
           }
         });
       }
@@ -90,10 +90,10 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
         if (overlayToggles.boundingBoxes) {
           const isThreat = finalDecision === 'VERIFIED_THREAT';
           const isSafe = finalDecision === 'SAFE_RESIDENT';
-          const strokeColor = isThreat ? '#ef4444' : isSafe ? '#10b981' : '#00f0ff';
+          const strokeColor = isThreat ? '#ef4444' : isSafe ? '#10b981' : '#3b82f6';
 
           ctx.strokeStyle = strokeColor;
-          ctx.lineWidth = isThreat ? 2.5 : 1.8;
+          ctx.lineWidth = isThreat ? 2.5 : 2;
           ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
           if (overlayToggles.faceRecognition) {
@@ -102,63 +102,39 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
             ctx.strokeRect(px - 18, py - 78, 36, 36);
             ctx.setLineDash([]);
             ctx.fillStyle = simulatedPerson.faceStatus === 'UNKNOWN' ? '#ef4444' : '#10b981';
-            ctx.font = 'bold 9px JetBrains Mono';
+            ctx.font = 'bold 10px Inter, sans-serif';
             const faceLabel =
               simulatedPerson.faceStatus === 'UNKNOWN'
-                ? 'FACE: UNKNOWN'
-                : `FACE: ${simulatedPerson.residentName?.toUpperCase() ?? 'RESIDENT'}`;
-            ctx.fillText(faceLabel, px - 30, py - 82);
+                ? 'Unrecognized'
+                : `${simulatedPerson.residentName ?? 'Household'}`;
+            ctx.fillText(faceLabel, px - 28, py - 82);
           }
 
           if (overlayToggles.aiLabels || overlayToggles.trackIds) {
-            ctx.fillStyle = 'rgba(9, 13, 22, 0.85)';
-            ctx.fillRect(boxX, boxY - 32, boxWidth + 40, 30);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.fillRect(boxX, boxY - 30, boxWidth + 30, 26);
             ctx.strokeStyle = strokeColor;
-            ctx.strokeRect(boxX, boxY - 32, boxWidth + 40, 30);
+            ctx.strokeRect(boxX, boxY - 30, boxWidth + 30, 26);
             ctx.fillStyle = '#ffffff';
-            ctx.font = '600 10px JetBrains Mono, monospace';
-            ctx.fillText(`PERSON ${simulatedPerson.trackId}`, boxX + 6, boxY - 18);
-            ctx.fillStyle = strokeColor;
-            ctx.font = '500 9px JetBrains Mono, monospace';
-            ctx.fillText(
-              `DWELL: ${simulatedPerson.dwellSeconds}s | CONF: ${Math.round(simulatedPerson.confidence * 100)}%`,
-              boxX + 6,
-              boxY - 6
-            );
+            ctx.font = '600 11px Inter, sans-serif';
+            ctx.fillText(`Person • ${simulatedPerson.dwellSeconds}s`, boxX + 6, boxY - 13);
           }
         }
       }
 
-      // HUD overlay
-      ctx.fillStyle = 'rgba(7, 10, 18, 0.85)';
-      ctx.fillRect(0, 0, width, 36);
+      // Consumer Clean Top HUD overlay
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.fillRect(0, 0, width, 32);
 
-      const camLabel = activeCamera?.name ?? cameraId.toUpperCase();
-      ctx.fillStyle = '#00f0ff';
-      ctx.font = '700 11px Inter, sans-serif';
-      ctx.fillText(`${cameraId.toUpperCase()} • ${camLabel.toUpperCase()}`, 12, 22);
-
-      const fps = activeCamera?.fps ?? metrics.fps ?? 0;
-      const resolution = activeCamera?.resolution ?? '—';
-      const rtspStatus = metrics.rtspStatus ?? 'DISCONNECTED';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.font = '10px JetBrains Mono, monospace';
-      ctx.fillText(`${resolution} @ ${fps} FPS | RTSP | ${rtspStatus}`, 240, 22);
-
-      if (isRealCameraMode) {
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.arc(width - 130, 20, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '600 10px JetBrains Mono';
-        ctx.fillText('REC', width - 120, 23);
-      }
-
-      const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      const camLabel = activeCamera?.name ?? 'Camera';
       ctx.fillStyle = '#ffffff';
-      ctx.font = '600 10px JetBrains Mono';
-      ctx.fillText(timestamp, width - 85, 23);
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.fillText(`● LIVE — ${camLabel}`, 12, 20);
+
+      const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.font = '500 11px Inter, sans-serif';
+      ctx.fillText(timeString, width - 90, 20);
 
       animId = requestAnimationFrame(render);
     };
@@ -179,12 +155,12 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
   ]);
 
   return (
-    <div className="relative w-full aspect-video bg-[#070a12] rounded-xl overflow-hidden border border-slate-800 shadow-2xl group">
+    <div className="relative w-full aspect-video bg-slate-950 rounded-2xl overflow-hidden group">
       {isRealCameraMode && (
         <img
           key={cameraId}
           src={mjpegUrl}
-          alt="Live Edge Camera Stream"
+          alt="Live Camera Stream"
           onError={() => setStreamError(true)}
           onLoad={() => setStreamError(false)}
           className="absolute inset-0 w-full h-full object-cover"
@@ -192,13 +168,22 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
       )}
 
       {(showDisconnectedBanner || (isRealCameraMode && streamError) || activeCamera?.status === 'OFFLINE') && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#060a14]/92 z-10 p-6 text-center space-y-2">
-          <p className="text-rose-500 font-mono font-bold text-sm md:text-base tracking-wide">
-            [ NO CAMERA SIGNAL — RTSP STREAM DISCONNECTED ]
-          </p>
-          <p className="text-xs text-amber-400 max-w-lg font-mono bg-amber-950/50 p-2.5 rounded-lg border border-amber-500/40 shadow-lg">
-            ⚠️ No live camera detected — connect an RTSP stream or webcam via the .env configuration to activate detection.
-          </p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 z-10 p-6 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+            📷
+          </div>
+          <div>
+            <h3 className="text-white font-bold text-sm md:text-base">Camera Not Connected</h3>
+            <p className="text-xs text-slate-400 max-w-md mt-1 leading-relaxed">
+              No live camera feed detected. Connect an RTSP IP camera in settings or test directly with your computer webcam.
+            </p>
+          </div>
+          <button
+            onClick={() => setDeviceCameraModalOpen(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+          >
+            Test Webcam Feed
+          </button>
         </div>
       )}
 

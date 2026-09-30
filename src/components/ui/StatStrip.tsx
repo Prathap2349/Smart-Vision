@@ -1,6 +1,6 @@
 import React from 'react';
 import { clsx } from 'clsx';
-import { ShieldCheck, Camera, Users, Bell, Activity, Clock, Cpu, Server } from 'lucide-react';
+import { ShieldCheck, Camera, Users, Bell, CheckCircle2 } from 'lucide-react';
 
 export interface StatItem {
   id: string;
@@ -8,7 +8,8 @@ export interface StatItem {
   value: string | number;
   subtext?: string;
   icon?: React.ReactNode;
-  variant?: 'emerald' | 'rose' | 'blue' | 'amber' | 'neutral';
+  variant?: 'emerald' | 'rose' | 'blue' | 'amber' | 'neutral' | 'purple';
+  onClick?: () => void;
 }
 
 interface StatStripProps {
@@ -20,41 +21,48 @@ export const StatStrip: React.FC<StatStripProps> = ({ items, className }) => {
   return (
     <div
       className={clsx(
-        'grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 p-2.5 bg-[#0b101d] border border-slate-800 rounded-xl shadow-lg',
+        'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4',
         className
       )}
     >
       {items.map(item => {
-        const valueColor =
+        const bgBadgeColor =
           item.variant === 'emerald'
-            ? 'text-emerald-400'
+            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
             : item.variant === 'rose'
-            ? 'text-rose-400'
+            ? 'bg-rose-50 text-rose-600 border-rose-100'
             : item.variant === 'blue'
-            ? 'text-blue-400'
+            ? 'bg-blue-50 text-blue-600 border-blue-100'
             : item.variant === 'amber'
-            ? 'text-amber-400'
-            : 'text-slate-100';
+            ? 'bg-amber-50 text-amber-600 border-amber-100'
+            : item.variant === 'purple'
+            ? 'bg-purple-50 text-purple-600 border-purple-100'
+            : 'bg-slate-100 text-slate-600 border-slate-200';
 
         return (
           <div
             key={item.id}
-            className="flex flex-col justify-between p-2.5 rounded-lg bg-[#0e1526]/80 border border-slate-800/60 hover:border-slate-700 transition"
+            onClick={item.onClick}
+            className={clsx(
+              'p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-4',
+              item.onClick && 'cursor-pointer'
+            )}
           >
-            <div className="flex items-center justify-between gap-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider truncate">
-              <span>{item.label}</span>
-              {item.icon && <span className="opacity-70">{item.icon}</span>}
+            <div className="space-y-1 min-w-0">
+              <p className="text-xs font-medium text-slate-500">{item.label}</p>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight truncate">{item.value}</h3>
+              {item.subtext && (
+                <p className="text-xs text-slate-500 truncate">{item.subtext}</p>
+              )}
             </div>
 
-            <div className="mt-1">
-              <span className={clsx('text-base font-bold font-mono tracking-tight block truncate', valueColor)}>
-                {item.value}
-              </span>
-              {item.subtext && (
-                <span className="text-[10px] text-slate-400 font-mono block truncate mt-0.5">
-                  {item.subtext}
-                </span>
+            <div
+              className={clsx(
+                'w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 text-xl shadow-xs',
+                bgBadgeColor
               )}
+            >
+              {item.icon || <CheckCircle2 className="w-6 h-6" />}
             </div>
           </div>
         );

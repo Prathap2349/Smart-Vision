@@ -10,22 +10,20 @@ import {
   Sliders,
   Camera,
   Eye,
-  Shield,
   Activity,
   UserCheck,
   UserX,
   Clock,
-  Layers,
   Sparkles,
 } from 'lucide-react';
 
 export const LiveMonitorPage: React.FC = () => {
-  const { overlayToggles, setOverlayToggles, cameras, simulatedPerson, finalDecision } = useSecurity();
+  const { overlayToggles, setOverlayToggles, cameras, simulatedPerson } = useSecurity();
   const [selectedCamId, setSelectedCamId] = useState<string>(cameras[0]?.id || 'cam-01');
 
   const activeCam = cameras.find((c) => c.id === selectedCamId) || cameras[0] || {
     id: 'cam-01',
-    name: 'Residential Corridor',
+    name: 'Front Door',
     resolution: '1920x1080',
     fps: 10.2,
     streamType: 'RTSP',
@@ -37,13 +35,13 @@ export const LiveMonitorPage: React.FC = () => {
     <div className="space-y-6">
       {/* Page Header */}
       <SectionHeader
-        title="Live Surveillance Monitor"
-        subtitle="Real-time RTSP video decoding with hardware-accelerated YOLOv8-Nano and biometric verification"
+        title="Live Camera Monitor"
+        subtitle="Live high-definition video with smart movement tracking and recognition"
         icon={<Camera className="w-5 h-5" />}
         action={
           <div className="flex items-center gap-2">
-            <StatusBadge variant="info" pulse label="YOLOv8 + IoU + InsightFace" />
-            <StatusBadge variant="success" pulse label={`${activeCam.fps} FPS ACTIVE`} />
+            <StatusBadge variant="info" label="Smart Detection Active" />
+            <StatusBadge variant="success" label="Live Stream" />
           </div>
         }
       />
@@ -57,15 +55,14 @@ export const LiveMonitorPage: React.FC = () => {
               <button
                 key={cam.id}
                 onClick={() => setSelectedCamId(cam.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition border ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition border ${
                   isSelected
-                    ? 'bg-blue-600/20 text-blue-400 border-blue-500/50 shadow-sm'
-                    : 'bg-[#0d1424] text-slate-400 border-slate-800 hover:text-white hover:bg-slate-850'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                 }`}
               >
                 <Camera className="w-3.5 h-3.5" />
                 <span>{cam.name}</span>
-                <span className="font-mono text-[10px] opacity-75">{cam.resolution}</span>
               </button>
             );
           })}
@@ -73,30 +70,30 @@ export const LiveMonitorPage: React.FC = () => {
       )}
 
       {/* Main Grid: Video Viewport (8 Cols) + Decision Engine (4 Cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left 8 Cols: Live Stream Canvas & AI Overlay Switches */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-[#070a12] shadow-xl">
+          <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-xs bg-slate-950">
             <CCTVCanvasPlayer cameraId={activeCam.id} />
           </div>
 
           {/* AI Stream Overlay Controls */}
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/80">
+          <Card className="space-y-3 bg-white border-slate-200/80 shadow-xs">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-blue-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  AI Stream Overlays &amp; Visual HUD
+                <Sliders className="w-4 h-4 text-blue-600" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Visual Video Overlays
                 </h3>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">
-                Toggle edge inference metadata layers
+              <span className="text-xs text-slate-500 font-medium">
+                Customize live camera metadata
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-1">
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
-                <span className="text-xs text-slate-300 font-medium">Bounding Boxes</span>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                <span className="text-xs text-slate-700 font-medium">Person Outlines</span>
                 <Switch
                   checked={overlayToggles.boundingBoxes}
                   onChange={(checked) =>
@@ -105,8 +102,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
-                <span className="text-xs text-slate-300 font-medium">Track IDs</span>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                <span className="text-xs text-slate-700 font-medium">Subject Tags</span>
                 <Switch
                   checked={overlayToggles.trackIds}
                   onChange={(checked) =>
@@ -115,8 +112,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
-                <span className="text-xs text-slate-300 font-medium">Detection Zones</span>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                <span className="text-xs text-slate-700 font-medium">Protected Zones</span>
                 <Switch
                   checked={overlayToggles.zones}
                   onChange={(checked) =>
@@ -125,8 +122,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
-                <span className="text-xs text-slate-300 font-medium">Face Match Tags</span>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                <span className="text-xs text-slate-700 font-medium">Family Match</span>
                 <Switch
                   checked={overlayToggles.faceRecognition}
                   onChange={(checked) =>
@@ -135,8 +132,8 @@ export const LiveMonitorPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
-                <span className="text-xs text-slate-300 font-medium">Confidence HUD</span>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                <span className="text-xs text-slate-700 font-medium">Detection Score</span>
                 <Switch
                   checked={overlayToggles.aiLabels}
                   onChange={(checked) =>
@@ -153,12 +150,12 @@ export const LiveMonitorPage: React.FC = () => {
           <DecisionPipelineWidget />
 
           {/* Active Subject Telemetry */}
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/80">
+          <Card className="space-y-3 bg-white border-slate-200/80 shadow-xs">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-blue-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Subject Telemetry
+                <Activity className="w-4 h-4 text-blue-600" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Active Subject Details
                 </h3>
               </div>
               <StatusBadge
@@ -169,45 +166,45 @@ export const LiveMonitorPage: React.FC = () => {
                     ? 'success'
                     : 'neutral'
                 }
-                label={simulatedPerson.trackId ? `Track ${simulatedPerson.trackId}` : 'IDLE'}
+                label={simulatedPerson.trackId ? `Person ${simulatedPerson.trackId}` : 'Standby'}
               />
             </div>
 
-            <div className="space-y-2 text-xs font-mono">
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">Classification:</span>
-                <span className="text-white font-bold">HUMAN (YOLOv8-Nano)</span>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Detected Object:</span>
+                <span className="text-slate-900 font-bold">Human presence</span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">Detection Confidence:</span>
-                <span className="text-blue-400 font-bold">
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Recognition Confidence:</span>
+                <span className="text-blue-600 font-bold">
                   {Math.round(simulatedPerson.confidence * 100)}%
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">IoU Dwell Duration:</span>
-                <span className="text-amber-400 font-bold">
-                  {simulatedPerson.dwellSeconds}s / 20s Threshold
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Duration in View:</span>
+                <span className="text-amber-600 font-bold">
+                  {simulatedPerson.dwellSeconds} seconds
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">Biometric Status:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Identity:</span>
                 <span
                   className={
                     simulatedPerson.faceStatus === 'UNKNOWN'
-                      ? 'text-rose-400 font-bold'
+                      ? 'text-rose-600 font-bold'
                       : simulatedPerson.faceStatus === 'VERIFIED_RESIDENT'
-                      ? 'text-emerald-400 font-bold'
-                      : 'text-slate-400'
+                      ? 'text-emerald-600 font-bold'
+                      : 'text-slate-500'
                   }
                 >
-                  {simulatedPerson.faceStatus || 'SEARCHING'}
+                  {simulatedPerson.residentName || (simulatedPerson.faceStatus === 'UNKNOWN' ? 'Unrecognized visitor' : 'Searching...')}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-400">Zone Position:</span>
-                <span className="text-slate-200">
-                  X: {Math.round(simulatedPerson.x)}% | Y: {Math.round(simulatedPerson.y)}%
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-slate-500">Location In Frame:</span>
+                <span className="text-slate-700 font-medium">
+                  Center zone
                 </span>
               </div>
             </div>

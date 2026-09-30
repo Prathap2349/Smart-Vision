@@ -14,22 +14,22 @@ export const Switch: React.FC<SwitchProps> = ({ checked, onChange, label, disabl
         <input
           type="checkbox"
           checked={checked}
-          onChange={e => !disabled && onChange(e.target.checked)}
+          onChange={(e) => !disabled && onChange(e.target.checked)}
           disabled={disabled}
           className="sr-only"
         />
         <div
           className={`w-11 h-6 rounded-full transition-colors ${
-            checked ? 'bg-cyan-500' : 'bg-slate-700'
+            checked ? 'bg-blue-600' : 'bg-slate-200'
           } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
         <div
-          className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${
+          className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform shadow-xs ${
             checked ? 'transform translate-x-5' : ''
           }`}
         />
       </div>
-      {label && <span className="text-sm font-medium text-slate-200">{label}</span>}
+      {label && <span className="text-sm font-medium text-slate-700">{label}</span>}
     </label>
   );
 };

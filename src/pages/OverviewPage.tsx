@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSecurity } from '../context/SecurityContext';
+import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -7,19 +8,20 @@ import { StatStrip, StatItem } from '../components/ui/StatStrip';
 import { CCTVCanvasPlayer } from '../components/common/CCTVCanvasPlayer';
 import { DecisionPipelineWidget } from '../components/common/DecisionPipelineWidget';
 import {
-  ShieldAlert,
   ShieldCheck,
-  Eye,
+  ShieldAlert,
   Camera,
   Users,
-  Activity,
-  Clock,
-  Cpu,
-  Server,
   Bell,
+  CheckCircle2,
   ArrowRight,
+  Clock,
   Sparkles,
-  Zap,
+  Eye,
+  UserCheck,
+  UserX,
+  AlertTriangle,
+  Play,
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -28,6 +30,7 @@ interface OverviewPageProps {
 }
 
 export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => {
+  const { user } = useAuth();
   const {
     metrics,
     alerts,
@@ -36,218 +39,229 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
     unknownPersons,
     cameras,
     simulatedPerson,
-    isRealCameraMode,
   } = useSecurity();
 
   const [selectedCameraId, setSelectedCameraId] = useState<string>(cameras[0]?.id || 'cam-01');
-  const [healthData, setHealthData] = useState<any>(null);
+  const [greeting, setGreeting] = useState<string>('Good day');
 
   useEffect(() => {
-    let isMounted = true;
-    api.getHealth().then((res) => {
-      if (isMounted && res) {
-        setHealthData(res);
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Good morning');
+    else if (hour < 18) setGreeting('Good afternoon');
+    else setGreeting('Good evening');
   }, []);
 
   const activeAlerts = alerts.filter(a => a.status === 'ACTIVE').length;
   const isThreat = finalDecision === 'VERIFIED_THREAT' || activeAlerts > 0;
   const onlineCamerasCount = cameras.filter(c => c.status === 'ONLINE').length;
-  const totalPeopleDetected = residents.length + unknownPersons.length;
+  const recognizedCount = residents.length;
+  const activeCamera = cameras.find(c => c.id === selectedCameraId) || cameras[0] || {
+    id: 'cam-01',
+    name: 'Front Door',
+    location: 'Main Entrance',
+    status: 'ONLINE',
+  };
 
-  const currentFps = metrics.fps || (healthData?.camera === 'CONNECTED' ? 30.5 : 30.1);
-  const currentLatency = metrics.inferenceLatencyMs || 32.8;
-  const currentCpu = metrics.cpuUsage || 30.6;
-  const currentRam = metrics.ramUsageGb ? `${metrics.ramUsageGb} GB` : '1.3 GB';
-
-  // Section 4: Unified Monitoring Strip
-  const statItems: StatItem[] = [
+  // 4 Simple At-a-Glance Summary Cards
+  const summaryItems: StatItem[] = [
     {
-      id: 'status',
-      label: 'SYSTEM STATUS',
-      value: 'Online',
-      subtext: 'Edge AI Armed',
-      variant: 'emerald',
-      icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />,
+      id: 'security',
+      label: 'Security Status',
+      value: isThreat ? 'Action Needed' : 'Secure',
+      subtext: isThreat ? '1 active alert to review' : 'All clear around your home',
+      variant: isThreat ? 'rose' : 'emerald',
+      icon: isThreat ? <ShieldAlert className="w-6 h-6 text-rose-600" /> : <ShieldCheck className="w-6 h-6 text-emerald-600" />,
+      onClick: () => onNavigateTab && onNavigateTab('alerts'),
     },
     {
       id: 'cameras',
-      label: 'CAMERAS',
-      value: `${onlineCamerasCount} / ${cameras.length || 4}`,
-      subtext: 'RTSP Active',
+      label: 'Cameras',
+      value: `${onlineCamerasCount} Cameras`,
+      subtext: onlineCamerasCount === cameras.length ? 'All online and streaming' : `${cameras.length - onlineCamerasCount} camera offline`,
       variant: 'blue',
-      icon: <Camera className="w-3.5 h-3.5 text-blue-400" />,
+      icon: <Camera className="w-6 h-6 text-blue-600" />,
+      onClick: () => onNavigateTab && onNavigateTab('cameras'),
     },
     {
       id: 'people',
-      label: 'PEOPLE',
-      value: `${totalPeopleDetected}`,
-      subtext: 'Detected Today',
-      variant: 'blue',
-      icon: <Users className="w-3.5 h-3.5 text-blue-400" />,
+      label: 'Household',
+      value: `${recognizedCount} Registered`,
+      subtext: `${residents.filter(r => r.lastDetected).length || 2} seen recently`,
+      variant: 'purple',
+      icon: <Users className="w-6 h-6 text-purple-600" />,
+      onClick: () => onNavigateTab && onNavigateTab('people'),
     },
     {
-      id: 'events',
-      label: 'EVENTS',
-      value: `${alerts.length}`,
-      subtext: `${activeAlerts} Active Threat`,
-      variant: activeAlerts > 0 ? 'rose' : 'emerald',
-      icon: <Bell className="w-3.5 h-3.5" />,
-    },
-    {
-      id: 'fps',
-      label: 'FPS',
-      value: `${currentFps}`,
-      subtext: 'Throughput',
-      variant: 'emerald',
-      icon: <Activity className="w-3.5 h-3.5 text-emerald-400" />,
-    },
-    {
-      id: 'latency',
-      label: 'LATENCY',
-      value: `${currentLatency} ms`,
-      subtext: 'E2E Pipeline',
-      variant: 'blue',
-      icon: <Clock className="w-3.5 h-3.5 text-blue-400" />,
-    },
-    {
-      id: 'cpu',
-      label: 'CPU',
-      value: `${currentCpu}%`,
-      subtext: 'Hardware Load',
-      variant: 'neutral',
-      icon: <Cpu className="w-3.5 h-3.5 text-slate-400" />,
-    },
-    {
-      id: 'ram',
-      label: 'RAM',
-      value: currentRam,
-      subtext: 'Memory',
-      variant: 'neutral',
-      icon: <Server className="w-3.5 h-3.5 text-slate-400" />,
+      id: 'alerts',
+      label: 'Alerts',
+      value: `${activeAlerts} Alerts`,
+      subtext: activeAlerts === 0 ? 'Nothing urgent right now' : 'Requires your attention',
+      variant: activeAlerts > 0 ? 'amber' : 'emerald',
+      icon: activeAlerts > 0 ? <Bell className="w-6 h-6 text-amber-600" /> : <CheckCircle2 className="w-6 h-6 text-emerald-600" />,
+      onClick: () => onNavigateTab && onNavigateTab('alerts'),
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* 1. Unified Monitoring Strip */}
-      <StatStrip items={statItems} />
-
-      {/* 2. Main Command Center Grid: Primary Camera Workspace (8 cols) + Side Telemetry (4 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Live Monitoring Canvas & Camera Selector */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="flex items-center justify-between">
-            <SectionHeader
-              title="Live Monitoring"
-              subtitle={`Active Feed: ${cameras.find(c => c.id === selectedCameraId)?.name || 'Corridor Camera 01'}`}
-              icon={<Eye className="w-4 h-4" />}
-              badge={<StatusBadge status={isThreat ? 'THREAT' : 'ONLINE'} size="sm" />}
-            />
-            {onNavigateTab && (
-              <button
-                onClick={() => onNavigateTab('live-monitor')}
-                className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 transition"
-              >
-                Full Workspace <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+      {/* 1. Welcoming Consumer Greeting Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            {greeting}, {user?.name ? user.name.split(' ')[0] : 'there'}
+          </h1>
+          <p className="text-sm text-slate-600 mt-1 flex items-center gap-2">
+            {isThreat ? (
+              <span className="text-rose-600 font-semibold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4" /> Something needs your attention near the {activeCamera.name}.
+              </span>
+            ) : (
+              <span className="text-emerald-700 font-medium flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Your home is secure. No unusual activity detected.
+              </span>
             )}
-          </div>
-
-          {/* Big Primary Camera Viewport */}
-          <div className="relative rounded-xl overflow-hidden border border-slate-800 shadow-2xl bg-black">
-            <CCTVCanvasPlayer cameraId={selectedCameraId} />
-          </div>
-
-          {/* Camera Selector Strip (Section 5) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {cameras.map(cam => {
-              const isSelected = cam.id === selectedCameraId;
-              const isOnline = cam.status === 'ONLINE';
-
-              return (
-                <button
-                  key={cam.id}
-                  onClick={() => setSelectedCameraId(cam.id)}
-                  className={`p-2.5 rounded-xl border text-left transition-all ${
-                    isSelected
-                      ? 'bg-blue-950/60 border-blue-500/80 shadow-md shadow-blue-500/10'
-                      : 'bg-[#0b101d] border-slate-800/80 hover:border-slate-700 hover:bg-[#0f172a]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-white font-mono">{cam.name}</span>
-                    <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-                    <span>{cam.resolution}</span>
-                    <span className="text-emerald-400 font-bold">{cam.fps} FPS</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-slate-500 mt-1 truncate">
-                    {cam.location}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          </p>
         </div>
 
-        {/* Right Column: Triple-Gate Decision Engine & Current Detections */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* AI Decision Pipeline Widget */}
-          <DecisionPipelineWidget />
+        <div className="flex items-center gap-2.5">
+          <StatusBadge
+            variant={isThreat ? 'danger' : 'success'}
+            label={isThreat ? 'Alert Active' : 'Protected'}
+            pulse={isThreat}
+          />
+        </div>
+      </div>
 
-          {/* Section 6: Current Detections */}
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-400" /> Current Detections
-              </h3>
-              <span className="text-[10px] font-mono text-slate-400">REALTIME</span>
+      {/* 2. At-a-Glance 4-Card Summary Strip */}
+      <StatStrip items={summaryItems} />
+
+      {/* 3. Main Dashboard Grid: Primary Live View (8 cols) + AI Reasoning / Activity (4 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Live View & Camera Selector */}
+        <div className="lg:col-span-8 space-y-4">
+          <Card className="p-0 overflow-hidden bg-white border-slate-200/80 shadow-xs">
+            {/* Live Card Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 leading-tight flex items-center gap-2">
+                    {activeCamera.name}
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500">{activeCamera.location}</p>
+                </div>
+              </div>
+
+              {onNavigateTab && (
+                <button
+                  onClick={() => onNavigateTab('cameras')}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 transition"
+                >
+                  All Cameras <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            <div className="space-y-2">
+            {/* Video Viewport Container */}
+            <div className="relative aspect-video bg-slate-950 overflow-hidden">
+              <CCTVCanvasPlayer cameraId={selectedCameraId} />
+            </div>
+
+            {/* Camera Quick Selector Pills */}
+            <div className="p-4 bg-slate-50/70 border-t border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5">
+                Switch Camera View
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {cameras.map(cam => {
+                  const isSelected = cam.id === selectedCameraId;
+                  const isOnline = cam.status === 'ONLINE';
+
+                  return (
+                    <button
+                      key={cam.id}
+                      onClick={() => setSelectedCameraId(cam.id)}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        isSelected
+                          ? 'bg-white border-blue-500 shadow-sm ring-2 ring-blue-500/20'
+                          : 'bg-white/80 border-slate-200 hover:border-slate-300 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-slate-900 truncate">{cam.name}</span>
+                        <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                      </div>
+                      <p className="text-[11px] text-slate-500 truncate">{cam.location}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Right Column: AI Explanation + People Detected Now */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Why This Alert? Consumer AI Widget */}
+          <DecisionPipelineWidget />
+
+          {/* People Detected Now */}
+          <Card className="space-y-3 bg-white border-slate-200/80 shadow-xs">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-600" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  People Detected Now
+                </h3>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium">Live sensor</span>
+            </div>
+
+            <div className="space-y-2.5">
               {simulatedPerson.active ? (
-                <div className="p-3 rounded-lg bg-[#070b13] border border-slate-800 space-y-2">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-white">
-                        {simulatedPerson.residentName || `Track ${simulatedPerson.trackId}`}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-mono">
-                        Camera 01 • Front Corridor
-                      </p>
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                        simulatedPerson.faceStatus === 'UNKNOWN' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {simulatedPerson.residentName ? simulatedPerson.residentName[0] : '?'}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">
+                          {simulatedPerson.residentName || 'Unrecognized Person'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {activeCamera.name} • {simulatedPerson.dwellSeconds}s near entrance
+                        </p>
+                      </div>
                     </div>
+
                     <StatusBadge
-                      status={simulatedPerson.faceStatus === 'UNKNOWN' ? 'UNKNOWN' : 'KNOWN'}
+                      variant={simulatedPerson.faceStatus === 'UNKNOWN' ? 'danger' : 'success'}
+                      label={simulatedPerson.faceStatus === 'UNKNOWN' ? 'Unknown' : 'Family'}
                       size="sm"
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400 pt-1.5 border-t border-slate-800/60">
-                    <div>Confidence: <span className="text-blue-400 font-bold">{Math.round(simulatedPerson.confidence * 100)}%</span></div>
-                    <div>Dwell Time: <span className="text-amber-400 font-bold">{simulatedPerson.dwellSeconds}s</span></div>
                   </div>
                 </div>
               ) : unknownPersons.length > 0 ? (
                 unknownPersons.slice(0, 2).map(unk => (
-                  <div key={unk.id} className="p-2.5 rounded-lg bg-[#070b13] border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">Track {unk.trackId}</span>
-                      <StatusBadge status="UNKNOWN" size="sm" />
+                  <div key={unk.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Unrecognized Person</p>
+                      <p className="text-[11px] text-slate-500">{unk.camera} • {unk.dwellSeconds}s</p>
                     </div>
-                    <div className="flex justify-between text-[10px] font-mono text-slate-400">
-                      <span>{unk.camera}</span>
-                      <span>Dwell {unk.dwellSeconds}s • Conf {Math.round(unk.confidence * 100)}%</span>
-                    </div>
+                    <StatusBadge variant="danger" label="Unknown" size="sm" />
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-xs text-slate-400 font-mono">
-                  Zone Clear — No active subjects in ROI
+                <div className="p-4 text-center rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-500">
+                  Everything looks clear — no active motion.
                 </div>
               )}
             </div>
@@ -255,97 +269,71 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
         </div>
       </div>
 
-      {/* 3. Bottom Row: Recent Events Timeline (Section 7) & AI Recognition Status (Section 8) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Section 7: Recent Events Timeline */}
-        <div className="lg:col-span-8">
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Bell className="w-4 h-4 text-blue-400" /> Recent Security Events
-              </h3>
-              {onNavigateTab && (
-                <button
-                  onClick={() => onNavigateTab('alerts')}
-                  className="text-xs text-blue-400 hover:text-blue-300 font-medium"
+      {/* 4. Bottom Row: Recent Activity Timeline */}
+      <Card className="space-y-3 bg-white border-slate-200/80 shadow-xs">
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+              Recent Activity
+            </h3>
+          </div>
+
+          {onNavigateTab && (
+            <button
+              onClick={() => onNavigateTab('history')}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            >
+              View Full History ({alerts.length}) →
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {alerts.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-6">No recent security activity logged today.</p>
+          ) : (
+            alerts.slice(0, 4).map(alt => {
+              const isAlert = alt.severity === 'CRITICAL' || alt.status === 'ACTIVE';
+
+              return (
+                <div
+                  key={alt.id}
+                  className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-100/60 transition"
                 >
-                  View All ({alerts.length}) →
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              {alerts.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">No security events logged yet today.</p>
-              ) : (
-                alerts.slice(0, 4).map(alt => {
-                  const isThreatEvent = alt.severity === 'CRITICAL' || alt.faceStatus === 'UNKNOWN';
-
-                  return (
-                    <div
-                      key={alt.id}
-                      className="p-3 rounded-lg bg-[#0a0f1d] border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700 transition"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${isThreatEvent ? 'bg-rose-400 animate-pulse' : 'bg-emerald-400'}`} />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{alt.detectionType}</p>
-                          <p className="text-[11px] font-mono text-slate-400 truncate">
-                            {alt.cameraName} • Dwell {alt.dwellDuration}s • Conf {Math.round(alt.confidence * 100)}%
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto font-mono text-xs">
-                        <span className="text-slate-400 text-[11px]">{alt.timestamp.slice(11, 19)}</span>
-                        <StatusBadge
-                          status={alt.status === 'ACTIVE' ? (isThreatEvent ? 'THREAT' : 'MONITORING') : alt.status}
-                          size="sm"
-                        />
-                      </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      isAlert ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      {isAlert ? <AlertTriangle className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </Card>
-        </div>
 
-        {/* Section 8: AI Recognition Status */}
-        <div className="lg:col-span-4">
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Zap className="w-4 h-4 text-blue-400" /> AI Recognition Engine
-              </h3>
-              <StatusBadge status="ACTIVE" size="sm" />
-            </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {alt.detectionType === 'Loitering Alert' || alt.detectionType === 'Security Alert'
+                          ? `Unfamiliar person remained near ${alt.cameraName}`
+                          : alt.detectionType}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {alt.cameraName} • Stayed {alt.dwellDuration} seconds
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="space-y-2 text-xs font-mono">
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">Engine:</span>
-                <span className="text-white font-bold">{healthData?.face_recognition?.engine || 'InsightFace / ArcFace'}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">Model:</span>
-                <span className="text-blue-400 font-bold">{healthData?.face_recognition?.model || 'buffalo_s (512-D)'}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">Provider:</span>
-                <span className="text-emerald-400 font-bold">{healthData?.face_recognition?.provider || 'CoreMLExecutionProvider'}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">Cached Residents:</span>
-                <span className="text-white font-bold">{residents.length} Whitelisted</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-400">Quality Filter:</span>
-                <span className="text-slate-300">Passive Blur &amp; Res</span>
-              </div>
-            </div>
-          </Card>
+                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto text-xs">
+                    <span className="text-slate-400 text-xs">{alt.timestamp.slice(11, 16)}</span>
+                    <StatusBadge
+                      variant={alt.status === 'RESOLVED' ? 'success' : isAlert ? 'danger' : 'neutral'}
+                      label={alt.status === 'RESOLVED' ? 'Resolved' : isAlert ? 'Needs Review' : 'Logged'}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

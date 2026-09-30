@@ -12,16 +12,16 @@ interface MainLayoutProps {
 }
 
 const TAB_TITLES: Record<NavTab, { title: string; subtitle: string }> = {
-  overview: { title: 'Security Overview', subtitle: 'AI-powered residential CCTV intelligence' },
-  'live-monitor': { title: 'Live Monitor', subtitle: '1080p RTSP Stream & Real-time AI Decision Pipeline' },
-  alerts: { title: 'Security Alerts', subtitle: 'Incident management and false alarm verification audit' },
-  people: { title: 'People & Residents', subtitle: 'Prototype face biometrics whitelisting & unknown subjects' },
-  cameras: { title: 'Camera Management', subtitle: 'Edge RTSP streams, resolutions & processing latency' },
-  zones: { title: 'Detection Zones', subtitle: 'Virtual tripwire ROI geometry & dwell thresholds' },
-  history: { title: 'Event History', subtitle: 'Filterable temporal audit trail of all security events' },
-  analytics: { title: 'Analytics & Impact', subtitle: 'Target 99+ → <4 false-alarm reduction metrics & benchmark charts' },
-  health: { title: 'System Health', subtitle: 'Edge AI hardware utilization, temperature & node graph' },
-  settings: { title: 'System Settings', subtitle: 'YOLOv8, Lightweight IoU Tracker, Telegram API & Privacy configurations' },
+  overview: { title: 'Home Overview', subtitle: 'At-a-glance security summary and live home view' },
+  'live-monitor': { title: 'Live Video Feed', subtitle: 'Real-time camera streaming with intelligent detection' },
+  cameras: { title: 'Cameras', subtitle: 'Manage your connected cameras and live views' },
+  alerts: { title: 'Security Alerts', subtitle: 'Important events and motion notifications requiring review' },
+  people: { title: 'People & Family', subtitle: 'Manage recognized household members and trusted visitors' },
+  zones: { title: 'Protected Areas', subtitle: 'Custom boundary zones and stay duration rules' },
+  history: { title: 'Activity Timeline', subtitle: 'Complete chronological history of household detections' },
+  analytics: { title: 'Security Insights', subtitle: 'Daily activity trends, recognition rates, and performance' },
+  health: { title: 'System Status', subtitle: 'Device connection health, processing status, and hardware metrics' },
+  settings: { title: 'Settings', subtitle: 'Notification preferences, camera setup, and privacy controls' },
 };
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
@@ -34,10 +34,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     setDeviceCameraModalOpen,
   } = useSecurity();
 
-  const { title, subtitle } = TAB_TITLES[currentTab];
+  const { title, subtitle } = TAB_TITLES[currentTab] || TAB_TITLES.overview;
 
   return (
-    <div className="flex min-h-screen bg-[#070a12] text-slate-100 font-sans">
+    <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans">
       {/* Left Sidebar */}
       <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
 
@@ -50,7 +50,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <DemoSimulationBar />
 
         {/* Dynamic Page View */}
-        <main className="p-6 flex-1 space-y-6 overflow-y-auto">
+        <main className="p-6 md:p-8 flex-1 space-y-6 overflow-y-auto max-w-7xl mx-auto w-full">
           {children(currentTab, setCurrentTab)}
         </main>
       </div>

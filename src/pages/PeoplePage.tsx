@@ -6,6 +6,7 @@ import { SectionHeader } from '../components/ui/SectionHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
 import {
+  Users,
   UserCheck,
   UserX,
   UserPlus,
@@ -14,8 +15,6 @@ import {
   Upload,
   AlertTriangle,
   ShieldCheck,
-  RefreshCw,
-  Clock,
   Sparkles,
 } from 'lucide-react';
 
@@ -72,33 +71,33 @@ export const PeoplePage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* Whitelisted Residents Section */}
+      {/* Household Members Section */}
       <div className="space-y-4">
         <SectionHeader
-          title="Whitelisted Residents &amp; Family"
-          subtitle="InsightFace ArcFace 512-D normalized biometric vectors. Verified residents suppress dwell alerts automatically."
-          icon={<UserCheck className="w-5 h-5 text-emerald-400" />}
+          title="Household Members"
+          subtitle="Registered family members and trusted frequent visitors who bypass loitering alarms"
+          icon={<Users className="w-5 h-5" />}
           action={
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shadow-md shadow-blue-600/20 flex items-center justify-center gap-2"
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-2"
             >
-              <Plus className="w-4 h-4" /> Enroll New Resident
+              <Plus className="w-4 h-4" /> Add Household Member
             </button>
           }
         />
 
         {residents.length === 0 ? (
           <EmptyState
-            title="No Whitelisted Residents Enrolled"
-            description="Add authorized family members or residents with facial reference photos to enable silent biometric alert suppression."
-            icon={<UserCheck className="w-8 h-8 text-slate-500" />}
+            title="No Household Members Added"
+            description="Add your family members or roommates so Smart Vision recognizes them and never sends unnecessary false alarms when they are at home."
+            icon={<UserCheck className="w-8 h-8 text-slate-400" />}
             action={
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl transition inline-flex items-center gap-1.5 shadow-md shadow-blue-600/20"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl transition inline-flex items-center gap-1.5 shadow-xs"
               >
-                <Plus className="w-4 h-4" /> Enroll First Resident
+                <Plus className="w-4 h-4" /> Add First Member
               </button>
             }
           />
@@ -107,7 +106,7 @@ export const PeoplePage: React.FC = () => {
             {residents.map((res) => (
               <Card
                 key={res.id}
-                className="space-y-4 relative group hover:border-slate-700 transition"
+                className="space-y-4 relative group bg-white border-slate-200/80 shadow-xs hover:shadow-md transition"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -118,13 +117,13 @@ export const PeoplePage: React.FC = () => {
                           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80'
                         }
                         alt={res.name}
-                        className="w-12 h-12 rounded-xl border border-slate-700 object-cover bg-slate-800 shadow-inner"
+                        className="w-12 h-12 rounded-full border border-slate-200 object-cover bg-slate-100 shadow-xs"
                       />
-                      <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#0d1424]" />
+                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-white">{res.name}</h3>
-                      <p className="text-[11px] font-mono text-blue-400">{res.residentId}</p>
+                      <h3 className="font-bold text-sm text-slate-900">{res.name}</h3>
+                      <p className="text-xs text-blue-600 font-medium">{res.role}</p>
                     </div>
                   </div>
 
@@ -133,32 +132,29 @@ export const PeoplePage: React.FC = () => {
                       setResidentToDelete({ id: res.id, name: res.name });
                       setDeleteModalOpen(true);
                     }}
-                    title="Remove resident from biometric whitelist"
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition border border-transparent hover:border-rose-500/20"
+                    title="Remove household member"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="space-y-2 text-xs text-slate-400 font-mono pt-3 border-t border-slate-800/80">
+                <div className="space-y-2 text-xs text-slate-500 pt-3 border-t border-slate-100">
                   <div className="flex justify-between items-center">
-                    <span>Biometric Status:</span>
+                    <span>Status:</span>
                     <StatusBadge
-                      variant={res.faceStatus === 'VERIFIED' ? 'success' : 'warning'}
-                      label={res.faceStatus || 'ENROLLED'}
+                      variant="success"
+                      label="Recognized"
+                      size="sm"
                     />
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Role:</span>
-                    <span className="text-slate-200">{res.role}</span>
+                    <span>Last seen at home:</span>
+                    <span className="text-slate-800 font-medium">{res.lastDetected || 'Recently'}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Last Sighted:</span>
-                    <span className="text-slate-300">{res.lastDetected || 'Never'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Total Passages:</span>
-                    <span className="text-blue-400 font-bold">{res.detectionCount}</span>
+                    <span>Visits recorded:</span>
+                    <span className="text-slate-800 font-bold">{res.detectionCount} times</span>
                   </div>
                 </div>
               </Card>
@@ -167,71 +163,67 @@ export const PeoplePage: React.FC = () => {
         )}
       </div>
 
-      {/* Unrecognized Subjects Section */}
-      <div className="space-y-4 pt-6 border-t border-slate-800/80">
+      {/* Unrecognized People Section */}
+      <div className="space-y-4 pt-6 border-t border-slate-200/80">
         <SectionHeader
-          title="Unrecognized Subjects (Recently Detected)"
-          subtitle="Unregistered individuals detected in monitored zones. Review snapshots and whitelist trusted visitors."
-          icon={<UserX className="w-5 h-5 text-rose-400" />}
+          title="Unrecognized People (Recent Visitors)"
+          subtitle="Visitors or strangers detected around your home who are not currently on your household list"
+          icon={<UserX className="w-5 h-5" />}
         />
 
         {unknownPersons.length === 0 ? (
           <EmptyState
-            title="No Unrecognized Persons Detected"
-            description="No unregistered subjects currently logged in the active detection zones."
-            icon={<UserX className="w-8 h-8 text-slate-600" />}
+            title="No Unrecognized Persons"
+            description="No unfamiliar people have been spotted in your protected areas."
+            icon={<UserCheck className="w-8 h-8 text-emerald-600" />}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {unknownPersons.map((unk) => (
               <Card
                 key={unk.id}
-                className="space-y-4 border-rose-500/30 hover:border-rose-500/50 transition"
+                className="space-y-4 bg-white border-slate-200/80 shadow-xs hover:shadow-md transition"
               >
                 <div className="flex items-center gap-3">
                   <img
                     src={unk.snapshotUrl}
                     alt={unk.trackId}
-                    className="w-14 h-14 rounded-xl border border-rose-500/50 object-cover bg-slate-800"
+                    className="w-14 h-14 rounded-2xl border border-slate-200 object-cover bg-slate-100"
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm text-white">Track {unk.trackId}</h3>
-                      <StatusBadge variant="danger" label="UNKNOWN" />
+                      <h3 className="font-bold text-sm text-slate-900">Unrecognized Visitor</h3>
+                      <StatusBadge variant="danger" label="Unknown" size="sm" />
                     </div>
-                    <p className="text-[11px] font-mono text-rose-400">
-                      Threat: {unk.threatStatus}
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Seen at {unk.camera}
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-slate-400 font-mono pt-2 border-t border-slate-800/80">
+                <div className="space-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100">
                   <div className="flex justify-between">
-                    <span>Camera:</span>
-                    <span className="text-slate-200">{unk.camera}</span>
+                    <span>Stay duration:</span>
+                    <span className="text-amber-600 font-bold">{unk.dwellSeconds} seconds</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Dwell Duration:</span>
-                    <span className="text-amber-400 font-bold">{unk.dwellSeconds} Seconds</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Confidence:</span>
-                    <span className="text-slate-200">{Math.round(unk.confidence * 100)}%</span>
+                    <span>Camera location:</span>
+                    <span className="text-slate-800 font-medium">{unk.camera}</span>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-800/80">
+                <div className="pt-2 border-t border-slate-100">
                   <button
                     onClick={() => {
                       addResident({
-                        name: `Whitelisted Subject ${unk.trackId}`,
-                        role: 'Family Member',
+                        name: `Trusted Visitor`,
+                        role: 'Frequent Visitor',
                         avatarUrl: unk.snapshotUrl,
                       });
                     }}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                    className="w-full py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
                   >
-                    <UserPlus className="w-4 h-4" /> Add to Whitelist
+                    <UserPlus className="w-4 h-4" /> Add as Household Member
                   </button>
                 </div>
               </Card>
@@ -240,42 +232,42 @@ export const PeoplePage: React.FC = () => {
         )}
       </div>
 
-      {/* Add Resident Modal */}
+      {/* Add Household Member Modal */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        title="Enroll New Resident Whitelist"
+        title="Add Household Member"
       >
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono text-slate-400 mb-1">Full Name</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
             <input
               type="text"
               placeholder="e.g. Sarah Jenkins"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full bg-[#080d1a] border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-white focus:border-blue-500 outline-none"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-slate-400 mb-1">Role / Access Level</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Household Role</label>
             <select
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as any)}
-              className="w-full bg-[#080d1a] border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:border-blue-500 outline-none"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white outline-none"
             >
               <option value="Primary Resident">Primary Resident</option>
               <option value="Family Member">Family Member</option>
-              <option value="Frequent Visitor">Frequent Visitor</option>
+              <option value="Frequent Visitor">Frequent Visitor / Guest</option>
             </select>
           </div>
 
           {/* Photo File Upload Field */}
           <div>
-            <label className="block text-xs font-mono text-slate-400 mb-1">
-              Face Reference Photo (For ArcFace Embedding)
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Face Photo for Recognition
             </label>
             <div className="flex items-center gap-3">
               <input
@@ -287,40 +279,40 @@ export const PeoplePage: React.FC = () => {
               />
               <label
                 htmlFor="face-photo-input"
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs cursor-pointer border border-slate-700 flex items-center gap-2 transition"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer border border-slate-200 flex items-center gap-2 transition"
               >
-                <Upload className="w-4 h-4 text-blue-400" /> Choose Photo
+                <Upload className="w-4 h-4 text-blue-600" /> Choose Photo
               </label>
               {faceBase64 && (
-                <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Photo loaded &amp; ready
+                <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" /> Photo selected
                 </span>
               )}
             </div>
           </div>
 
-          <div className="p-3 bg-blue-950/30 border border-blue-500/20 rounded-xl text-xs text-slate-300">
-            <p className="font-semibold text-blue-200 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-blue-400" /> InsightFace Biometrics:
+          <div className="p-3.5 bg-blue-50 border border-blue-200/80 rounded-xl text-xs text-slate-700">
+            <p className="font-semibold text-blue-900 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-blue-600" /> How recognition works:
             </p>
-            <p className="text-slate-400 mt-0.5 leading-relaxed">
-              Upon submission, the backend InsightFace ArcFace engine extracts a 512-D normalized L2 feature vector. This vector is cached in memory for zero-latency resident matching during live video processing.
+            <p className="text-slate-600 mt-1 leading-relaxed">
+              When this person appears on your security cameras, Smart Vision recognizes them immediately and suppresses false alarms so your notifications stay quiet and relevant.
             </p>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
+          <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800 transition"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-md shadow-blue-600/20"
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-xs"
             >
-              Enroll Resident
+              Save Member
             </button>
           </div>
         </form>
@@ -330,33 +322,33 @@ export const PeoplePage: React.FC = () => {
       <Modal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
-        title="Confirm Biometric Removal"
+        title="Remove Member"
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-2xl">
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-300">
-              <p className="font-bold text-rose-200">Remove Whitelisted Resident?</p>
-              <p className="mt-1 text-slate-400">
+          <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-slate-700">
+              <p className="font-bold text-rose-900 text-sm">Remove from Household?</p>
+              <p className="mt-1 text-slate-600 leading-relaxed">
                 Are you sure you want to remove{' '}
-                <strong className="text-white">{residentToDelete?.name}</strong> from the biometric whitelist?
-                Their ArcFace facial embedding vector will be permanently deleted from the database.
+                <strong className="text-slate-900">{residentToDelete?.name}</strong>?
+                Smart Vision will treat them as an unfamiliar visitor if they stay near your home entrances.
               </p>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
+          <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
             <button
               onClick={() => setDeleteModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800 transition"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
             >
               Cancel
             </button>
             <button
               onClick={confirmDelete}
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-lg shadow-rose-600/20"
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs"
             >
-              Delete Resident
+              Remove Member
             </button>
           </div>
         </div>

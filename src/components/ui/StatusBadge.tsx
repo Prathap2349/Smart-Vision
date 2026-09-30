@@ -35,57 +35,69 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   className,
 }) => {
   const normalized = (status || label || (typeof children === 'string' ? children : '') || '').toUpperCase();
-  const displayLabel = label || children || normalized.replace(/_/g, ' ');
+  
+  // Format display text nicely
+  let displayLabel = label || children || normalized.replace(/_/g, ' ');
+  if (typeof displayLabel === 'string') {
+    if (displayLabel.toUpperCase() === 'ONLINE') displayLabel = 'Online';
+    else if (displayLabel.toUpperCase() === 'OFFLINE') displayLabel = 'Offline';
+    else if (displayLabel.toUpperCase() === 'THREAT' || displayLabel.toUpperCase() === 'VERIFIED_THREAT') displayLabel = 'Security Alert';
+    else if (displayLabel.toUpperCase() === 'SAFE' || displayLabel.toUpperCase() === 'SAFE_RESIDENT') displayLabel = 'Household Safe';
+    else if (displayLabel.toUpperCase() === 'MONITORING') displayLabel = 'Monitoring';
+    else if (displayLabel.toUpperCase() === 'UNKNOWN') displayLabel = 'Unrecognized Person';
+    else if (displayLabel.toUpperCase() === 'KNOWN' || displayLabel.toUpperCase() === 'VERIFIED') displayLabel = 'Recognized';
+    else if (displayLabel.toUpperCase() === 'PROTECTION ACTIVE') displayLabel = 'Protected';
+  }
 
-  let colorClasses = 'bg-slate-800/80 text-slate-300 border-slate-700/60';
+  let colorClasses = 'bg-slate-100 text-slate-700 border-slate-200';
   let dotColor = 'bg-slate-400';
 
   if (
     variant === 'success' ||
     variant === 'emerald' ||
-    ['ONLINE', 'KNOWN', 'SAFE', 'HEALTHY', 'VERIFIED', 'VERIFIED_RESIDENT', 'PASS'].includes(normalized)
+    ['ONLINE', 'KNOWN', 'SAFE', 'HEALTHY', 'VERIFIED', 'VERIFIED_RESIDENT', 'PASS', 'ACTIVE', 'PROTECTED', 'HOUSEHOLD SAFE'].includes(normalized)
   ) {
-    colorClasses = 'bg-emerald-950/70 text-emerald-300 border-emerald-500/30';
-    dotColor = 'bg-emerald-400';
+    colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200/80';
+    dotColor = 'bg-emerald-500';
   } else if (
     variant === 'danger' ||
     variant === 'rose' ||
-    ['THREAT', 'CRITICAL', 'UNKNOWN', 'ALERT FIRED', 'ALERT', 'FAIL', 'DANGER'].includes(normalized)
+    ['THREAT', 'CRITICAL', 'UNKNOWN', 'ALERT FIRED', 'ALERT', 'FAIL', 'DANGER', 'SECURITY ALERT', 'VERIFIED_THREAT'].includes(normalized)
   ) {
-    colorClasses = 'bg-rose-950/70 text-rose-300 border-rose-500/40';
-    dotColor = 'bg-rose-400';
+    colorClasses = 'bg-rose-50 text-rose-700 border-rose-200/80';
+    dotColor = 'bg-rose-500';
   } else if (
     variant === 'warning' ||
     variant === 'amber' ||
-    ['WARNING', 'RE_ENROLLMENT_REQUIRED', 'RE-ENROLLMENT REQUIRED', 'PENDING', 'DEGRADED'].includes(normalized)
+    ['WARNING', 'RE_ENROLLMENT_REQUIRED', 'RE-ENROLLMENT REQUIRED', 'PENDING', 'DEGRADED', 'ATTENTION'].includes(normalized)
   ) {
-    colorClasses = 'bg-amber-950/70 text-amber-300 border-amber-500/40';
-    dotColor = 'bg-amber-400';
+    colorClasses = 'bg-amber-50 text-amber-700 border-amber-200/80';
+    dotColor = 'bg-amber-500';
   } else if (
     variant === 'info' ||
     variant === 'cyan' ||
     variant === 'blue' ||
     variant === 'indigo' ||
-    ['MONITORING', 'ACTIVE', 'RTSP LIVE', 'EVALUATING', 'CONNECTED', 'INFO'].includes(normalized)
+    ['MONITORING', 'RTSP LIVE', 'EVALUATING', 'CONNECTED', 'INFO', 'LIVE'].includes(normalized)
   ) {
-    colorClasses = 'bg-blue-950/70 text-blue-300 border-blue-500/30';
-    dotColor = 'bg-blue-400';
+    colorClasses = 'bg-blue-50 text-blue-700 border-blue-200/80';
+    dotColor = 'bg-blue-500';
   } else if (
     variant === 'neutral' ||
     variant === 'slate' ||
     ['OFFLINE', 'DISCONNECTED', 'IDLE', 'STANDBY', 'NOT_CONNECTED'].includes(normalized)
   ) {
-    colorClasses = 'bg-slate-900 text-slate-400 border-slate-800';
-    dotColor = 'bg-slate-500';
+    colorClasses = 'bg-slate-100 text-slate-600 border-slate-200';
+    dotColor = 'bg-slate-400';
   }
 
-  const isPulsing = pulse || ['THREAT', 'CRITICAL', 'ALERT FIRED'].includes(normalized);
+  const isPulsing = pulse || ['THREAT', 'CRITICAL', 'ALERT FIRED', 'SECURITY ALERT', 'VERIFIED_THREAT'].includes(normalized);
 
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 rounded-full font-mono font-bold tracking-wider border uppercase select-none',
-        size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs',
+        'inline-flex items-center gap-1.5 rounded-full font-medium border select-none transition-colors',
+        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
         colorClasses,
         className
       )}
