@@ -1,0 +1,77 @@
+{
+  "status": "INSUFFICIENT_DATASET",
+  "metadata": {
+    "face_engine": "InsightFace / ArcFace",
+    "face_model": "buffalo_s",
+    "execution_provider": "CoreMLExecutionProvider",
+    "detector_model": "YOLOv8-Nano (yolov8n.pt)",
+    "dataset_version": "1.0.0-groundtruth",
+    "machine": "arm64",
+    "processor": "arm",
+    "os": "Darwin 25.6.0",
+    "python_version": "3.13.7",
+    "timestamp": "2026-09-30T10:45:08Z"
+  },
+  "inventory": {
+    "total_manifest_entries": 20,
+    "existing_clips_count": 0,
+    "missing_clips_count": 20,
+    "existing_by_scenario": {
+      "empty_corridor": 0,
+      "shadows_wind": 0,
+      "animals": 0,
+      "resident": 0,
+      "resident_lingering": 0,
+      "delivery_person": 0,
+      "unknown_loitering": 0,
+      "night_low_light": 0,
+      "multiple_people": 0,
+      "occlusion": 0,
+      "mask_cap": 0
+    },
+    "missing_by_scenario": {
+      "empty_corridor": 2,
+      "shadows_wind": 2,
+      "animals": 2,
+      "resident": 2,
+      "resident_lingering": 2,
+      "delivery_person": 2,
+      "unknown_loitering": 2,
+      "night_low_light": 2,
+      "multiple_people": 2,
+      "occlusion": 1,
+      "mask_cap": 1
+    },
+    "missing_scenarios": [
+      "empty_corridor",
+      "shadows_wind",
+      "animals",
+      "resident",
+      "resident_lingering",
+      "delivery_person",
+      "unknown_loitering",
+      "night_low_light",
+      "multiple_people",
+      "occlusion",
+      "mask_cap"
+    ]
+  },
+  "recommendation": {
+    "minimum_clips_required": 22,
+    "recommended_per_scenario": "2 to 3 clips per scenario",
+    "missing_scenarios": [
+      "empty_corridor",
+      "shadows_wind",
+      "animals",
+      "resident",
+      "resident_lingering",
+      "delivery_person",
+      "unknown_loitering",
+      "night_low_light",
+      "multiple_people",
+      "occlusion",
+      "mask_cap"
+    ],
+    "guidelines": "Record 10-45s MP4 clips for each scenario in evaluation/dataset/<scenario>/ and populate labels.csv."
+  }
+}

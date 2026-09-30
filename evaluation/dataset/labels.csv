@@ -1,0 +1,21 @@
+video,scenario,expected_alert,resident_present,notes
+empty_corridor/clip_01_empty.mp4,empty_corridor,0,0,Empty corridor daytime with no motion
+empty_corridor/clip_02_empty.mp4,empty_corridor,0,0,Empty corridor evening with ambient light change
+shadows_wind/clip_01_shadows.mp4,shadows_wind,0,0,Tree branch shadows cast across floor during high wind
+shadows_wind/clip_02_sunlight.mp4,shadows_wind,0,0,Sunbeam shifting through window with dust particles
+animals/clip_01_cat_passage.mp4,animals,0,0,Domestic cat walking through corridor ROI
+animals/clip_02_dog_running.mp4,animals,0,0,Dog running across camera frame
+resident/clip_01_alice_passage.mp4,resident,0,1,Enrolled resident Alice walking through corridor (8s transit)
+resident/clip_02_bob_passage.mp4,resident,0,1,Enrolled resident Bob walking through corridor (6s transit)
+resident_lingering/clip_01_alice_loiter.mp4,resident_lingering,0,1,Enrolled resident Alice lingering for 35s - alert suppressed by ArcFace
+resident_lingering/clip_02_bob_loiter.mp4,resident_lingering,0,1,Enrolled resident Bob checking phone in corridor for 40s - alert suppressed
+delivery_person/clip_01_courier_drop.mp4,delivery_person,0,0,Courier drops parcel at doorstep and departs in 12s (< 20s threshold)
+delivery_person/clip_02_food_delivery.mp4,delivery_person,0,0,Delivery agent ringing bell and walking away in 15s
+unknown_loitering/clip_01_stranger_door.mp4,unknown_loitering,1,0,Unknown person inspecting door locks for 45s (> 20s threshold)
+unknown_loitering/clip_02_stranger_vestibule.mp4,unknown_loitering,1,0,Unknown person pacing in protected zone for 30s
+night_low_light/clip_01_night_loiter.mp4,night_low_light,1,0,Night-time low light stranger loitering for 18s (> 10s night threshold)
+night_low_light/clip_02_ir_walkby.mp4,night_low_light,0,0,Night-time quick passage in 5s (< 10s threshold)
+multiple_people/clip_01_resident_plus_guest.mp4,multiple_people,0,1,Resident and guest walking together (10s transit)
+multiple_people/clip_02_two_strangers_loiter.mp4,multiple_people,1,0,Two unknown persons standing and talking in corridor for 35s
+occlusion/clip_01_pillar_hide.mp4,occlusion,1,0,Unknown person partially occluded behind pillar for 28s
+mask_cap/clip_01_masked_intruder.mp4,mask_cap,1,0,Person with baseball cap and face mask loitering for 32s

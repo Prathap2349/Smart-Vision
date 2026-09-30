@@ -7,6 +7,7 @@ from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 from ai.detector import yolo_detector
 from tracking.tracker import tracker_manager
 from face.recognizer import face_recognizer
+from face.cache import resident_cache
 
 router = APIRouter(tags=["health"])
 
@@ -15,10 +16,10 @@ def health_check():
     yolo_ready = (yolo_detector is not None) and (getattr(yolo_detector, "model", None) is not None)
     tracker_ready = tracker_manager is not None
     opencv_ready = hasattr(cv2, "__version__")
-    face_ready = face_recognizer is not None
-    device_test_ready = yolo_ready and tracker_ready and opencv_ready
+    face_ready = (face_recognizer is not None) and face_recognizer.is_ready
+    device_test_ready = yolo_ready and tracker_ready and opencv_ready and face_ready
 
-    # Fix #1: query actual camera status from DB instead of hardcoding "CONNECTED"
+    # Query actual camera status from DB
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -41,23 +42,31 @@ def health_check():
         "tracker": "READY" if tracker_ready else "ERROR",
         "opencv": "READY" if opencv_ready else "ERROR",
         "face_matcher": "READY" if face_ready else "ERROR",
+        "face_recognition": {
+            "engine": "InsightFace / ArcFace",
+            "provider": getattr(face_recognizer, "active_provider", "UNKNOWN"),
+            "model": getattr(face_recognizer, "model_name", "buffalo_s"),
+            "status": "READY" if face_ready else "ERROR",
+            "cached_residents_count": len(resident_cache),
+            "legacy_re_enrollment_needed": resident_cache.legacy_count
+        },
+        "detector": {
+            "model": "YOLOv8-Nano (yolov8n.pt)",
+            "status": "READY" if yolo_ready else "ERROR"
+        },
         "device_camera_test": "READY" if device_test_ready else "NOT_READY",
         "version": "1.0.0-edge",
-        "device": "Smart Vision Sentry Edge AI Box (Jetson/x86)",
+        "device": "Smart Vision Sentry Edge AI Box (Jetson/x86/Apple Silicon)",
         "mode": "REAL_MODE",
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
     }
 
 @router.get("/api/system/metrics")
 def get_system_metrics():
-    # Read actual hardware CPU, RAM, and system stats
     cpu = psutil.cpu_percent(interval=None) or 0.0
     mem = psutil.virtual_memory()
 
-    # Honest fix: gpuUsage was previously hardcoded as cpu * 1.2; returning 0.0 as no GPU telemetry hardware is available
     gpu_usage = 0.0
-
-    # Honest fix: tempCelsius was hardcoded to 48°C; using psutil sensors if available, else None/0.0
     temp_celsius = None
     if hasattr(psutil, "sensors_temperatures"):
         try:
@@ -70,14 +79,13 @@ def get_system_metrics():
         except Exception:
             pass
 
-    # Query actual camera status from database
+    # Query camera status
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT status, fps FROM cameras WHERE enabled = 1 LIMIT 1;")
     camera_row = cursor.fetchone()
     conn.close()
 
-    # Honest fix: rtspStatus was hardcoded to CONNECTED; now checking actual camera status from database
     if camera_row:
         cam_status = camera_row["status"]
         rtsp_status = "CONNECTED" if cam_status == "ONLINE" else ("DISCONNECTED" if cam_status == "OFFLINE" else "NOT_CONFIGURED")
@@ -88,18 +96,15 @@ def get_system_metrics():
         fps = 0.0
         edge_connection_state = "CONNECTED_NO_CAMERA"
 
-    # Honest fix: inferenceLatencyMs (18ms) and networkLatencyMs (14ms) were hardcoded; returning 0.0 when unmeasured/idle
     inference_latency = 0.0
     network_latency = 0.0
 
-    # Honest fix: telegramStatus was hardcoded to CONNECTED; now verifying TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID configuration
     telegram_status = "CONNECTED" if (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID) else "DISCONNECTED"
 
-    # Truthful AI runtime component health inspection
     open_cv_status = "ACTIVE" if hasattr(cv2, "__version__") else "OFFLINE"
-    yolo_status = "ACTIVE" if (yolo_detector and getattr(yolo_detector, "model", None) is not None) else ("WARNING" if (yolo_detector and getattr(yolo_detector, "hog", None) is not None) else "OFFLINE")
+    yolo_status = "ACTIVE" if (yolo_detector and getattr(yolo_detector, "model", None) is not None) else "OFFLINE"
     tracker_status = "ACTIVE" if tracker_manager is not None else "OFFLINE"
-    face_status = "ACTIVE" if face_recognizer is not None else "OFFLINE"
+    face_status = "ACTIVE" if (face_recognizer and face_recognizer.is_ready) else "OFFLINE"
 
     return {
         "edgeStatus": "ONLINE",
@@ -117,8 +122,11 @@ def get_system_metrics():
         "yoloStatus": yolo_status,
         "trackerStatus": tracker_status,
         "faceMatcherStatus": face_status,
+        "faceRecognitionEngine": "InsightFace / ArcFace",
+        "faceExecutionProvider": getattr(face_recognizer, "active_provider", "UNKNOWN"),
         "openCvStatus": open_cv_status,
         "rtspStatus": rtsp_status,
-        "telegramStatus": telegram_status
+        "telegramStatus": telegram_status,
+        "cachedResidents": len(resident_cache),
+        "legacyReEnrollmentCount": resident_cache.legacy_count
     }
-

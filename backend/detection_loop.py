@@ -1,26 +1,80 @@
 import time
 import cv2
+import json
 import threading
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from camera.rtsp_stream import rtsp_manager
 from ai.detector import yolo_detector
 from tracking.tracker import tracker_manager
 from face.recognizer import face_recognizer
+from face.cache import resident_cache
 from ai.decision_engine import decision_engine
 from alerts.alert_manager import alert_manager
 from database import get_db_connection
+from config import TRACK_RECOGNITION_INTERVAL
 
 class ContinuousDetectionLoop(threading.Thread):
+    """
+    High-Performance Continuous AI Detection Engine.
+    
+    Optimizations (Phase 1):
+    - Zero per-frame SQLite disk I/O
+    - In-memory ResidentCache with vectorized ArcFace cosine matching
+    - Cached detection zones (reloaded on interval or demand)
+    - Track-level face recognition caching (avoids redundant 100ms inference)
+    """
     def __init__(self, camera_id: str = "cam-01"):
         super().__init__(daemon=True)
         self.camera_id = camera_id
+        self.camera_name = camera_id
         self.running = True
         self.last_detection_state: Dict[str, Any] = {}
         self.lock = threading.Lock()
+        self._cached_zones: List[Dict[str, Any]] = []
+        self._last_zone_refresh: float = 0.0
+
+    def _refresh_zones_cache(self, force: bool = False):
+        """Refreshes detection zones cache from SQLite every 5 seconds or on demand."""
+        now = time.time()
+        if not force and (now - self._last_zone_refresh) < 5.0 and len(self._cached_zones) > 0:
+            return
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name, type, dwell_threshold, polygon_json FROM detection_zones WHERE enabled = 1;")
+            zone_rows = cursor.fetchall()
+
+            cursor.execute("SELECT name FROM cameras WHERE id = ?;", (self.camera_id,))
+            cam_row = cursor.fetchone()
+            if cam_row:
+                self.camera_name = cam_row["name"]
+
+            conn.close()
+
+            new_zones = []
+            for r in zone_rows:
+                try:
+                    pts = json.loads(r["polygon_json"])
+                    new_zones.append({
+                        "id": r["id"],
+                        "name": r["name"],
+                        "type": r["type"],
+                        "dwell_threshold": r["dwell_threshold"],
+                        "polygonPoints": pts
+                    })
+                except Exception:
+                    pass
+            self._cached_zones = new_zones
+            self._last_zone_refresh = now
+        except Exception as e:
+            print(f"[AI Detection Loop] Zone cache refresh warning: {e}")
 
     def run(self):
         print(f"[AI Detection Loop] Started continuous detection thread for camera '{self.camera_id}'.")
+        self._refresh_zones_cache(force=True)
+
         while self.running:
             try:
                 frame, is_connected, fps = rtsp_manager.get_frame_data(self.camera_id)
@@ -33,30 +87,12 @@ class ContinuousDetectionLoop(threading.Thread):
                 # 1. Run YOLO Human Detection
                 detections = yolo_detector.detect(frame)
 
-                # 2. Query Active Zones from SQLite
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT id, name, type, dwell_threshold, polygon_json FROM detection_zones WHERE enabled = 1;")
-                zone_rows = cursor.fetchall()
-                conn.close()
-
-                zones = []
-                for r in zone_rows:
-                    import json
-                    try:
-                        pts = json.loads(r["polygon_json"])
-                        zones.append({
-                            "id": r["id"],
-                            "name": r["name"],
-                            "type": r["type"],
-                            "dwell_threshold": r["dwell_threshold"],
-                            "polygonPoints": pts
-                        })
-                    except Exception:
-                        pass
+                # 2. Get Cached Detection Zones (Zero SQLite query per frame)
+                self._refresh_zones_cache(force=False)
+                zones = self._cached_zones
 
                 # 3. Update Lightweight IoU Multi-Object Tracker
-                tracks = tracker_manager.update_tracks(detections, zones, frame_w=w, frame_h=h)
+                tracks = tracker_manager.update_tracks(detections, zones, frame_w=w, frame_h=h, frame=frame)
 
                 # 4. Face Recognition & Triple-Gate Rule Evaluation
                 gate_eval = {
@@ -74,10 +110,12 @@ class ContinuousDetectionLoop(threading.Thread):
                     for t in tracks:
                         x1, y1, x2, y2 = [int(v) for v in t.bbox]
                         crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
-                        if crop.size > 0:
+
+                        # Track-Level Recognition Cache: Run ArcFace only when needed
+                        if crop.size > 0 and t.should_verify_face(interval=TRACK_RECOGNITION_INTERVAL):
                             face_status, res_name, face_conf = face_recognizer.match_face(crop)
-                            t.face_status = face_status
-                            t.resident_name = res_name
+                            emb = face_recognizer.generate_embedding(crop) if face_status == "KNOWN" else None
+                            t.record_face_result(face_status, res_name, face_conf, embedding=emb)
 
                         t_gate_eval = decision_engine.evaluate_gates(
                             is_human=True,
@@ -87,23 +125,17 @@ class ContinuousDetectionLoop(threading.Thread):
                             face_status=t.face_status
                         )
 
-                        conn = get_db_connection()
-                        cursor = conn.cursor()
-                        cursor.execute("SELECT name FROM cameras WHERE id = ?;", (self.camera_id,))
-                        cam_row = cursor.fetchone()
-                        conn.close()
-                        camera_name = cam_row["name"] if cam_row else self.camera_id
-
                         # Trigger Alert if Triple-Gate passes (VERIFIED_THREAT)
                         if t_gate_eval["final_decision"] == "VERIFIED_THREAT":
                             new_alert = alert_manager.trigger_alert(
                                 camera_id=self.camera_id,
-                                camera_name=camera_name,
+                                camera_name=self.camera_name,
                                 track_id=t.track_id,
                                 dwell_duration=t.dwell_seconds,
                                 face_status=t.face_status,
                                 confidence=t.confidence,
-                                frame=frame
+                                frame=frame,
+                                zone_name=t.current_zone if t.current_zone != "Outside ROI" else "Corridor Protection Zone"
                             )
                             if new_alert:
                                 gate_eval["new_alert"] = new_alert

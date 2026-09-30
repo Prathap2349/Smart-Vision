@@ -4,9 +4,11 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 EVIDENCE_DIR = DATA_DIR / "evidence"
+MODELS_DIR = DATA_DIR / "models"
 
 DATA_DIR.mkdir(exist_ok=True)
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load environment variables from backend/.env if present
 try:
@@ -45,3 +47,16 @@ DAY_DWELL_THRESHOLD = 20    # Standard 20-second loitering during day
 # Supabase Integration Settings (Cloud Database)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://phiboawjlfnzlrdcsddv.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+# InsightFace & Biometric Recognition Architecture Settings
+INSIGHTFACE_MODEL_NAME = os.getenv("INSIGHTFACE_MODEL_NAME", "buffalo_s")
+INSIGHTFACE_ROOT = MODELS_DIR
+INSIGHTFACE_DET_SIZE = (640, 640)
+INSIGHTFACE_PROVIDERS = ["CoreMLExecutionProvider", "CPUExecutionProvider"]
+
+# Face Quality & Matching Parameters
+# Passive face-quality filtering; not full liveness detection.
+FACE_MIN_SIZE = int(os.getenv("FACE_MIN_SIZE", "32"))  # Min pixel width/height (32x32)
+FACE_MIN_BLUR_SCORE = float(os.getenv("FACE_MIN_BLUR_SCORE", "30.0"))  # Laplacian variance threshold
+FACE_SIMILARITY_THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.50"))  # ArcFace Cosine Similarity Threshold
+TRACK_RECOGNITION_INTERVAL = float(os.getenv("TRACK_RECOGNITION_INTERVAL", "1.0"))  # Seconds between face re-verification

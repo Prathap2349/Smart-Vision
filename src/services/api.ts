@@ -234,4 +234,19 @@ export const api = {
       };
     }
   },
+
+  async getLatestEvaluation() {
+    try {
+      const res = await fetch(`${API_BASE}/evaluation/latest`);
+      if (!res.ok) throw new Error('API error');
+      return await res.json();
+    } catch {
+      return {
+        has_evaluation_results: false,
+        status: 'OFFLINE',
+        message: 'Backend server unreachable.',
+        benchmark: null,
+      };
+    }
+  },
 };

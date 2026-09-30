@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "face_engine": "InsightFace / ArcFace",
+    "face_model": "buffalo_s",
+    "execution_provider": "CoreMLExecutionProvider",
+    "detector_model": "YOLOv8-Nano (yolov8n.pt)",
+    "machine": "arm64",
+    "processor": "arm",
+    "os": "Darwin 25.6.0",
+    "os_version": "Darwin Kernel Version 25.6.0: Sun Jun 28 20:27:27 PDT 2026; root:xnu-12377.160.87.0.2~12/RELEASE_ARM64_T8132",
+    "python_version": "3.13.7",
+    "cached_residents_count": 0,
+    "timestamp": "2026-09-30T10:30:11Z"
+  },
+  "single_stream_benchmark": {
+    "stream_count": 1,
+    "processed_frames": 500,
+    "dropped_frames": 0,
+    "total_elapsed_seconds": 14.7,
+    "measured_fps": 34.0,
+    "stage_latencies_ms": {
+      "frame_capture": {
+        "mean": 9.78,
+        "median": 9.74,
+        "p95": 9.93,
+        "p99": 10.08,
+        "min": 9.24,
+        "max": 29.68,
+        "std": 0.94
+      },
+      "yolo_detection": {
+        "mean": 19.61,
+        "median": 18.17,
+        "p95": 19.09,
+        "p99": 21.01,
+        "min": 17.06,
+        "max": 669.87,
+        "std": 29.13
+      },
+      "tracker_update": {
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "min": 0.0,
+        "max": 0.02,
+        "std": 0.0
+      },
+      "face_detection": {
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "std": 0.0
+      },
+      "face_embedding": {
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "std": 0.0
+      },
+      "decision_engine": {
+        "mean": 0.01,
+        "median": 0.01,
+        "p95": 0.01,
+        "p99": 0.02,
+        "min": 0.01,
+        "max": 0.02,
+        "std": 0.0
+      },
+      "end_to_end": {
+        "mean": 29.41,
+        "median": 27.91,
+        "p95": 28.91,
+        "p99": 31.33,
+        "min": 26.85,
+        "max": 699.58,
+        "std": 30.02
+      }
+    },
+    "avg_cpu_percent": 26.2,
+    "max_ram_mb": 1286.3
+  },
+  "multi_stream_benchmark": {
+    "source_type": "Concurrent repeated-video source benchmark (Do NOT describe as 8 physical cameras)",
+    "is_repeated_source": true,
+    "scaling": {
+      "1_streams": {
+        "stream_count": 1,
+        "total_processed_frames": 150,
+        "elapsed_seconds": 4.24,
+        "per_stream_fps": 35.37,
+        "aggregate_fps": 35.36,
+        "avg_latency_ms": 28.27,
+        "cpu_percent": 25.3,
+        "ram_usage_mb": 1287.0
+      },
+      "2_streams": {
+        "stream_count": 2,
+        "total_processed_frames": 300,
+        "elapsed_seconds": 5.77,
+        "per_stream_fps": 26.06,
+        "aggregate_fps": 52.03,
+        "avg_latency_ms": 38.38,
+        "cpu_percent": 32.8,
+        "ram_usage_mb": 1092.2
+      },
+      "4_streams": {
+        "stream_count": 4,
+        "total_processed_frames": 600,
+        "elapsed_seconds": 11.5,
+        "per_stream_fps": 13.08,
+        "aggregate_fps": 52.19,
+        "avg_latency_ms": 76.46,
+        "cpu_percent": 32.8,
+        "ram_usage_mb": 918.4
+      },
+      "8_streams": {
+        "stream_count": 8,
+        "total_processed_frames": 1200,
+        "elapsed_seconds": 22.72,
+        "per_stream_fps": 6.62,
+        "aggregate_fps": 52.82,
+        "avg_latency_ms": 151.03,
+        "cpu_percent": 32.6,
+        "ram_usage_mb": 838.3
+      }
+    }
+  },
+  "endurance_benchmark": {
+    "status": "NOT YET MEASURED",
+    "reason": "30-minute continuous mode not triggered in this test invocation."
+  },
+  "baseline_comparison": {
+    "status": "No verified baseline available.",
+    "note": "Initial baseline established under RUN 1 architecture (InsightFace/ArcFace + ResidentCache)."
+  },
+  "artifacts": {
+    "charts": [
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/latency_by_stage_20260930_103011.png",
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/fps_vs_stream_count_20260930_103011.png",
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/fps_latency_over_time_20260930_103011.png"
+    ],
+    "csvs": [
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/benchmark_latencies_20260930_103011.csv",
+      "/Users/prathap/Documents/Smart-Vision/backend/benchmarks/results/benchmark_multistream_20260930_103011.csv"
+    ]
+  }
+}

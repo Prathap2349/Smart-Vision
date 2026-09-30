@@ -13,9 +13,9 @@ opencv-python>=4.8.0
 
 # Native AI & Computer Vision Models
 ultralytics>=8.0.0      # YOLOv8 Person Silhouette Detection
-# insightface>=0.7.3     # Optional future upgrade path — not currently used in prototype
-# onnxruntime>=1.15.0    # Optional future upgrade path — not currently used in prototype
-scipy>=1.10.0            # IoU Matrix & Tracking Computations
+insightface>=2.0.0      # InsightFace SCRFD Face Detection & Landmark Alignment
+onnxruntime>=1.20.0     # ONNX Runtime Engine (CoreML on Apple Silicon / CPU)
+scipy>=1.10.0           # IoU Matrix & Tracking Computations
 
 # Testing & Quality
 pytest>=7.0.0

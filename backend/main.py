@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from config import EVIDENCE_DIR
 from database import init_db, get_db_connection
-from api import cameras, detections, alerts, people, zones, analytics, health, integrations
+from api import cameras, detections, alerts, people, zones, analytics, health, integrations, evaluation
 from services.websocket_manager import ws_manager
 from tracking.tracker import tracker_manager
 from ai.decision_engine import decision_engine
@@ -17,7 +17,7 @@ from detection_loop import detection_loop
 app = FastAPI(
     title="Smart Vision Sentry Edge AI Engine",
     version="1.0.0",
-    description="Real Continuous Camera Capture + YOLO Human Detection + Lightweight IoU Tracking + Prototype Resident Matching"
+    description="InsightFace Biometrics + YOLO Human Detection + Lightweight IoU Tracking + Triple-Gate Decision Engine"
 )
 
 # Enable CORS for React frontend (port 3000 & 5173)
@@ -41,6 +41,7 @@ app.include_router(zones.router)
 app.include_router(analytics.router)
 app.include_router(health.router)
 app.include_router(integrations.router)
+app.include_router(evaluation.router)
 
 @app.on_event("startup")
 def startup_event():
@@ -171,12 +172,10 @@ async def test_camera_websocket(websocket: WebSocket):
             for t in tracks:
                 x1, y1, x2, y2 = [int(v) for v in t.bbox]
                 crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
-                if crop.size > 0:
+                if crop.size > 0 and t.should_verify_face():
                     face_status, res_name, face_conf = face_recognizer.match_face(crop)
-                    t.face_status = face_status
-                    t.resident_name = res_name
-                    # Save embedding for occlusion recovery
-                    t.last_embedding = face_recognizer.generate_embedding(crop)
+                    emb = face_recognizer.generate_embedding(crop) if face_status == "KNOWN" else None
+                    t.record_face_result(face_status, res_name, face_conf, embedding=emb)
 
                 # Triple-gate decision for this track
                 t_gate_eval = decision_engine.evaluate_gates(

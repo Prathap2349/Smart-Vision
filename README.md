@@ -1,275 +1,245 @@
 # Smart Vision Sentry 🛡️
 
 > **Edge-AI CCTV False-Alarm Elimination & Residential Security System**  
-> *Replacing pixel-motion notifications with semantic human detection, loitering dwell tracking, and resident verification.*
+> *Combining YOLOv8 silhouette detection, IoU loitering tracking, and InsightFace ArcFace biometric verification.*
 
-[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?logo=vercel)](https://smart-vision-eta.vercel.app)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![InsightFace](https://img.shields.io/badge/InsightFace-ArcFace%20512--D-blueviolet)](https://github.com/deepinsight/insightface)
 [![YOLOv8](https://img.shields.io/badge/Ultralytics-YOLOv8-FF6F00?logo=yolo)](https://docs.ultralytics.com)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org)
-[![Pytest Passing](https://img.shields.io/badge/Pytest-16%2F16%20Passed-brightgreen)](backend/tests)
+[![Pytest Passing](https://img.shields.io/badge/Pytest-31%2F31%20Passed-brightgreen)](backend/tests)
 
 ---
 
-## 📋 Automated Testing & Verification Guide
+## 1. Project Architecture
 
-*This section provides standard testing commands and component locations for human reviewers and automated CI/CD checks.*
+Smart Vision Sentry (SVS) is an Edge-AI video analytics system engineered to eliminate CCTV false alarms caused by moving foliage, sunlight shifts, animals, and delivery drop-offs. The system executes locally on edge hardware (Apple Silicon with CoreML, NVIDIA Jetson, or x86 CPU) with zero per-frame cloud transmission dependencies.
 
-| Evaluation Metric | Repository Verification / Location | Result / Standard |
-| :--- | :--- | :--- |
-| **Backend Framework** | `backend/main.py` | FastAPI + Uvicorn REST API & WebSocket server |
-| **Object Detection Engine** | `backend/ai/detector.py` | Ultralytics YOLOv8-Nano (Class 0: `person`) |
-| **Object Tracker** | `backend/tracking/tracker.py` | Lightweight IoU Tracker (`max_staleness_seconds=0.8s`) |
-| **Face Matcher Engine** | `backend/face/recognizer.py` | Prototype Visual Feature Vector Matcher (512-D Cosine Similarity) |
-| **Component Health API** | `backend/api/health.py` | `/api/health` returns granular status for all 6 components |
-| **Automated Unit Tests** | `backend/tests/` | **16 / 16 Pytest suite tests passing cleanly** |
-| **Frontend Framework** | `src/` | React 18, TypeScript, Vite, Tailwind CSS |
-| **Frontend Build** | `npm run build` | Clean compilation with zero TypeScript errors |
-| **Deployed Web App** | `https://smart-vision-eta.vercel.app` | Vercel production hosting with automatic fallback |
+```
+RTSP Camera Stream / Video Feed
+            │
+            ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │ 1. FRAME DECODE & CAPTURE                                   │
+ │    OpenCV / FFmpeg Ring Buffer (Decoupled Capture Thread)   │
+ └──────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │ 2. YOLOV8-NANO SILHOUETTE DETECTION                         │
+ │    COCO Class 0 (Person), Confidence Threshold ≥ 0.65        │
+ └──────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │ 3. LIGHTWEIGHT IOU MULTI-OBJECT TRACKING                    │
+ │    Bounding Box Association, Point-in-Polygon ROI Checker,  │
+ │    Dwell Timer (now - zone_entry_time), Track History Cache │
+ └──────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │ 4. BIOMETRIC FACE VERIFICATION (INSIGHTFACE + ARCFACE)      │
+ │    • SCRFD 500M Face Detector & 5-Point Landmark Alignment  │
+ │    • Passive Face Quality Check (Resolution & Blur Var)     │
+ │    • 512-D ArcFace MobileFaceNet Embedding Extraction       │
+ │    • Vectorized Matching vs In-Memory ResidentCache (0 I/O) │
+ └──────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │ 5. TRIPLE-GATE DECISION ENGINE                              │
+ │    Gate 1: Human Detected (Conf ≥ 0.70)                     │
+ │    Gate 2: Dwell Time ≥ Loitering Threshold (Day:20s/Night:10s)│
+ │    Gate 3: Face Status == UNKNOWN (Resident Match Suppressed) │
+ └──────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │ 6. ALERT MANAGER & EVIDENCE DISPATCH                        │
+ │    Cooldown Throttling, JPEG Snapshot, Telegram Bot API     │
+ └─────────────────────────────────────────────────────────────┘
+```
 
-### 🛠️ Automated Evaluation Command Sequence
+---
 
-To verify code integrity, backend health, and unit tests via terminal:
+## 2. Triple-Gate Decision Pipeline
+
+Traditional CCTV motion detectors generate dozens of false notifications daily. Smart Vision Sentry uses three cascading decision gates before firing an alert:
+
+1. **Gate 1 (Human Presence):** YOLOv8-Nano verifies human silhouette presence ($\ge 0.70$ confidence). Motion from trees, shadows, or animals is filtered out here.
+2. **Gate 2 (Loitering Duration):** An IoU tracker tracks the person's dwell time within configured polygon protection zones. Transient passers-by and delivery couriers who depart in $<20$ seconds do not trigger an alert. (At night, threshold tightens to $10$ seconds).
+3. **Gate 3 (Biometric Identity Verification):** If a person loiters beyond the threshold, InsightFace extracts 512-D facial embeddings and compares them against whitelisted residents. If recognized as a resident (`KNOWN`), the alert is suppressed. Only unverified strangers (`UNKNOWN`) trigger `VERIFIED_THREAT`.
+
+---
+
+## 3. InsightFace & ArcFace Integration
+
+* **Face Detector:** SCRFD 500M (`det_500m.onnx`) with 5-point landmark alignment.
+* **Feature Extractor:** ArcFace MobileFaceNet (`w600k_mbf.onnx`), producing normalized 512-dimensional feature vectors.
+* **Execution Provider:** Automatically uses `CoreMLExecutionProvider` on Apple Silicon for hardware NPU/GPU acceleration, falling back to `CPUExecutionProvider` on other architectures.
+* **Strict Engine Requirement:** The system explicitly checks and requires InsightFace/ArcFace. It does **not** silently fall back to legacy prototype matchers.
+
+---
+
+## 4. Resident Enrollment Flow
+
+Enrollment is managed via `POST /api/people` and `POST /api/people/{id}/re-enroll`:
+1. Accepts 3–5 face photos per resident representing varied angles (front, slight left, slight right) and lighting.
+2. For every photo, executes strict quality validation:
+   * **Face Detection:** Locates primary face bounding box.
+   * **Minimum Resolution:** Face bounding box width and height must be $\ge 32 \times 32$ px.
+   * **Sharpness Score:** Laplacian variance must be $\ge 30.0$ to reject blurry captures.
+3. Extracts and normalizes a 512-D ArcFace vector for each valid photo.
+4. Stores the collection of vectors in SQLite (`embedding_json`) and immediately invalidates the in-memory cache.
+
+---
+
+## 5. Multiple Embeddings Per Resident
+
+Rather than blindly averaging vectors into a single degraded centroid, Smart Vision Sentry preserves all $N$ individual enrollment embeddings for each resident:
+$$\text{Sim}(q, \text{Resident}_k) = \max_{j=1 \dots N} \left( \frac{q \cdot e_{k, j}}{\|q\| \|e_{k, j}\|} \right)$$
+During inference, the query vector is compared against all stored embeddings of each resident using vectorized matrix operations in RAM.
+
+---
+
+## 6. Recognition Caching
+
+To prevent redundant neural inference on every frame:
+* **Track-Level Recognition Cache:** When a tracked subject is evaluated, the result is cached on `TrackedSubject`.
+* **Re-verification Throttling:** `TrackedSubject.should_verify_face()` enforces a configurable interval (`TRACK_RECOGNITION_INTERVAL = 1.0s`). Once an identity is confirmed (`KNOWN`), re-verification frequency is throttled to conserve compute while maintaining continuous security.
+* **Re-ID Recovery:** Cached ArcFace embeddings allow recovering track identity across temporary occlusions.
+
+---
+
+## 7. Performance Architecture (Zero Per-Frame SQLite I/O)
+
+* **Previous Issue:** Frame loops repeatedly queried SQLite for zones, residents, and camera names on every track/frame.
+* **Solution:** `ResidentCache` loads all active verified resident embeddings into memory as $(N, 512)$ NumPy matrices during startup and reloads only on mutation events.
+* **Result:** **Zero disk I/O in the core detection loop.** Vectorized in-memory cosine matching runs in $<1.5$ ms.
+
+---
+
+## 8. Benchmark Commands
+
+Run the CLI benchmark suite to measure single-stream stage latencies and multi-stream concurrency:
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/Prathap2349/Smart-Vision.git
-cd Smart-Vision
+# Activate virtual environment
+source .venv313/bin/activate
 
-# 2. Setup Python environment & install dependencies
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt pytest
+# 1. Standard Single-Stream + Multi-Stream Benchmark (500 frames, 1/2/4/8 streams)
+PYTHONPATH=./backend python backend/benchmarks/benchmark_pipeline.py --frames 500 --streams 1 2 4 8
 
-# 3. Run Automated Unit Test Suite (16/16 tests must pass)
-python -m pytest backend/tests -v
+# 2. Benchmark on custom video source
+PYTHONPATH=./backend python backend/benchmarks/benchmark_pipeline.py --source path/to/video.mp4
 
-# 4. Verify Python Syntax Compilation
-python -m compileall backend
+# 3. 30-Minute Continuous Endurance Mode
+PYTHONPATH=./backend python backend/benchmarks/benchmark_pipeline.py --duration 1800
+```
 
-# 5. Verify Frontend Build & TypeScript Types
-npm install
+*Benchmark outputs are saved to `backend/benchmarks/results/` (`.json`, `.csv`, and `.png` plots).*
+
+---
+
+## 9. Evaluation Commands
+
+Run the real-world FP/FN scenario evaluation suite:
+
+```bash
+# Run real pipeline evaluation across all dataset scenarios
+PYTHONPATH=./backend python backend/evaluation/run_evaluation.py
+
+# Run evaluation with custom threshold and skip threshold sweep
+PYTHONPATH=./backend python backend/evaluation/run_evaluation.py --threshold 0.50 --no-sweep
+```
+
+*Evaluation reports and inventory audits are saved to `evaluation/results/`.*
+
+---
+
+## 10. Dataset Structure
+
+Evaluation data is organized in `evaluation/dataset/` across 11 scenarios with ground-truth labels in `labels.csv`:
+
+```
+evaluation/dataset/
+├── labels.csv
+├── empty_corridor/        # Negative: static corridor, no motion
+├── shadows_wind/          # Negative: tree shadows and sunlight shifts
+├── animals/               # Negative: cats and dogs in corridor
+├── resident/              # Negative: resident passing through (< 20s)
+├── resident_lingering/    # Negative: resident lingering (> 20s) [ArcFace suppression]
+├── delivery_person/       # Negative: courier drop-off (< 20s)
+├── unknown_loitering/     # Positive: unknown stranger loitering (> 20s) [Threat]
+├── night_low_light/       # Mixed: night-time IR transit (< 10s) vs loitering (> 10s)
+├── multiple_people/       # Mixed: groups, resident with guests
+├── occlusion/             # Positive: stranger loitering behind partial pillar
+├── mask_cap/              # Positive: stranger wearing cap/mask loitering (> 20s)
+└── enrollment/            # Reference enrollment photos (separate from test footage)
+```
+
+---
+
+## 11. Metric Definitions
+
+* **True Positive (TP):** Ground-truth threat clip correctly alerted by Triple-Gate.
+* **False Positive (FP):** Ground-truth benign clip incorrectly alerted.
+* **True Negative (TN):** Ground-truth benign clip where system remained quiet.
+* **False Negative (FN):** Ground-truth threat clip missed by system.
+* **Precision:** $\frac{TP}{TP + FP}$
+* **Recall:** $\frac{TP}{TP + FN}$
+* **F1 Score:** $\frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}$
+* **False Alarms per Hour:**
+  $$\text{False Alarms / Hour} = \frac{\text{FP count}}{\text{Total Duration (Hours) of Negative-Scenario Clips}}$$
+* **Resident Recognition Accuracy:** $\frac{\text{Correctly Identified Resident Clips}}{\text{Total Resident Clips}}$
+* **False Accept Rate (FAR):** Intruder loitering clips falsely accepted as resident.
+* **False Reject Rate (FRR):** Resident clips falsely rejected and alerted.
+
+---
+
+## 12. Threshold Selection Methodology
+
+To prevent overfitting:
+1. Available dataset clips are split into a **Tuning Set (50%)** and a **Held-Out Test Set (50%)**.
+2. A similarity threshold sweep ($0.30 \to 0.70$ in $0.05$ increments) is executed **strictly on the Tuning Set** to select the optimal threshold $T^*$ that maximizes F1.
+3. Threshold $T^*$ is **frozen**.
+4. Final reported performance metrics and baseline comparisons are calculated exclusively on the **Held-Out Test Set**.
+
+---
+
+## 13. System Limitations & Disclaimers
+
+> [!IMPORTANT]
+> 1. **Passive Face Quality Filtering:** Laplacian sharpness and bounding-box resolution filtering reject degraded images; **this is passive quality filtering, not full 3D/liveness anti-spoofing detection.**
+> 2. **Hardware Dependency:** Latency and FPS depend on the host hardware and execution provider (`CoreMLExecutionProvider` on Apple Silicon, CUDA on NVIDIA, or CPU).
+> 3. **Repeated-Video Multi-Stream Testing:** Multi-stream benchmarks utilizing looped or synthetic streams test concurrency and hardware throughput; they are **not 8 physical independent camera sensors**.
+> 4. **Dataset Dependency:** Real-world FP/FN metrics depend on physical clip recordings; when clips are missing, the system reports missing inventory rather than fabricating synthetic scores.
+> 5. **Data Separation:** Threshold tuning and evaluation metrics must always use distinct data splits.
+
+---
+
+## 14. Deployment & Verification
+
+```bash
+# 1. Run unit and integration tests (31/31 passing)
+./.venv313/bin/pytest backend/tests/test_pipeline.py -v
+
+# 2. Run backend server
+PYTHONPATH=./backend ./.venv313/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+# 3. Check live health endpoint
+curl http://localhost:8000/api/health
+
+# 4. Check evaluation results endpoint
+curl http://localhost:8000/api/evaluation/latest
+
+# 5. Build React frontend
 npm run build
 ```
 
 ---
 
-## 📌 Project Overview
-
-**Smart Vision Sentry (SVS)** is an Edge-AI video analytics platform designed to address the universal problem of traditional CCTV security systems: **Notification Fatigue**.
-
-Traditional motion sensors trigger indiscriminate alerts for swaying foliage, wind, sunlight/shadow shifts, insects, and animals, generating frequent false alarms daily and forcing residents to mute security notifications. 
-
-Smart Vision Sentry introduces a **Triple-Gate AI Decision Pipeline** that evaluates semantic human presence, temporal loitering duration, and resident face verification before firing an alert.
-
-```
-HIKVISION CCTV / RTSP STREAM / WEBCAM
-            ↓
-  OPENCV & FFMPEG FRAME BUFFER
-            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   TRIPLE-GATE AI PIPELINE                   │
-│                                                             │
-│  [GATE 1]  Human Detection   →  YOLOv8 Silhouette Detection │
-│  [GATE 2]  Loitering Track   →  Dwell Duration > 20 Seconds │
-│  [GATE 3]  Resident Verification → Unrecognized / Unknown   │
-└─────────────────────────────────────────────────────────────┘
-            ↓
-  VERIFIED SECURITY ALERT (< 2.0s Latency Target)
-            ↓
-  WEB DASHBOARD & TELEGRAM BOT API
-```
-
----
-
-## 🎯 Target Impact Benchmarks (Prototype Metrics)
-
-| Metric | Traditional Motion CCTV | Smart Vision Sentry (Target) | Evaluation Metric |
-| :--- | :---: | :---: | :---: |
-| **Daily False Positive Alerts** | 99+ pings / day | **< 4 verified alerts / day** | Target Reduction |
-| **Daily Log-Checking Time** | 20 minutes / day | **< 1 minute / day** | Operational Time Saved |
-| **Alert Delivery Latency** | 3.5 – 5.0s (Cloud) | **< 1.4s (Local Edge)** | Measured Latency Target |
-| **Cloud Video Processing Fees** | $150+ / month | **$0 / month (100% Edge Processing)** | Processing Model |
-
-*Note: Metrics represent design targets evaluated under controlled test scenarios.*
-
----
-
-## 🏗️ Architecture & Technology Stack
-
-### **Backend (Python 3.10+ & FastAPI)**
-- **Framework**: FastAPI + Uvicorn (REST API & WebSockets)
-- **Object Detection**: Ultralytics YOLOv8-Nano (`backend/ai/detector.py`) with strict COCO class 0 (`person`) filter
-- **Object Tracking**: Lightweight IoU Tracker (`backend/tracking/tracker.py`) with multi-person tracking, bounding box smoothing, and stale track cleanup
-- **Face Verification**: Prototype Face Matcher (`backend/face/recognizer.py`) using normalized 512-D visual feature vectors and cosine similarity matching
-- **Camera Streaming**: Continuous OpenCV thread capture with WebSocket frame server (`/ws/test-camera` and `/ws/cameras/{id}`)
-- **Component Health Check**: Granular `/api/health` JSON endpoint inspecting backend, YOLO, tracker, OpenCV, face matcher, and test camera state
-- **Database**: Local SQLite3 (`backend/data/smart_vision.db`) with Supabase Cloud integration
-
-### **Frontend (React 18 & Dashboard)**
-- **Framework**: React 18, TypeScript, Vite
-- **Styling**: Tailwind CSS (NOC Security Dark Theme)
-- **Icons & Charts**: Lucide React, Recharts
-- **Video & Telemetry Renderer**: Dual HTML5 Canvas renderer with bounding box, track ID, and dwell timer overlays
-- **Deployment**: Vercel monorepo hosting (`https://smart-vision-eta.vercel.app`) with automatic `EDGE BACKEND NOT CONFIGURED` banner when disconnected
-
----
-
-## ⚡ Triple-Gate Decision Engine Logic
-
-An alert is classified as **VERIFIED_THREAT** only when all three gates evaluate to PASS:
-
-1. **GATE 1 — Human Detection**:
-   - Evaluates whether a human silhouette is present with `human_confidence >= 0.70`.
-   - Filters out environmental motion (foliage, shadows, animals, rain).
-
-2. **GATE 2 — Loitering Dwell Duration**:
-   - Tracks human movement trajectories inside designated corridor protection zones.
-   - *Pass Condition*: `Dwell Duration >= 20 Seconds`.
-
-3. **GATE 3 — Resident Identity Verification**:
-   - Compares detected face features against whitelisted resident database.
-   - *Pass Condition*: `Face Status == UNKNOWN`.
-   - *Safe State*: If face matches a whitelisted resident, system logs `SAFE_RESIDENT` and suppresses notification.
-
----
-
-## 🌐 Edge-AI Deployment Architecture
-
-```
-Browser Dashboard (Vercel Frontend)
-       ▲
-       │ REST API / WebSockets
-       ▼
-Local Edge Machine (FastAPI Backend)
-       ▲
-       │ RTSP Stream / ONVIF Discovery / OpenCV
-       ▼
-IP Camera / Hikvision / USB Webcam
-```
-
-- **Vercel**: Hosts the static dashboard user interface.
-- **Local Edge Machine**: Runs the Python FastAPI backend, OpenCV capture, YOLO inference, tracking, and local SQLite database.
-- Physical video streams are processed locally on the Edge machine and are not uploaded to Vercel.
-
----
-
-## ⚙️ Edge Backend Setup & Architecture
-
-### **Local Edge Server Architecture**
-Smart Vision Sentry runs its high-performance AI inference engine directly on local premises hardware (Edge Machine) to guarantee sub-1.4 second alert delivery latencies and complete privacy.
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                      LOCAL EDGE MACHINE (PYTHON 3.10)            │
-│                                                                  │
-│   ┌───────────────┐     ┌────────────────┐     ┌───────────────┐ │
-│   │ RTSP Capture  │ ──> │ YOLOv8 Human   │ ──> │ Lightweight   │ │
-│   │ (OpenCV Feed) │     │ Detector       │     │ IoU Tracker   │ │
-│   └───────────────┘     └────────────────┘     └───────────────┘ │
-│                                                        │         │
-│   ┌───────────────┐     ┌────────────────┐             ▼         │
-│   │ SQLite DB     │ <── │ Prototype Face │ <── [Triple-Gate    │ │
-│   │ & Audit Log   │     │ Matcher (512D) │     Decision Engine]│ │
-│   └───────────────┘     └────────────────┘                       │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### **Edge Connection States**
-The system explicitly measures and reports edge hardware status across 4 verified states:
-1. **LIVE**: Backend online with active RTSP/Webcam stream producing real-time frames.
-2. **CONNECTED_CAMERA_OFFLINE**: FastAPI backend reachable, but local camera stream is disconnected or unreachable.
-3. **CONNECTED_NO_CAMERA**: FastAPI backend connected on LAN, but no camera is registered to the active profile.
-4. **NOT_CONNECTED**: Backend server unreachable (Vercel static cloud deployment active in Demo Mode).
-
-### **Local Hardware & Network Requirements**
-- **Supported Video Inputs**: RTSP Stream (Hikvision/Dahua/ONVIF, H.264/H.265), USB Webcam (`host: "0"`), or pre-recorded local `.mp4` file.
-- **Port Bindings**: Port `8000` (FastAPI REST API & WebSocket server), Port `554` (Default RTSP Video Stream).
-- **Network Isolation**: Local RTSP camera IP addresses (e.g. `192.168.1.104`) remain strictly on local LAN subnets. Vercel web client connects over local network REST/WebSocket sockets or operates safely in Demo Mode.
-
----
-
-## 🚀 Quick Start Guide
-
-### Prerequisites
-- Node.js (v18+) & npm
-- Python (v3.10+)
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/Prathap2349/Smart-Vision.git
-cd Smart-Vision
-```
-
-### 2. Backend Setup (FastAPI & AI Engine)
-```bash
-# Create Python Virtual Environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install Python Dependencies
-pip install -r backend/requirements.txt pytest
-
-# Run Backend Automated Test Suite
-python -m pytest backend/tests/test_pipeline.py -v
-
-# Start FastAPI Backend Server (Runs on http://localhost:8000)
-cd backend
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-### 3. Frontend Setup (React Dashboard)
-```bash
-# Install Node Dependencies
-npm install
-
-# Build & Validate Frontend TypeScript Compilation
-npm run build
-
-# Start Vite Dev Server (Runs on http://localhost:5173)
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
----
-
-## 🧪 Simulation / Demonstration Mode
-
-Smart Vision Sentry includes an interactive **Simulation Mode** designed for demonstration when a physical IP camera is unavailable:
-- **Simulate Intruder**: Generates a tracked subject (`#101`) entering the protection zone, increasing dwell time until the Triple-Gate evaluates to `VERIFIED_THREAT`.
-- **Simulate Resident**: Generates a whitelisted resident subject (`Arun Kumar`), demonstrating alert suppression (`SAFE_RESIDENT`).
-- All simulated events carry an explicit `[SIMULATION]` / `[DEMO EVENT]` badge to distinguish generated demonstration data from live camera measurements.
-
-## 📹 Testing Without Camera Hardware
-
-The AI detection pipeline requires a live camera feed (an RTSP stream or attached USB webcam) to execute YOLO object detection and produce security alerts. On a test machine with no camera connected, the dashboard will correctly report an `OFFLINE` camera status and show empty detection lists — **this is the expected behaviour when idle and does not indicate a system error**.
-
-To evaluate the live pipeline on a machine without an IP camera:
-1. **USB Webcam Evaluation**: Attach a standard USB webcam and set `HIKVISION_HOST="0"` or point camera configuration to index `0` in `backend/.env`.
-2. **Video File Evaluation**: Pass a local `.mp4` video file path to the camera configuration to stream pre-recorded test footage through the continuous YOLO + IoU tracking pipeline.
-3. **Interactive Simulation Mode**: If no camera source is available, toggle **Simulation Mode** in the dashboard banner to test interactive intruder loitering alerts and resident verification workflows.
-
----
-
-## ⚠️ Prototype Limitations
-
-1. **Local Edge Processing**: Camera processing, YOLO inference, and RTSP stream decoding require the Python backend running locally.
-2. **Camera Hardware**: Real-time camera streaming requires an RTSP IP camera (e.g. Hikvision) or an attached USB webcam.
-3. **Face Verification Prototype**: The current face verification module uses a 512-D normalized feature vector similarity prototype; production deployment can upgrade to full InsightFace ArcFace models.
-4. **Environment Credentials**: Credentials must be supplied via environment variables (`.env`) using the provided `.env.example` templates.
-
-## 📦 Submission Notes (Commit History)
-
-If you are reviewing this project from a downloaded `.zip` file, the `.git` folder (and commit history) is automatically stripped by GitHub's download tool. To view the full incremental development history and commit logs, please review the live repository at: **[https://github.com/Prathap2349/Smart-Vision](https://github.com/Prathap2349/Smart-Vision)**
-
----
-
-## 👥 Project & Evaluation Metadata
-
-- **Student Name**: Prathap S (Roll No: 25102159 / RTC2025BAI360)
-- **Department**: BTech AI & Data Science (C29 Batch)
-- **Institution**: Rathinam Technical Campus
-- **Site Location**: Residential Corridor Installation
+## 🔒 Privacy Notice
+Raw face photos, evaluation video recordings, and local `.env` configuration files are strictly excluded from version control via `.gitignore`. Only aggregated benchmark reports and manifests are versioned.
