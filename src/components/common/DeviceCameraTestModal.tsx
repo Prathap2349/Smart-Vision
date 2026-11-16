@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
-import { api } from '../../services/api';
+import { api, appendAuthQuery } from '../../services/api';
 import { DeviceCameraTestResult, TestTrack, TestSnapshotEvent } from '../../types';
 import {
   Camera,
@@ -257,7 +257,8 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       }));
 
       addLog(`Connected to FastAPI Edge AI Backend. Components — YOLO: ${health.yolo}, Tracker: ${health.tracker}, OpenCV: ${health.opencv}`, 'info');
-      connectFastApiWebSocket(wsUrl);
+      const authedWsUrl = await appendAuthQuery(wsUrl);
+      connectFastApiWebSocket(authedWsUrl);
     } else {
       setEngineMode('BACKEND_DISCONNECTED');
       setSelfTest(prev => ({

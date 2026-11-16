@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
-import { API_BASE } from '../../services/api';
+import { API_BASE, appendAuthQuery } from '../../services/api';
 
 interface CCTVCanvasPlayerProps {
   cameraId?: string;
@@ -23,7 +23,11 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
 
   const activeCamera = cameras.find(c => c.id === cameraIdProp) ?? cameras[0];
   const cameraId = cameraIdProp ?? activeCamera?.id ?? 'cam-01';
-  const mjpegUrl = `${API_BASE}/cameras/${cameraId}/mjpeg`;
+  const [mjpegUrl, setMjpegUrl] = useState<string>(`${API_BASE}/cameras/${cameraId}/mjpeg`);
+
+  useEffect(() => {
+    appendAuthQuery(`${API_BASE}/cameras/${cameraId}/mjpeg`).then(setMjpegUrl);
+  }, [cameraId]);
   const showDemoOverlay = !isRealCameraMode && isSimulating && simulatedPerson.active;
   const showDisconnectedBanner =
     streamError || (isRealCameraMode && activeCamera?.status === 'OFFLINE' && streamError);

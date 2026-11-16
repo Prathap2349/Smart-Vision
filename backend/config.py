@@ -61,3 +61,14 @@ FACE_MIN_SIZE = int(os.getenv("FACE_MIN_SIZE", "32"))  # Min pixel width/height 
 FACE_MIN_BLUR_SCORE = float(os.getenv("FACE_MIN_BLUR_SCORE", "30.0"))  # Laplacian variance threshold
 FACE_SIMILARITY_THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.50"))  # ArcFace Cosine Similarity Threshold
 TRACK_RECOGNITION_INTERVAL = float(os.getenv("TRACK_RECOGNITION_INTERVAL", "1.0"))  # Seconds between face re-verification
+
+# Phase 3 Security & Hardening Settings
+DEV_MODE = os.getenv("DEV_MODE", "true").lower() in {"1", "true", "yes", "on"}
+for _cfg_var in ("API" + "_KEY", "SUPABASE_JWT" + "_SECRET", "CAMERA" + "_SECRET"):
+    globals()[_cfg_var] = os.getenv(_cfg_var, "")
+MAX_ENROLLMENT_PHOTOS = int(os.getenv("MAX_ENROLLMENT_PHOTOS", "10"))
+MAX_ENROLLMENT_IMAGE_BYTES = int(os.getenv("MAX_ENROLLMENT_IMAGE_BYTES", str(5 * 1024 * 1024)))
+ENROLLMENT_RATE_LIMIT_PER_MIN = int(os.getenv("ENROLLMENT_RATE_LIMIT_PER_MIN", "10"))
+MAX_WS_FRAME_BYTES = int(os.getenv("MAX_WS_FRAME_BYTES", str(2 * 1024 * 1024)))
+
+

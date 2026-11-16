@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics, AISettings, SecurityEvent, OperatingMode } from '../types';
-import { api } from '../services/api';
+import { api, appendAuthQuery } from '../services/api';
 import { useAuth } from './AuthContext';
 
 interface SimulationPerson {
@@ -242,50 +242,55 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     let ws: WebSocket | null = null;
-    try {
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.fps !== undefined) {
-            setMetrics(prev => ({ ...prev, fps: data.fps }));
-          }
-          if (data.tracks) {
-            setActiveTracks(data.tracks);
-            if (data.tracks.length > 0) {
-              const primaryTrack = data.tracks.reduce((max: any, item: any) => (item.dwell_seconds > (max.dwell_seconds || 0) ? item : max), data.tracks.at(0));
-              setSimulatedPerson(prev => ({
-                ...prev,
-                trackId: primaryTrack.track_id ?? prev.trackId,
-                dwellSeconds: primaryTrack.dwell_seconds ?? prev.dwellSeconds,
-                faceStatus: primaryTrack.face_status === 'KNOWN' ? 'VERIFIED_RESIDENT' : 'UNKNOWN',
-                residentName: primaryTrack.resident_name,
-                confidence: primaryTrack.confidence ?? 0,
-                isHuman: true,
-                active: true,
-              }));
+    let cancelled = false;
+    appendAuthQuery(wsUrl).then(authedWsUrl => {
+      if (cancelled) return;
+      try {
+        ws = new WebSocket(authedWsUrl);
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.fps !== undefined) {
+              setMetrics(prev => ({ ...prev, fps: data.fps }));
+            }
+            if (data.tracks) {
+              setActiveTracks(data.tracks);
+              if (data.tracks.length > 0) {
+                const primaryTrack = data.tracks.reduce((max: any, item: any) => (item.dwell_seconds > (max.dwell_seconds || 0) ? item : max), data.tracks.at(0));
+                setSimulatedPerson(prev => ({
+                  ...prev,
+                  trackId: primaryTrack.track_id ?? prev.trackId,
+                  dwellSeconds: primaryTrack.dwell_seconds ?? prev.dwellSeconds,
+                  faceStatus: primaryTrack.face_status === 'KNOWN' ? 'VERIFIED_RESIDENT' : 'UNKNOWN',
+                  residentName: primaryTrack.resident_name,
+                  confidence: primaryTrack.confidence ?? 0,
+                  isHuman: true,
+                  active: true,
+                }));
+              } else if (isRealCameraMode) {
+                setSimulatedPerson(prev => ({ ...prev, active: false }));
+              }
             } else if (isRealCameraMode) {
+              setActiveTracks([]);
               setSimulatedPerson(prev => ({ ...prev, active: false }));
             }
-          } else if (isRealCameraMode) {
-            setActiveTracks([]);
-            setSimulatedPerson(prev => ({ ...prev, active: false }));
-          }
 
-          if (data.decision && data.decision.new_alert) {
-            setAlerts(curr => [data.decision.new_alert, ...curr]);
-            setFeedbackToastMessage(`🚨 REAL THREAT DETECTED: Track ${data.decision.new_alert.personTrackId} loitering > 20s. Snapshot saved & alert delivered!`);
-          }
-        } catch {}
-      };
-      ws.onerror = () => {
+            if (data.decision && data.decision.new_alert) {
+              setAlerts(curr => [data.decision.new_alert, ...curr]);
+              setFeedbackToastMessage(`🚨 REAL THREAT DETECTED: Track ${data.decision.new_alert.personTrackId} loitering > 20s. Snapshot saved & alert delivered!`);
+            }
+          } catch {}
+        };
+        ws.onerror = () => {
+          setIsRealCameraMode(false);
+        };
+      } catch {
         setIsRealCameraMode(false);
-      };
-    } catch {
-      setIsRealCameraMode(false);
-    }
+      }
+    });
 
     return () => {
+      cancelled = true;
       if (ws) ws.close();
     };
   }, [isRealCameraMode, cameras]);

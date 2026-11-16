@@ -472,6 +472,11 @@ def test_multi_camera_pipeline_registry_isolation_and_ws(monkeypatch, tmp_path):
         health_data = client.get("/api/health").json()
         assert "cam-01" in health_data["cameras"]
         assert "cam-02" in health_data["cameras"]
+
+        # Stop cam-01 independently while cam-02 remains registered
+        registry.stop_camera("cam-01")
+        assert registry.get_pipeline("cam-01") is None
+        assert registry.get_pipeline("cam-02") is not None
     finally:
         registry.stop_all()
 
@@ -490,6 +495,44 @@ def test_fastapi_lifespan_starts_and_stops_cleanly(monkeypatch):
         assert resp.status_code == 200
 
     assert events == ["init_db", "start_cameras", "stop_cameras", "stop_alerts"]
+
+
+def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
+    import config
+    from services.security import create_hs256_jwt
+    from starlette.websockets import WebSocketDisconnect
+
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "API_KEY", "test-api-key-999")
+    monkeypatch.setattr(config, "SUPABASE_JWT_SECRET", "test-jwt-secret-999")
+
+    # 1. /api/health remains public without auth
+    assert client.get("/api/health").status_code == 200
+
+    # 2. Protected REST endpoints reject unauthenticated requests with 401
+    for path in ["/api/cameras", "/api/alerts", "/api/people", "/api/zones", "/api/system/metrics"]:
+        resp = client.get(path)
+        assert resp.status_code == 401
+
+    # 3. Valid X-API-Key header succeeds
+    assert client.get("/api/cameras", headers={"X-API-Key": "test-api-key-999"}).status_code == 200
+    assert client.get("/api/cameras", headers={"X-API-Key": "wrong-key"}).status_code == 401
+
+    # 4. Valid Supabase HS256 JWT Bearer token succeeds; expired token gets 401
+    valid_jwt = create_hs256_jwt({"sub": "user-123", "exp": time.time() + 300}, "test-jwt-secret-999")
+    expired_jwt = create_hs256_jwt({"sub": "user-123", "exp": time.time() - 10}, "test-jwt-secret-999")
+    assert client.get("/api/zones", headers={"Authorization": f"Bearer {valid_jwt}"}).status_code == 200
+    assert client.get("/api/zones", headers={"Authorization": f"Bearer {expired_jwt}"}).status_code == 401
+
+    # 5. WebSockets reject unauthenticated connections and accept token/api_key
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect("/ws/cameras/cam-01") as ws:
+            ws.receive_json()
+    assert exc_info.value.code == 1008
+
+    with client.websocket_connect(f"/ws/cameras/cam-01?token={valid_jwt}") as ws_ok:
+        msg = ws_ok.receive_json()
+        assert msg["camera_id"] == "cam-01"
 
 
 # ==========================================

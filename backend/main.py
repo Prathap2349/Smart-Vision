@@ -3,14 +3,16 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import EVIDENCE_DIR
 from database import init_db, get_db_connection
 from api import cameras, detections, alerts, people, zones, analytics, health, integrations, evaluation
 from services.websocket_manager import ws_manager
+from services.security import is_request_authenticated, is_websocket_authenticated
 from tracking.tracker import tracker_manager
 from ai.decision_engine import decision_engine
 from alerts.alert_manager import alert_manager
@@ -42,6 +44,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if request.method != "OPTIONS" and path.startswith("/api") and path != "/api/health":
+        if not is_request_authenticated(request):
+            return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+    return await call_next(request)
+
+
 # Enable CORS for React frontend (port 3000 & 5173)
 app.add_middleware(
     CORSMiddleware,
@@ -68,6 +80,9 @@ app.include_router(evaluation.router)
 # Real-time WebSocket Endpoint
 @app.websocket("/ws/cameras/{camera_id}")
 async def camera_websocket(websocket: WebSocket, camera_id: str):
+    if not is_websocket_authenticated(websocket):
+        await websocket.close(code=1008)
+        return
     await ws_manager.connect(camera_id, websocket)
     try:
         while True:
@@ -233,6 +248,9 @@ def _process_test_camera_frame(
 # Dedicated Real Device Camera Test WebSocket Endpoint
 @app.websocket("/ws/test-camera")
 async def test_camera_websocket(websocket: WebSocket):
+    if not is_websocket_authenticated(websocket):
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     test_tracker = LightweightIoUTracker()
     loop = asyncio.get_running_loop()
