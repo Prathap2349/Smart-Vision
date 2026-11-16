@@ -63,7 +63,7 @@ FACE_SIMILARITY_THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.50")
 TRACK_RECOGNITION_INTERVAL = float(os.getenv("TRACK_RECOGNITION_INTERVAL", "1.0"))  # Seconds between face re-verification
 
 # Phase 3 Security & Hardening Settings
-DEV_MODE = os.getenv("DEV_MODE", "true").lower() in {"1", "true", "yes", "on"}
+DEV_MODE = os.getenv("DEV_MODE", "false").lower() in {"1", "true", "yes", "on"}
 for _cfg_var in ("API" + "_KEY", "SUPABASE_JWT" + "_SECRET", "CAMERA" + "_SECRET"):
     globals()[_cfg_var] = os.getenv(_cfg_var, "")
 _default_origins = [f"http://{h}:{p}" for h in ("localhost", "127.0.0.1") for p in (5173, 3000)]
@@ -73,6 +73,22 @@ MAX_ENROLLMENT_PHOTOS = int(os.getenv("MAX_ENROLLMENT_PHOTOS", "10"))
 MAX_ENROLLMENT_IMAGE_BYTES = int(os.getenv("MAX_ENROLLMENT_IMAGE_BYTES", str(5 * 1024 * 1024)))
 ENROLLMENT_RATE_LIMIT_PER_MIN = int(os.getenv("ENROLLMENT_RATE_LIMIT_PER_MIN", "10"))
 MAX_WS_FRAME_BYTES = int(os.getenv("MAX_WS_FRAME_BYTES", str(2 * 1024 * 1024)))
+
+
+def validate_security_config():
+    """Fail closed before serving requests when production secrets are incomplete."""
+    if DEV_MODE:
+        return
+    missing = []
+    if not CAMERA_SECRET:
+        missing.append("CAMERA_SECRET")
+    if not (API_KEY or SUPABASE_JWT_SECRET):
+        missing.append("API_KEY or SUPABASE_JWT_SECRET")
+    if missing:
+        raise RuntimeError(
+            "Refusing to start with DEV_MODE=false: missing required security configuration: "
+            + ", ".join(missing)
+        )
 
 
 

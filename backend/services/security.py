@@ -14,7 +14,7 @@ def is_dev_mode() -> bool:
     val = getattr(config, "DEV_MODE", None)
     if val is not None:
         return bool(val)
-    return os.getenv("DEV_MODE", "true").lower() in {"1", "true", "yes", "on"}
+    return os.getenv("DEV_MODE", "false").lower() in {"1", "true", "yes", "on"}
 
 
 def _get_cfg_or_env(attr_name: str) -> str:

@@ -26,6 +26,9 @@ from detection_loop import detection_loop, pipeline_registry
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    config.validate_security_config()
+    if config.DEV_MODE:
+        print("\n*** SECURITY WARNING: DEV_MODE=true; API authentication is bypassed. ***\n")
     # 1. Initialize SQLite Database
     init_db()
 

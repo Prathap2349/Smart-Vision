@@ -497,6 +497,25 @@ def test_fastapi_lifespan_starts_and_stops_cleanly(monkeypatch):
     assert events == ["init_db", "start_cameras", "stop_cameras", "stop_alerts"]
 
 
+def test_production_startup_fails_closed_without_required_secrets(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "CAMERA_SECRET", "")
+    monkeypatch.setattr(config, "API_KEY", "")
+    monkeypatch.setattr(config, "SUPABASE_JWT_SECRET", "")
+    with pytest.raises(RuntimeError, match="CAMERA_SECRET.*API_KEY or SUPABASE_JWT_SECRET"):
+        config.validate_security_config()
+
+
+def test_production_startup_accepts_complete_security_config(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "CAMERA_SECRET", "camera-secret")
+    monkeypatch.setattr(config, "API_KEY", "script-key")
+    monkeypatch.setattr(config, "SUPABASE_JWT_SECRET", "")
+    config.validate_security_config()
+
+
 def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
     import config
     from services.security import create_hs256_jwt

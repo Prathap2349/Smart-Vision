@@ -1,0 +1,4 @@
+"""Explicit local test configuration; production defaults remain fail-closed."""
+import os
+
+os.environ["DEV_MODE"] = "true"
