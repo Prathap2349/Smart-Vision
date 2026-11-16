@@ -49,7 +49,7 @@ Set backend secrets in the host's secret manager, not in source control. `DEV_MO
 
 This keeps inference on the Mac, can use CoreML, and can connect to RTSP cameras on the same LAN. Start `scripts/run_local_with_tunnel.sh`; it starts Uvicorn and either Cloudflare Tunnel (quick tunnel) or ngrok, then prints the public HTTPS/WSS URLs. Set those URLs as the two Vercel variables above. For a stable ngrok URL, configure the ngrok account/token first. A Cloudflare quick tunnel URL changes between runs.
 
-Keep `DATA_DIR` on local persistent disk. Configure `CAMERA_SECRET` and either API key or JWT secret in `backend/.env`; use `DEV_MODE=true` only for a private local demo, and ensure the public tunnel is used only with appropriate authentication. A tunnel exposes the backend to the internet.
+Keep `DATA_DIR` on local persistent disk. Configure `CAMERA_SECRET` and either API key or JWT secret in `backend/.env`, and set `DEV_MODE=false` while the tunnel is running. A tunnel exposes the backend to the internet; never expose a development-mode backend that bypasses authentication.
 
 ## B. Hugging Face Spaces (Docker)
 

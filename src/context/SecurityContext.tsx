@@ -134,11 +134,11 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [events, setEvents] = useState<SecurityEvent[]>([]);
 
   // Operating Mode model: LIVE_CCTV | DEVICE_CAMERA_TEST | DEMO_SIMULATION | OFFLINE
-  const [operatingMode, setOperatingMode] = useState<OperatingMode>('LIVE_CCTV');
+  const [operatingMode, setOperatingMode] = useState<OperatingMode>('OFFLINE');
   const [deviceCameraModalOpen, setDeviceCameraModalOpen] = useState<boolean>(false);
 
   // Real vs Demo Mode state
-  const [isRealCameraMode, setIsRealCameraMode] = useState<boolean>(true);
+  const [isRealCameraMode, setIsRealCameraMode] = useState<boolean>(false);
   const [hikvisionSetupModalOpen, setHikvisionSetupModalOpen] = useState<boolean>(false);
 
   // Feedback modal helper state
@@ -188,8 +188,12 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     async function loadData() {
       const health = await api.getHealth();
       if (health.status === 'OFFLINE' || health.edgeStatus === 'OFFLINE') {
+        setOperatingMode('OFFLINE');
         setIsRealCameraMode(false);
         setIsSimulating(true);
+      } else {
+        setOperatingMode('LIVE_CCTV');
+        setIsRealCameraMode(true);
       }
       const cams = await api.getCameras(user?.id);
       setCameras(cams);
@@ -282,9 +286,11 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           } catch {}
         };
         ws.onerror = () => {
+          setOperatingMode('OFFLINE');
           setIsRealCameraMode(false);
         };
       } catch {
+        setOperatingMode('OFFLINE');
         setIsRealCameraMode(false);
       }
     });

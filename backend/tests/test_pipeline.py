@@ -1337,3 +1337,11 @@ def test_model_weights_and_directories_are_git_ignored():
             capture_output=True, text=True,
         )
         assert result.returncode == 0, f"Not ignored: {candidate}"
+
+
+def test_frontend_starts_offline_until_health_confirms_backend():
+    from pathlib import Path
+    context = (Path(__file__).resolve().parents[2] / "src" / "context" / "SecurityContext.tsx").read_text()
+    assert "useState<OperatingMode>('OFFLINE')" in context
+    assert "useState<boolean>(false)" in context
+    assert "setOperatingMode('LIVE_CCTV')" in context
