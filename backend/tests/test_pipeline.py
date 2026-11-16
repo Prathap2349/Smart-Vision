@@ -464,6 +464,58 @@ def test_track_level_recognition_cache():
     assert subject.should_verify_face(interval=1.0) is False
 
 
+def test_tracker_reid_skips_empty_lost_tracks_tiny_crops_and_throttles(monkeypatch):
+    import tracking.tracker as tracker_mod
+
+    tracker = LightweightIoUTracker(min_reid_crop_size=48, reid_cooldown_seconds=2.0, max_reid_per_frame=1)
+    frame = np.zeros((300, 300, 3), dtype=np.uint8)
+    calls = []
+
+    def fake_gen_emb(crop):
+        calls.append(crop.shape)
+        return [0.1] * 512
+
+    monkeypatch.setattr(tracker_mod.face_recognizer, "generate_embedding", fake_gen_emb)
+
+    # 1. Empty lost_tracks -> Re-ID must NOT run even for large crop
+    tracker.update_tracks([{"bbox": [10, 10, 120, 120], "confidence": 0.9}], [], frame_w=300, frame_h=300, frame=frame)
+    assert len(calls) == 0
+
+    # 2. Populate lost_tracks, but pass tiny crop (20x20 < 48px) -> Re-ID must skip
+    tracker.lost_tracks["#lost-1"] = {
+        "expiry_time": time.time(),
+        "embedding": [0.2] * 512,
+        "zone_entry_time": None,
+        "current_zone": "Outside ROI",
+        "snapshot_captured": False,
+        "snapshot_base64": None,
+        "snapshot_timestamp": None,
+        "face_status": "UNKNOWN",
+        "resident_name": None,
+        "face_confidence": 0.0,
+    }
+    tracker.update_tracks([{"bbox": [10, 10, 30, 30], "confidence": 0.9}], [], frame_w=300, frame_h=300, frame=frame)
+    assert len(calls) == 0
+
+    # 3. Multiple large unmatched detections -> max_reid_per_frame=1 caps to 1 call, and cooldown throttles repeat
+    tracker.update_tracks(
+        [
+            {"bbox": [140, 140, 220, 220], "confidence": 0.9},
+            {"bbox": [200, 200, 280, 280], "confidence": 0.9},
+        ],
+        [],
+        frame_w=300,
+        frame_h=300,
+        frame=frame,
+    )
+    assert len(calls) == 1
+
+    # Immediate repeat at same location is throttled by cooldown
+    tracker.tracks.clear()
+    tracker.update_tracks([{"bbox": [142, 142, 222, 222], "confidence": 0.9}], [], frame_w=300, frame_h=300, frame=frame)
+    assert len(calls) == 1
+
+
 # ==========================================
 # 4. InsightFace & ArcFace Engine Tests
 # ==========================================
