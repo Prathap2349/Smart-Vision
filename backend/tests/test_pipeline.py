@@ -476,6 +476,22 @@ def test_multi_camera_pipeline_registry_isolation_and_ws(monkeypatch, tmp_path):
         registry.stop_all()
 
 
+def test_fastapi_lifespan_starts_and_stops_cleanly(monkeypatch):
+    import main as main_mod
+    events = []
+
+    monkeypatch.setattr(main_mod, "init_db", lambda: events.append("init_db"))
+    monkeypatch.setattr(main_mod.pipeline_registry, "start_all_enabled_cameras", lambda: events.append("start_cameras") or ["cam-01"])
+    monkeypatch.setattr(main_mod.pipeline_registry, "stop_all", lambda: events.append("stop_cameras"))
+    monkeypatch.setattr(main_mod.alert_manager, "stop", lambda: events.append("stop_alerts"))
+
+    with TestClient(app) as tc:
+        resp = tc.get("/api/health")
+        assert resp.status_code == 200
+
+    assert events == ["init_db", "start_cameras", "stop_cameras", "stop_alerts"]
+
+
 # ==========================================
 # 3. Tracker Tests & Track Recognition Cache
 # ==========================================
