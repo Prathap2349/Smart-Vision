@@ -1297,3 +1297,15 @@ def test_dockerfile_uses_secure_persistent_model_ready_runtime():
     assert "USER sentry" in dockerfile
     assert "HEALTHCHECK" in dockerfile
     assert "${PORT:-8000}" in dockerfile
+
+
+def test_deployment_guide_and_tunnel_script_cover_supported_paths():
+    import subprocess
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    guide = (repo / "docs" / "DEPLOYMENT.md").read_text()
+    for section in ["Local Mac backend", "Hugging Face Spaces", "Railway Hobby/paid plan"]:
+        assert section in guide
+    for variable in ["VITE_API_BASE_URL", "VITE_WS_BASE_URL", "CAMERA_SECRET", "ALLOWED_ORIGINS"]:
+        assert variable in guide
+    subprocess.run(["bash", "-n", str(repo / "scripts" / "run_local_with_tunnel.sh")], check=True)
