@@ -38,10 +38,6 @@ export async function getAuthHeaders(extraHeaders: Record<string, string> = {}):
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  const apiKey = import.meta.env.VITE_API_KEY;
-  if (apiKey) {
-    headers['X-API-Key'] = String(apiKey);
-  }
   return headers;
 }
 
@@ -50,10 +46,6 @@ export async function appendAuthQuery(url: string): Promise<string> {
   const token = await getAccessToken();
   if (token) {
     params.set('token', token);
-  }
-  const apiKey = import.meta.env.VITE_API_KEY;
-  if (apiKey) {
-    params.set('api_key', String(apiKey));
   }
   const qs = params.toString();
   if (!qs) return url;

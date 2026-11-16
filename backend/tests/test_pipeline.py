@@ -516,6 +516,12 @@ def test_production_startup_accepts_complete_security_config(monkeypatch):
     config.validate_security_config()
 
 
+def test_frontend_does_not_embed_backend_api_key():
+    from pathlib import Path
+    api_service = Path(__file__).resolve().parents[2] / "src" / "services" / "api.ts"
+    assert "VITE_API_KEY" not in api_service.read_text()
+
+
 def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
     import config
     from services.security import create_hs256_jwt
