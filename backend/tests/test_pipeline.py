@@ -1162,3 +1162,10 @@ def test_evaluation_api_latest_endpoint():
     assert data["engine"] == "InsightFace / ArcFace"
 
 
+def test_supabase_url_has_no_hardcoded_default(monkeypatch):
+    import importlib
+    import config
+
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    reloaded = importlib.reload(config)
+    assert reloaded.SUPABASE_URL == ""

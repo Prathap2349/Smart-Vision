@@ -10,7 +10,7 @@ def get_db_connection():
     return conn
 
 def get_supabase_client():
-    if not SUPABASE_KEY:
+    if not SUPABASE_URL or not SUPABASE_KEY:
         return None
     try:
         from supabase import create_client, Client

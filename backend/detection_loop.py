@@ -314,7 +314,7 @@ class CameraPipelineRegistry:
                 host=r["host"],
                 port=int(r["port"] or 554),
                 username=r["username"] or "",
-                password=r["password"] or "",
+                password=decrypt_camera_password(r["password"] or ""),
                 channel=r["channel"] or "101",
                 camera_name=r["name"],
             )
