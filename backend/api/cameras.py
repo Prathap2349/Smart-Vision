@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from database import get_db_connection
 from camera.rtsp_stream import rtsp_manager
+from detection_loop import pipeline_registry
 from tracking.tracker import tracker_manager
 from services.onvif_scanner import onvif_scanner
 
@@ -91,8 +92,10 @@ def add_camera(cam: CameraCreate):
     conn.close()
 
     if is_online:
-        # Start continuous background capture thread for this camera
-        rtsp_manager.start_camera(cam_id, cam.host, cam.port, cam.username, cam.password, cam.channel)
+        # Start continuous background capture + per-camera detection pipeline
+        pipeline_registry.start_camera(
+            cam_id, cam.host, cam.port, cam.username, cam.password, cam.channel, camera_name=cam.name
+        )
         return {
             "id": cam_id,
             "name": cam.name,
@@ -111,6 +114,7 @@ def add_camera(cam: CameraCreate):
 
 @router.delete("/{id}")
 def delete_camera(id: str):
+    pipeline_registry.stop_camera(id)
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM cameras WHERE id = ?;", (id,))
@@ -165,11 +169,11 @@ def mjpeg_generator(camera_id: str):
     while True:
         frame, is_connected, fps = rtsp_manager.get_frame_data(camera_id)
         if not is_connected or frame is None:
-            frame = rtsp_manager.generate_no_signal_frame(camera_name="Corridor Camera")
+            frame = rtsp_manager.generate_no_signal_frame(camera_name=f"Camera {camera_id}")
         else:
             frame = frame.copy()
-            # Draw real active tracks & AI bounding boxes
-            tracks = list(tracker_manager.tracks.values())
+            # Draw per-camera active tracks & AI bounding boxes
+            tracks = pipeline_registry.get_tracks(camera_id) or list(tracker_manager.tracks.values())
             for t in tracks:
                 x1, y1, x2, y2 = [int(v) for v in t.bbox]
                 is_threat = t.dwell_seconds >= 20 and t.face_status == "UNKNOWN"

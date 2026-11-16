@@ -415,6 +415,67 @@ def test_rtsp_credential_masking_backoff_and_health_last_error(monkeypatch):
     assert "cam-err" in data["camera_streams"]
 
 
+def test_multi_camera_pipeline_registry_isolation_and_ws(monkeypatch, tmp_path):
+    import detection_loop as dl_mod
+    from database import init_db
+
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "multicam.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "multicam.db")
+    init_db()
+
+    conn = get_db_connection()
+    conn.execute("""
+        INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, enabled, status)
+        VALUES ('cam-02', 'Backyard Cam', '192.168.1.105', 554, 'admin', 'secret', '101', 'RTSP', 1, 'OFFLINE');
+    """)
+    conn.commit()
+    conn.close()
+
+    started_calls = []
+    monkeypatch.setattr(
+        dl_mod.rtsp_manager,
+        "start_camera",
+        lambda cam_id, host, port, user, pwd, ch: started_calls.append(cam_id),
+    )
+    monkeypatch.setattr(dl_mod.rtsp_manager, "stop_camera", lambda cam_id: None)
+    monkeypatch.setattr(dl_mod.rtsp_manager, "stop_all", lambda: None)
+
+    registry = dl_mod.CameraPipelineRegistry()
+    try:
+        started_ids = registry.start_all_enabled_cameras()
+        assert "cam-01" in started_ids
+        assert "cam-02" in started_ids
+        assert "cam-01" in started_calls and "cam-02" in started_calls
+
+        p1 = registry.get_pipeline("cam-01")
+        p2 = registry.get_pipeline("cam-02")
+        assert p1 is not None and p2 is not None
+        assert p1.tracker is not p2.tracker
+
+        p1.loop.last_detection_state = {"camera_id": "cam-01", "status": "ONLINE", "fps": 10.0, "tracks": [{"track_id": "#1"}]}
+        p2.loop.last_detection_state = {"camera_id": "cam-02", "status": "ONLINE", "fps": 8.5, "tracks": []}
+
+        monkeypatch.setattr("main.pipeline_registry", registry)
+        monkeypatch.setattr("api.health.pipeline_registry", registry)
+
+        with client.websocket_connect("/ws/cameras/cam-01") as ws1:
+            msg1 = ws1.receive_json()
+            assert msg1["camera_id"] == "cam-01"
+            assert len(msg1["tracks"]) == 1
+
+        with client.websocket_connect("/ws/cameras/cam-02") as ws2:
+            msg2 = ws2.receive_json()
+            assert msg2["camera_id"] == "cam-02"
+            assert msg2["fps"] == 8.5
+            assert len(msg2["tracks"]) == 0
+
+        health_data = client.get("/api/health").json()
+        assert "cam-01" in health_data["cameras"]
+        assert "cam-02" in health_data["cameras"]
+    finally:
+        registry.stop_all()
+
+
 # ==========================================
 # 3. Tracker Tests & Track Recognition Cache
 # ==========================================

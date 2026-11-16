@@ -13,7 +13,7 @@ from services.websocket_manager import ws_manager
 from tracking.tracker import tracker_manager
 from ai.decision_engine import decision_engine
 from camera.rtsp_stream import rtsp_manager
-from detection_loop import detection_loop
+from detection_loop import detection_loop, pipeline_registry
 
 app = FastAPI(
     title="Smart Vision Sentry Edge AI Engine",
@@ -49,19 +49,9 @@ def startup_event():
     # 1. Initialize SQLite Database
     init_db()
 
-    # 2. Start default camera capture thread if camera exists
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, host, port, username, password, channel FROM cameras WHERE enabled = 1 LIMIT 1;")
-    r = cursor.fetchone()
-    conn.close()
-
-    if r:
-        rtsp_manager.start_camera(r["id"], r["host"], r["port"], r["username"], r["password"], r["channel"])
-
-    # 3. Start continuous AI detection background loop
-    detection_loop.start()
-    print("[Main Engine] Continuous AI Detection Loop & Real Camera Capture Started Successfully.")
+    # 2. Start every enabled camera pipeline (capture + per-camera tracker + loop)
+    started = pipeline_registry.start_all_enabled_cameras()
+    print(f"[Main Engine] Started {len(started)} enabled camera pipeline(s): {started}")
 
 # Real-time WebSocket Endpoint
 @app.websocket("/ws/cameras/{camera_id}")
@@ -69,8 +59,13 @@ async def camera_websocket(websocket: WebSocket, camera_id: str):
     await ws_manager.connect(camera_id, websocket)
     try:
         while True:
-            # Relay real detection state & measured telemetry from continuous loop
-            state = detection_loop.last_detection_state
+            # Relay real detection state & measured telemetry from per-camera pipeline registry
+            state = pipeline_registry.get_state(camera_id)
+            if not state:
+                legacy_state = detection_loop.last_detection_state
+                if legacy_state and legacy_state.get("camera_id") == camera_id:
+                    state = legacy_state
+
             if state and state.get("camera_id") == camera_id:
                 await websocket.send_json(state)
             else:

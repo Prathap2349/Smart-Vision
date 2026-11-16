@@ -9,6 +9,7 @@ from tracking.tracker import tracker_manager
 from face.recognizer import face_recognizer
 from face.cache import resident_cache
 from camera.rtsp_stream import rtsp_manager
+from detection_loop import pipeline_registry
 
 router = APIRouter(tags=["health"])
 
@@ -21,6 +22,7 @@ def health_check():
     device_test_ready = yolo_ready and tracker_ready and opencv_ready and face_ready
 
     stream_statuses = rtsp_manager.get_all_statuses()
+    pipeline_health = pipeline_registry.get_all_health()
     last_error = next((st["last_error"] for st in stream_statuses.values() if st.get("last_error")), None)
 
     # Query actual camera status from DB
@@ -48,6 +50,7 @@ def health_check():
         "camera": camera_health,
         "last_error": last_error,
         "camera_streams": stream_statuses,
+        "cameras": pipeline_health,
         "yolo": "READY" if yolo_ready else "ERROR",
         "tracker": "READY" if tracker_ready else "ERROR",
         "opencv": "READY" if opencv_ready else "ERROR",
