@@ -389,6 +389,32 @@ def test_test_camera_websocket_offloads_to_executor_and_drops_stale_frames(monke
         assert all(tid != main_thread_id for tid in worker_threads)
 
 
+def test_rtsp_credential_masking_backoff_and_health_last_error(monkeypatch):
+    from camera.rtsp_stream import CameraCaptureThread, mask_rtsp_url, rtsp_manager
+
+    raw_url = "rtsp://admin:SuperSecret123@192.168.1.104:554/Streaming/channels/101"
+    masked = mask_rtsp_url(raw_url)
+    assert "SuperSecret123" not in masked
+    assert masked == "rtsp://admin:****@192.168.1.104:554/Streaming/channels/101"
+
+    thread = CameraCaptureThread("cam-err", raw_url, base_backoff=0.5, max_backoff=4.0)
+    assert thread._next_backoff() == 0.5
+    assert thread._next_backoff() == 1.0
+    assert thread._next_backoff() == 2.0
+    assert thread._next_backoff() == 4.0
+    assert thread._next_backoff() == 4.0
+
+    thread.last_error = f"Unable to open stream {thread.masked_url}"
+    monkeypatch.setattr(rtsp_manager, "get_all_statuses", lambda: {"cam-err": thread.get_status()})
+
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["last_error"] is not None
+    assert "SuperSecret123" not in data["last_error"]
+    assert "cam-err" in data["camera_streams"]
+
+
 # ==========================================
 # 3. Tracker Tests & Track Recognition Cache
 # ==========================================
