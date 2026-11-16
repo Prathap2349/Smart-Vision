@@ -11,6 +11,7 @@ from database import get_db_connection
 from face.recognizer import face_recognizer
 from face.cache import resident_cache
 from config import INSIGHTFACE_MODEL_NAME
+from services.security import sign_evidence_url
 
 router = APIRouter(prefix="/api/people", tags=["people"])
 
@@ -100,7 +101,7 @@ def get_people():
             "camera": r["camera_name"],
             "confidence": r["confidence"],
             "threatStatus": r["severity"],
-            "snapshotUrl": r["snapshot_path"],
+            "snapshotUrl": sign_evidence_url(r["snapshot_path"]) if r["snapshot_path"] else None,
             "dwellSeconds": r["dwell_duration"]
         }
         for r in alert_rows

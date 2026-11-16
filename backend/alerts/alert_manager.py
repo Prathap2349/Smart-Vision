@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 from config import EVIDENCE_DIR, ALERT_COOLDOWN_SECONDS, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 from database import get_db_connection
+from services.security import sign_evidence_url
 
 
 def send_telegram_alert(message: str, photo_path: Optional[str] = None) -> Tuple[bool, float, str]:

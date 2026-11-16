@@ -3,16 +3,19 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
 
 from config import EVIDENCE_DIR, ALLOWED_ORIGINS
 from database import init_db, get_db_connection
 from api import cameras, detections, alerts, people, zones, analytics, health, integrations, evaluation
 from services.websocket_manager import ws_manager
-from services.security import is_request_authenticated, is_websocket_authenticated
+from services.security import (
+    is_request_authenticated,
+    is_websocket_authenticated,
+    verify_evidence_signature,
+)
 from tracking.tracker import tracker_manager
 from ai.decision_engine import decision_engine
 from alerts.alert_manager import alert_manager
@@ -48,7 +51,12 @@ app = FastAPI(
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     path = request.url.path
-    if request.method != "OPTIONS" and path.startswith("/api") and path != "/api/health":
+    if (
+        request.method != "OPTIONS"
+        and path.startswith("/api")
+        and path != "/api/health"
+        and not path.startswith("/api/evidence/")
+    ):
         if not is_request_authenticated(request):
             return JSONResponse(status_code=401, content={"detail": "Authentication required"})
     return await call_next(request)
@@ -63,8 +71,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve Evidence Snapshots (.jpg files)
-app.mount("/api/evidence", StaticFiles(directory=str(EVIDENCE_DIR)), name="evidence")
+
+@app.get("/api/evidence/{file_path:path}")
+def serve_protected_evidence(file_path: str, request: Request):
+    exp = request.query_params.get("exp")
+    sig = request.query_params.get("sig")
+    if not (is_request_authenticated(request) or verify_evidence_signature(file_path, exp, sig)):
+        raise HTTPException(status_code=401, detail="Authentication or valid signed URL required")
+
+    evidence_root = EVIDENCE_DIR.resolve()
+    target_path = (evidence_root / file_path).resolve()
+    try:
+        target_path.relative_to(evidence_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid evidence path")
+
+    if not target_path.is_file():
+        raise HTTPException(status_code=404, detail="Evidence file not found")
+
+    return FileResponse(str(target_path))
 
 # Register Routers
 app.include_router(cameras.router)

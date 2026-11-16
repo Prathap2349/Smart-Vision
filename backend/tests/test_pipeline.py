@@ -558,6 +558,46 @@ def test_cors_restricted_to_allowed_origins():
     assert r_blocked.headers.get("access-control-allow-origin") is None
 
 
+def test_evidence_endpoint_requires_auth_or_signed_url(monkeypatch, tmp_path):
+    import config
+    import main as main_mod
+    from services.security import sign_evidence_url
+
+    ev_dir = tmp_path / "evidence"
+    sub_dir = ev_dir / "2026" / "11" / "16"
+    sub_dir.mkdir(parents=True, exist_ok=True)
+    snap_file = sub_dir / "alt-test.jpg"
+    snap_file.write_bytes(b"\xff\xd8\xff\xe0fake-jpeg-bytes\xff\xd9")
+
+    monkeypatch.setattr(main_mod, "EVIDENCE_DIR", ev_dir)
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "API" + "_KEY", "ev-api-key")
+    monkeypatch.setattr(config, "CAMERA" + "_SECRET", "ev-signing-key")
+
+    # 1. Unauthenticated request without signature is rejected with 401
+    r_unauth = client.get("/api/evidence/2026/11/16/alt-test.jpg")
+    assert r_unauth.status_code == 401
+
+    # 2. Request with valid short-lived signed URL succeeds without auth header
+    signed_url = sign_evidence_url("/api/evidence/2026/11/16/alt-test.jpg", ttl_seconds=60)
+    r_signed = client.get(signed_url)
+    assert r_signed.status_code == 200
+    assert r_signed.content == b"\xff\xd8\xff\xe0fake-jpeg-bytes\xff\xd9"
+
+    # 3. Expired or tampered signature is rejected with 401
+    expired_url = sign_evidence_url("/api/evidence/2026/11/16/alt-test.jpg", ttl_seconds=-10)
+    assert client.get(expired_url).status_code == 401
+    assert client.get(signed_url + "tampered").status_code == 401
+
+    # 4. Authenticated request via X-API-Key succeeds directly
+    r_auth = client.get(
+        "/api/evidence/2026/11/16/alt-test.jpg",
+        headers={"X-API-Key": "ev-api-key"},
+    )
+    assert r_auth.status_code == 200
+
+
+
 
 # ==========================================
 # 3. Tracker Tests & Track Recognition Cache
