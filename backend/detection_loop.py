@@ -103,11 +103,18 @@ class ContinuousDetectionLoop(threading.Thread):
                 }
 
                 if tracks:
-                    dwell_threshold = 20.0
-                    if zones:
-                        dwell_threshold = float(zones[0].get("dwell_threshold", 20.0))
+                    default_zone_threshold = None
+                    if zones and zones[0].get("dwell_threshold") is not None:
+                        default_zone_threshold = float(zones[0]["dwell_threshold"])
 
                     for t in tracks:
+                        matched_zone = next((z for z in zones if z.get("name") == t.current_zone), None)
+                        track_dwell_threshold = (
+                            float(matched_zone["dwell_threshold"])
+                            if (matched_zone and matched_zone.get("dwell_threshold") is not None)
+                            else default_zone_threshold
+                        )
+
                         x1, y1, x2, y2 = [int(v) for v in t.bbox]
                         crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
 
@@ -125,12 +132,12 @@ class ContinuousDetectionLoop(threading.Thread):
                             is_human=True,
                             human_confidence=t.confidence,
                             dwell_seconds=t.dwell_seconds,
-                            dwell_threshold=dwell_threshold,
+                            dwell_threshold=track_dwell_threshold,
                             face_status=t.face_status
                         )
 
-                        # Trigger Alert if Triple-Gate passes (VERIFIED_THREAT)
-                        if t_gate_eval["final_decision"] == "VERIFIED_THREAT":
+                        # Trigger Alert if Triple-Gate passes (VERIFIED_THREAT or UNVERIFIED_LOITERER)
+                        if t_gate_eval["final_decision"] in {"VERIFIED_THREAT", "UNVERIFIED_LOITERER"}:
                             new_alert = alert_manager.trigger_alert(
                                 camera_id=self.camera_id,
                                 camera_name=self.camera_name,
@@ -139,17 +146,24 @@ class ContinuousDetectionLoop(threading.Thread):
                                 face_status=t.face_status,
                                 confidence=t.confidence,
                                 frame=frame,
-                                zone_name=t.current_zone if t.current_zone != "Outside ROI" else "Corridor Protection Zone"
+                                zone_name=t.current_zone if t.current_zone != "Outside ROI" else "Corridor Protection Zone",
+                                decision=t_gate_eval["final_decision"]
                             )
                             if new_alert:
                                 gate_eval["new_alert"] = new_alert
 
                     primary_track = max(tracks, key=lambda tr: tr.dwell_seconds)
+                    primary_zone = next((z for z in zones if z.get("name") == primary_track.current_zone), None)
+                    primary_threshold = (
+                        float(primary_zone["dwell_threshold"])
+                        if (primary_zone and primary_zone.get("dwell_threshold") is not None)
+                        else default_zone_threshold
+                    )
                     gate_eval = decision_engine.evaluate_gates(
                         is_human=True,
                         human_confidence=primary_track.confidence,
                         dwell_seconds=primary_track.dwell_seconds,
-                        dwell_threshold=dwell_threshold,
+                        dwell_threshold=primary_threshold,
                         face_status=primary_track.face_status
                     )
 
