@@ -1345,3 +1345,10 @@ def test_frontend_starts_offline_until_health_confirms_backend():
     assert "useState<OperatingMode>('OFFLINE')" in context
     assert "useState<boolean>(false)" in context
     assert "setOperatingMode('LIVE_CCTV')" in context
+
+
+def test_deployment_environment_paths_are_documented_in_env_example():
+    from pathlib import Path
+    example = (Path(__file__).resolve().parents[2] / ".env.example").read_text()
+    assert "DATA_DIR=" in example
+    assert "MODELS_DIR=" in example
