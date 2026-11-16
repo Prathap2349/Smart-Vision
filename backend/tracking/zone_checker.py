@@ -1,5 +1,17 @@
 from typing import List, Dict, Tuple, Any
 
+
+def get_zone_polygon(zone: Dict[str, Any]) -> List[Dict[str, float]]:
+    """
+    Normalizes zone polygon coordinates in one place.
+    Prefers canonical 'polygonPoints' key and falls back to legacy 'polygon' key.
+    """
+    pts = zone.get("polygonPoints")
+    if pts is None:
+        pts = zone.get("polygon", [])
+    return pts if isinstance(pts, list) else []
+
+
 def is_point_in_polygon(point: Tuple[float, float], polygon: List[Dict[str, float]]) -> bool:
     """
     Ray-casting algorithm to test if point (x, y) is inside polygon of [{'x': x, 'y': y}, ...]
@@ -26,11 +38,15 @@ def is_point_in_polygon(point: Tuple[float, float], polygon: List[Dict[str, floa
 
     return inside
 
+
 def check_person_zones(bbox: List[float], frame_width: int, frame_height: int, zones: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Determines which zones contain the center point of the person bounding box [x1, y1, x2, y2].
     Returns list of matched active zone objects.
     """
+    if frame_width <= 0 or frame_height <= 0:
+        return []
+
     x1, y1, x2, y2 = bbox
     center_x = ((x1 + x2) / 2.0 / frame_width) * 100.0
     center_y = ((y1 + y2) / 2.0 / frame_height) * 100.0
@@ -39,7 +55,7 @@ def check_person_zones(bbox: List[float], frame_width: int, frame_height: int, z
     for zone in zones:
         if not zone.get('enabled', True):
             continue
-        poly = zone.get('polygon', [])
+        poly = get_zone_polygon(zone)
         if is_point_in_polygon((center_x, center_y), poly):
             matched_zones.append(zone)
 
