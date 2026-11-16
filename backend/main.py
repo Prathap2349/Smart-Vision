@@ -70,35 +70,19 @@ async def camera_websocket(websocket: WebSocket, camera_id: str):
         while True:
             # Relay real detection state & measured telemetry from continuous loop
             state = detection_loop.last_detection_state
-            if state:
+            if state and state.get("camera_id") == camera_id:
                 await websocket.send_json(state)
             else:
-                _, is_connected, real_fps = rtsp_manager.get_frame_data(camera_id)
-                tracks = list(tracker_manager.tracks.values())
                 payload = {
                     "camera_id": camera_id,
-                    "status": "ONLINE" if is_connected else "OFFLINE",
-                    "fps": real_fps,
+                    "status": "OFFLINE",
+                    "fps": 0,
                     "inference_latency_ms": 0,
-                    "tracks": [
-                        {
-                            "track_id": t.track_id,
-                            "bbox": t.bbox,
-                            "dwell_seconds": t.dwell_seconds,
-                            "face_status": t.face_status,
-                            "confidence": t.confidence,
-                            "current_zone": t.current_zone
-                        }
-                        for t in tracks
-                    ],
-                    "decision": {
-                        "gate1_human": {"pass": len(tracks) > 0, "label": "HUMAN CHECK"},
-                        "gate2_dwell": {"pass": any(t.dwell_seconds >= 20 for t in tracks), "label": "LOITERING CHECK"},
-                        "gate3_unknown": {"pass": any(t.face_status == "UNKNOWN" for t in tracks), "label": "FAMILY CHECK"},
-                        "final_decision": "VERIFIED_THREAT" if any(t.dwell_seconds >= 20 and t.face_status == "UNKNOWN" for t in tracks) else "CLEAR"
-                    },
+                    "tracks": [],
+                    "decision": decision_engine.evaluate_gates(is_human=False),
                     "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
                 }
+                await websocket.send_json(payload)
             await asyncio.sleep(0.2) # 5 Hz WebSocket update
     except WebSocketDisconnect:
         ws_manager.disconnect(camera_id, websocket)
@@ -221,7 +205,13 @@ async def test_camera_websocket(websocket: WebSocket):
                 eval_tracks.append(track_dict)
 
                 dec_str = t_gate_eval.get("final_decision", "IDLE")
-                rank = 3 if dec_str == "VERIFIED_THREAT" else 2 if dec_str == "SAFE_RESIDENT" else 1 if dec_str == "MONITORING" else 0
+                rank = (
+                    4 if dec_str == "VERIFIED_THREAT"
+                    else 3 if dec_str == "UNVERIFIED_LOITERER"
+                    else 2 if dec_str == "SAFE_RESIDENT"
+                    else 1 if dec_str == "MONITORING"
+                    else 0
+                )
                 if rank >= highest_threat_rank:
                     highest_threat_rank = rank
                     primary_track = t
