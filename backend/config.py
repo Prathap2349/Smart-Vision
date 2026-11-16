@@ -66,9 +66,13 @@ TRACK_RECOGNITION_INTERVAL = float(os.getenv("TRACK_RECOGNITION_INTERVAL", "1.0"
 DEV_MODE = os.getenv("DEV_MODE", "true").lower() in {"1", "true", "yes", "on"}
 for _cfg_var in ("API" + "_KEY", "SUPABASE_JWT" + "_SECRET", "CAMERA" + "_SECRET"):
     globals()[_cfg_var] = os.getenv(_cfg_var, "")
+_default_origins = [f"http://{h}:{p}" for h in ("localhost", "127.0.0.1") for p in (5173, 3000)]
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()] if _raw_origins else _default_origins
 MAX_ENROLLMENT_PHOTOS = int(os.getenv("MAX_ENROLLMENT_PHOTOS", "10"))
 MAX_ENROLLMENT_IMAGE_BYTES = int(os.getenv("MAX_ENROLLMENT_IMAGE_BYTES", str(5 * 1024 * 1024)))
 ENROLLMENT_RATE_LIMIT_PER_MIN = int(os.getenv("ENROLLMENT_RATE_LIMIT_PER_MIN", "10"))
 MAX_WS_FRAME_BYTES = int(os.getenv("MAX_WS_FRAME_BYTES", str(2 * 1024 * 1024)))
+
 
 

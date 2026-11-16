@@ -535,6 +535,30 @@ def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
         assert msg["camera_id"] == "cam-01"
 
 
+def test_cors_restricted_to_allowed_origins():
+    allowed_origin = "http://" + "localhost:5173"
+    disallowed_origin = "https://" + "untrusted.invalid"
+
+    r_ok = client.options(
+        "/api/health",
+        headers={
+            "Origin": allowed_origin,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert r_ok.headers.get("access-control-allow-origin") == allowed_origin
+
+    r_blocked = client.options(
+        "/api/health",
+        headers={
+            "Origin": disallowed_origin,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert r_blocked.headers.get("access-control-allow-origin") is None
+
+
+
 # ==========================================
 # 3. Tracker Tests & Track Recognition Cache
 # ==========================================

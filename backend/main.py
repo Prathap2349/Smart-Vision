@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from config import EVIDENCE_DIR
+from config import EVIDENCE_DIR, ALLOWED_ORIGINS
 from database import init_db, get_db_connection
 from api import cameras, detections, alerts, people, zones, analytics, health, integrations, evaluation
 from services.websocket_manager import ws_manager
@@ -54,10 +54,10 @@ async def auth_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-# Enable CORS for React frontend (port 3000 & 5173)
+# Enable CORS restricted to configured ALLOWED_ORIGINS (default localhost:5173/3000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
