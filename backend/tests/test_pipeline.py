@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from ai.detector import yolo_detector, YOLOv8PersonDetector
 from ai.decision_engine import decision_engine, DecisionEngine
 from tracking.tracker import tracker_manager, LightweightIoUTracker, TrackedSubject, compute_iou
+from tracking.zone_checker import check_person_zones, get_zone_polygon
+from api import health as health_api
+from alerts.alert_manager import AlertManager
 from face.recognizer import face_recognizer, InsightFaceRecognizer, PrototypeFaceMatcher
 from face.cache import resident_cache, is_legacy_embedding
 from database import get_db_connection
@@ -21,6 +24,57 @@ from main import app
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
+
+
+def test_zone_polygon_points_match_and_start_dwell():
+    zones = [{"name": "entry", "polygonPoints": [
+        {"x": 0, "y": 0}, {"x": 50, "y": 0},
+        {"x": 50, "y": 50}, {"x": 0, "y": 50},
+    ]}]
+    tracker = LightweightIoUTracker()
+    track_inside = tracker.update_tracks(
+        [{"bbox": [20, 20, 40, 40], "confidence": 0.9}], zones,
+        frame_w=100, frame_h=100,
+    )[0]
+    assert track_inside.current_zone == "entry"
+    assert track_inside.zone_entry_time is not None
+    time.sleep(0.15)
+    assert track_inside.dwell_seconds > 0
+
+    # Outside zone -> dwell == 0
+    tracker_outside = LightweightIoUTracker()
+    track_outside = tracker_outside.update_tracks(
+        [{"bbox": [70, 70, 90, 90], "confidence": 0.9}], zones,
+        frame_w=100, frame_h=100,
+    )[0]
+    time.sleep(0.12)
+    assert track_outside.current_zone == "Outside ROI"
+    assert track_outside.dwell_seconds == 0.0
+
+
+def test_zone_polygon_legacy_key_and_outside_match():
+    zone = {"name": "entry", "polygon": [
+        {"x": 0, "y": 0}, {"x": 50, "y": 0},
+        {"x": 50, "y": 50}, {"x": 0, "y": 50},
+    ]}
+    assert get_zone_polygon(zone) == zone["polygon"]
+    assert check_person_zones([10, 10, 20, 20], 100, 100, [zone]) == [zone]
+    assert check_person_zones([80, 80, 90, 90], 100, 100, [zone]) == []
+
+
+def test_disabled_zone_is_ignored():
+    zone = {"name": "disabled", "enabled": False, "polygonPoints": [
+        {"x": 0, "y": 0}, {"x": 100, "y": 0},
+        {"x": 100, "y": 100}, {"x": 0, "y": 100},
+    ]}
+    assert check_person_zones([10, 10, 20, 20], 100, 100, [zone]) == []
+    tracker = LightweightIoUTracker()
+    track = tracker.update_tracks(
+        [{"bbox": [20, 20, 40, 40], "confidence": 0.9}], [zone],
+        frame_w=100, frame_h=100,
+    )[0]
+    assert track.current_zone == "Outside ROI"
+    assert track.dwell_seconds == 0.0
 
 
 # ==========================================
@@ -67,6 +121,7 @@ def test_decision_engine_canonical_parameter():
         face_status="UNKNOWN"
     )
     assert res["final_decision"] == "VERIFIED_THREAT"
+    assert res["severity"] == "CRITICAL"
     assert res["gate1_human"]["pass"] is True
     assert res["gate1_human"]["confidence"] == 0.92
     assert res["gate2_dwell"]["pass"] is True
@@ -104,6 +159,126 @@ def test_decision_engine_monitoring():
         face_status="UNKNOWN"
     )
     assert res["final_decision"] == "MONITORING"
+
+
+@pytest.mark.parametrize("face_status", ["NO_FACE", "LOW_QUALITY"])
+def test_unverified_face_after_loiter_threshold_alerts(face_status):
+    res = DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status=face_status,
+    )
+    assert res["final_decision"] == "UNVERIFIED_LOITERER"
+    assert res["severity"] == "HIGH"
+    assert res["gate3_unknown"]["pass"] is True
+    assert res["gate3_unknown"]["label"] == "FACE NOT VISIBLE — ALERT"
+    assert "face not visible" in res["explainable_summary"]
+
+
+def test_unverified_loiterer_alert_manager_severity_and_telegram(monkeypatch, tmp_path):
+    import alerts.alert_manager as am_mod
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "alerts.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "alerts.db")
+    monkeypatch.setattr(am_mod, "EVIDENCE_DIR", tmp_path / "evidence")
+    from database import init_db
+    init_db()
+
+    captured_messages = []
+    def fake_send_telegram(message: str, photo_path=None):
+        captured_messages.append(message)
+        return True, 0.12, "SUCCESS"
+
+    monkeypatch.setattr(am_mod, "send_telegram_alert", fake_send_telegram)
+    mgr = AlertManager()
+    alert = mgr.trigger_alert(
+        camera_id="cam-01",
+        camera_name="Corridor Cam",
+        track_id="#unv-1",
+        dwell_duration=24.0,
+        face_status="NO_FACE",
+        confidence=0.91,
+        frame=np.zeros((100, 100, 3), dtype=np.uint8),
+        zone_name="Entry Zone",
+        decision="UNVERIFIED_LOITERER",
+    )
+    assert alert is not None
+    assert alert["severity"] == "HIGH"
+    assert alert["detectionType"] == "Unverified Loiterer (face not visible)"
+    assert len(captured_messages) == 1
+    assert "Unverified Loiterer (face not visible)" in captured_messages[0]
+
+
+def test_unknown_face_remains_verified_threat():
+    assert DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status="UNKNOWN",
+    )["final_decision"] == "VERIFIED_THREAT"
+
+
+def test_known_face_suppresses_alert():
+    assert DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status="KNOWN",
+    )["final_decision"] == "SAFE_RESIDENT"
+
+
+def test_unverified_face_alert_can_be_disabled(monkeypatch):
+    import ai.decision_engine as decision_module
+    monkeypatch.setattr(decision_module, "ALERT_ON_UNVERIFIED_FACE", False)
+    res = DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status="NO_FACE",
+    )
+    assert res["final_decision"] == "MONITORING"
+    assert res["gate3_unknown"]["label"] == "FACE NOT VISIBLE"
+
+
+def test_schedule_threshold_precedence(monkeypatch):
+    engine = DecisionEngine()
+    monkeypatch.setattr(engine, "get_current_schedule_profile", lambda: {"name": "DAY_STANDARD", "dwell_threshold": 20})
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15)["gate2_dwell"]["threshold_seconds"] == 20
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15, dwell_threshold=12)["gate2_dwell"]["threshold_seconds"] == 12
+    monkeypatch.setattr(engine, "get_current_schedule_profile", lambda: {"name": "NIGHT_STRICT", "dwell_threshold": 10})
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15, dwell_threshold=20)["gate2_dwell"]["threshold_seconds"] == 10
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15, dwell_threshold=5)["gate2_dwell"]["threshold_seconds"] == 5
+
+
+def test_uptime_unavailable_when_boot_time_denied(monkeypatch):
+    monkeypatch.setattr(health_api.psutil, "boot_time", lambda: (_ for _ in ()).throw(PermissionError("denied")))
+    assert health_api._uptime_seconds() is None
+    resp = client.get("/api/system/metrics")
+    assert resp.status_code == 200
+    assert resp.json()["uptimeSeconds"] is None
+
+
+def test_zone_ids_are_unique_for_duplicate_names(monkeypatch, tmp_path):
+    from api import zones as zones_api
+    from database import init_db
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "zones.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "zones.db")
+    init_db()
+    request = zones_api.ZoneCreate(name="same", polygon_points=[
+        zones_api.PolygonPoint(x=0, y=0), zones_api.PolygonPoint(x=100, y=0),
+        zones_api.PolygonPoint(x=100, y=100),
+    ])
+    first = zones_api.add_zone(request)
+    second = zones_api.add_zone(request)
+    assert first["id"] != second["id"]
+    assert first["id"].startswith("zone-")
+    uuid.UUID(first["id"].replace("zone-", "", 1))
+
+
+def test_camera_websocket_sends_offline_state_for_other_camera(monkeypatch):
+    from main import detection_loop
+    monkeypatch.setattr(detection_loop, "last_detection_state", {"camera_id": "cam-01", "status": "ONLINE", "fps": 9.5, "tracks": []})
+    with client.websocket_connect("/ws/cameras/cam-missing") as websocket:
+        payload = websocket.receive_json()
+        assert payload["camera_id"] == "cam-missing"
+        assert payload["status"] == "OFFLINE"
+
+    with client.websocket_connect("/ws/cameras/cam-01") as websocket_online:
+        payload_online = websocket_online.receive_json()
+        assert payload_online["camera_id"] == "cam-01"
+        assert payload_online["status"] == "ONLINE"
 
 
 # ==========================================
