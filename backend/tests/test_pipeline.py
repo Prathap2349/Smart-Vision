@@ -522,6 +522,17 @@ def test_frontend_does_not_embed_backend_api_key():
     assert "VITE_API_KEY" not in api_service.read_text()
 
 
+def test_camera_crypto_does_not_fall_back_to_a_hardcoded_secret(monkeypatch):
+    import config
+    from services.security import _get_fernet, _get_signing_key
+    monkeypatch.setattr(config, "CAMERA_SECRET", "")
+    monkeypatch.delenv("CAMERA_SECRET", raising=False)
+    with pytest.raises(RuntimeError, match="CAMERA_SECRET is required"):
+        _get_fernet()
+    with pytest.raises(RuntimeError, match="CAMERA_SECRET is required"):
+        _get_signing_key()
+
+
 def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
     import config
     from services.security import create_hs256_jwt

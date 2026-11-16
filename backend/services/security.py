@@ -127,12 +127,9 @@ def is_websocket_authenticated(websocket: WebSocket) -> bool:
 
 
 def _get_signing_key() -> bytes:
-    raw = (
-        _get_cfg_or_env("CAMERA" + "_SECRET")
-        or _get_cfg_or_env("API" + "_KEY")
-        or _get_cfg_or_env("SUPABASE_JWT" + "_SECRET")
-        or "smart-vision-dev-local-fallback"
-    )
+    raw = _get_cfg_or_env("CAMERA" + "_SECRET")
+    if not raw:
+        raise RuntimeError("CAMERA_SECRET is required for evidence URL signing")
     return hashlib.sha256(raw.encode("utf-8")).digest()
 
 
@@ -162,7 +159,9 @@ def verify_evidence_signature(rel_path: str, exp_str: Optional[str], sig: Option
 
 
 def _get_fernet() -> Fernet:
-    raw = _get_cfg_or_env("CAMERA" + "_SECRET") or "smart-vision-dev-camera-key"
+    raw = _get_cfg_or_env("CAMERA" + "_SECRET")
+    if not raw:
+        raise RuntimeError("CAMERA_SECRET is required for camera password encryption")
     try:
         decoded = base64.urlsafe_b64decode(raw.encode("ascii"))
         if len(decoded) == 32:
