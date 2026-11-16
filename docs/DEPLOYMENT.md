@@ -22,7 +22,7 @@ Set backend secrets in the host's secret manager, not in source control. `DEV_MO
 | Variable | Purpose |
 | --- | --- |
 | `DEV_MODE` | Set `false` in hosted environments. `true` bypasses authentication for local development only. |
-| `CAMERA_SECRET` | Stable secret for camera-password encryption and evidence URL signatures. Keep it unchanged across restarts. |
+| `CAMERA_SECRET` | Stable secret for camera-password encryption and evidence URL signatures. Required in production and should be kept unchanged across restarts. Local `DEV_MODE=true` can create a random key at `DATA_DIR/.camera_secret.dev`. |
 | `API_KEY` | Optional static key for trusted scripts. Use a long random value. |
 | `SUPABASE_JWT_SECRET` | Optional JWT signing secret if validating Supabase HS256 JWTs locally. |
 | `SUPABASE_URL` | Supabase project URL; leave empty if unused. |

@@ -525,12 +525,27 @@ def test_frontend_does_not_embed_backend_api_key():
 def test_camera_crypto_does_not_fall_back_to_a_hardcoded_secret(monkeypatch):
     import config
     from services.security import _get_fernet, _get_signing_key
+    monkeypatch.setattr(config, "DEV_MODE", False)
     monkeypatch.setattr(config, "CAMERA_SECRET", "")
     monkeypatch.delenv("CAMERA_SECRET", raising=False)
     with pytest.raises(RuntimeError, match="CAMERA_SECRET is required"):
         _get_fernet()
     with pytest.raises(RuntimeError, match="CAMERA_SECRET is required"):
         _get_signing_key()
+
+
+def test_dev_camera_secret_is_random_persistent_and_local_only(monkeypatch, tmp_path):
+    import config
+    from services.security import encrypt_camera_password, decrypt_camera_password
+    monkeypatch.setattr(config, "DEV_MODE", True)
+    monkeypatch.setattr(config, "CAMERA_SECRET", "")
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.delenv("CAMERA_SECRET", raising=False)
+    encrypted = encrypt_camera_password("local-camera-password")
+    secret_file = tmp_path / ".camera_secret.dev"
+    assert secret_file.is_file()
+    assert secret_file.stat().st_mode & 0o777 == 0o600
+    assert decrypt_camera_password(encrypted) == "local-camera-password"
 
 
 def test_runtime_storage_paths_can_use_mountable_directories(tmp_path):

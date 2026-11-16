@@ -127,7 +127,7 @@ def is_websocket_authenticated(websocket: WebSocket) -> bool:
 
 
 def _get_signing_key() -> bytes:
-    raw = _get_cfg_or_env("CAMERA" + "_SECRET")
+    raw = _get_camera_secret()
     if not raw:
         raise RuntimeError("CAMERA_SECRET is required for evidence URL signing")
     return hashlib.sha256(raw.encode("utf-8")).digest()
@@ -159,7 +159,7 @@ def verify_evidence_signature(rel_path: str, exp_str: Optional[str], sig: Option
 
 
 def _get_fernet() -> Fernet:
-    raw = _get_cfg_or_env("CAMERA" + "_SECRET")
+    raw = _get_camera_secret()
     if not raw:
         raise RuntimeError("CAMERA_SECRET is required for camera password encryption")
     try:
@@ -170,6 +170,27 @@ def _get_fernet() -> Fernet:
         pass
     derived_key = base64.urlsafe_b64encode(hashlib.sha256(raw.encode("utf-8")).digest())
     return Fernet(derived_key)
+
+
+def _get_camera_secret() -> str:
+    """Use the configured secret, or create a persistent random key for local dev only."""
+    raw = _get_cfg_or_env("CAMERA" + "_SECRET")
+    if raw or not config.DEV_MODE:
+        return raw
+
+    secret_path = config.DATA_DIR / ".camera_secret.dev"
+    try:
+        return secret_path.read_text(encoding="ascii").strip()
+    except FileNotFoundError:
+        secret_path.parent.mkdir(parents=True, exist_ok=True)
+        generated = Fernet.generate_key()
+        try:
+            fd = os.open(secret_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as secret_file:
+                secret_file.write(generated)
+            return generated.decode("ascii")
+        except FileExistsError:
+            return secret_path.read_text(encoding="ascii").strip()
 
 
 ENCRYPTED_PREFIX = "enc:v1:"
