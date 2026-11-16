@@ -188,23 +188,91 @@ def test_unverified_loiterer_alert_manager_severity_and_telegram(monkeypatch, tm
         return True, 0.12, "SUCCESS"
 
     monkeypatch.setattr(am_mod, "send_telegram_alert", fake_send_telegram)
-    mgr = AlertManager()
-    alert = mgr.trigger_alert(
-        camera_id="cam-01",
-        camera_name="Corridor Cam",
-        track_id="#unv-1",
-        dwell_duration=24.0,
-        face_status="NO_FACE",
-        confidence=0.91,
-        frame=np.zeros((100, 100, 3), dtype=np.uint8),
-        zone_name="Entry Zone",
-        decision="UNVERIFIED_LOITERER",
-    )
-    assert alert is not None
-    assert alert["severity"] == "HIGH"
-    assert alert["detectionType"] == "Unverified Loiterer (face not visible)"
-    assert len(captured_messages) == 1
-    assert "Unverified Loiterer (face not visible)" in captured_messages[0]
+    mgr = AlertManager(max_queue_size=10, max_retries=2, retry_backoff_seconds=0.01)
+    try:
+        alert = mgr.trigger_alert(
+            camera_id="cam-01",
+            camera_name="Corridor Cam",
+            track_id="#unv-1",
+            dwell_duration=24.0,
+            face_status="NO_FACE",
+            confidence=0.91,
+            frame=np.zeros((100, 100, 3), dtype=np.uint8),
+            zone_name="Entry Zone",
+            decision="UNVERIFIED_LOITERER",
+        )
+        assert alert is not None
+        assert alert["severity"] == "HIGH"
+        assert alert["detectionType"] == "Unverified Loiterer (face not visible)"
+        assert alert["telegramQueued"] is True
+        assert mgr.dispatcher.flush(timeout=2.0) is True
+        assert len(captured_messages) == 1
+        assert "Unverified Loiterer (face not visible)" in captured_messages[0]
+    finally:
+        mgr.stop()
+
+
+def test_telegram_alert_dispatcher_non_blocking_and_retry(monkeypatch, tmp_path):
+    import alerts.alert_manager as am_mod
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "alerts_retry.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "alerts_retry.db")
+    monkeypatch.setattr(am_mod, "EVIDENCE_DIR", tmp_path / "evidence_retry")
+    from database import init_db
+    init_db()
+
+    attempts = []
+    def flaky_send_telegram(message: str, photo_path=None):
+        attempts.append(message)
+        time.sleep(0.15)
+        if len(attempts) < 3:
+            return False, 0.15, "TELEGRAM_API_ERROR_502"
+        return True, 0.15, "SUCCESS"
+
+    monkeypatch.setattr(am_mod, "send_telegram_alert", flaky_send_telegram)
+    mgr = AlertManager(max_queue_size=5, max_retries=3, retry_backoff_seconds=0.02)
+    try:
+        t0 = time.perf_counter()
+        alert = mgr.trigger_alert(
+            camera_id="cam-01",
+            camera_name="Corridor Cam",
+            track_id="#retry-1",
+            dwell_duration=25.0,
+            face_status="UNKNOWN",
+            confidence=0.95,
+            frame=np.zeros((80, 80, 3), dtype=np.uint8),
+            zone_name="Corridor Zone",
+            decision="VERIFIED_THREAT",
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        # Detection loop call must return immediately without waiting for the 3x 150ms network retries
+        assert elapsed_ms < 100.0
+        assert alert is not None
+        assert alert["telegramQueued"] is True
+
+        assert mgr.dispatcher.flush(timeout=3.0) is True
+        assert len(attempts) == 3
+
+        conn = get_db_connection()
+        row = conn.execute("SELECT telegram_delivered FROM alerts WHERE id = ?;", (alert["id"],)).fetchone()
+        conn.close()
+        assert row is not None
+        assert row["telegram_delivered"] == 1
+    finally:
+        mgr.stop()
+
+
+def test_telegram_alert_dispatcher_bounded_queue_overflow():
+    from alerts.alert_manager import TelegramAlertDispatcher
+    dispatcher = TelegramAlertDispatcher(max_queue_size=2, max_retries=1, retry_backoff_seconds=0.01)
+    # Stop worker consumption so queue fills deterministically
+    dispatcher.stop(timeout=0.5)
+    dispatcher.running = True
+    ok1, reason1 = dispatcher.enqueue("alt-1", "msg 1")
+    ok2, reason2 = dispatcher.enqueue("alt-2", "msg 2")
+    ok3, reason3 = dispatcher.enqueue("alt-3", "msg 3")
+    assert (ok1, reason1) == (True, "QUEUED")
+    assert (ok2, reason2) == (True, "QUEUED")
+    assert (ok3, reason3) == (False, "QUEUE_FULL")
 
 
 def test_unknown_face_remains_verified_threat():
