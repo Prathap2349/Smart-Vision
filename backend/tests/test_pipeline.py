@@ -1303,6 +1303,11 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
     import subprocess
     from pathlib import Path
     repo = Path(__file__).resolve().parents[2]
+    root_check = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"], cwd=repo,
+        capture_output=True, text=True, check=True,
+    )
+    assert root_check.stdout.strip().endswith("/Smart-Vision")
     guide = (repo / "docs" / "DEPLOYMENT.md").read_text()
     for section in ["Local Mac backend", "Hugging Face Spaces", "Railway Hobby/paid plan"]:
         assert section in guide
@@ -1320,3 +1325,15 @@ def test_frontend_has_explicit_backend_unreachable_banner_and_retry():
     assert "Configured API:" in banner
     assert "Retry" in banner
     assert "api.getHealth()" in banner
+
+
+def test_model_weights_and_directories_are_git_ignored():
+    import subprocess
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    for candidate in ["model.pt", "backend/data/models/buffalo_s/model.onnx", "backend/weights/model.bin"]:
+        result = subprocess.run(
+            ["git", "check-ignore", "--no-index", candidate], cwd=repo,
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, f"Not ignored: {candidate}"

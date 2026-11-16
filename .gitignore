@@ -16,6 +16,8 @@ backend/data/*.db
 backend/data/evidence/*
 !backend/data/evidence/.gitkeep
 backend/data/models/*
+**/models/
+**/weights/
 *.onnx
 *.pt
 
