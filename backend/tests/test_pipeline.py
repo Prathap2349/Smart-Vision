@@ -1283,3 +1283,17 @@ def test_vercel_serverless_api_removed_and_vercel_json_frontend_only():
     vercel_cfg = json.loads((root / "vercel.json").read_text())
     assert vercel_cfg.get("framework") == "vite"
     assert all("/api" not in r.get("destination", "") for r in vercel_cfg.get("rewrites", []))
+
+
+def test_dockerfile_uses_secure_persistent_model_ready_runtime():
+    from pathlib import Path
+    dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text()
+    assert "FROM python:3.11-slim" in dockerfile
+    assert "DEV_MODE=false" in dockerfile
+    assert "DATA_DIR=/data" in dockerfile
+    assert "MODELS_DIR=/opt/models" in dockerfile
+    assert "FaceAnalysis(name=\"buffalo_s\"" in dockerfile
+    assert "YOLO(\"yolov8n.pt\")" in dockerfile
+    assert "USER sentry" in dockerfile
+    assert "HEALTHCHECK" in dockerfile
+    assert "${PORT:-8000}" in dockerfile
