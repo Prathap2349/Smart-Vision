@@ -1169,3 +1169,55 @@ def test_supabase_url_has_no_hardcoded_default(monkeypatch):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     reloaded = importlib.reload(config)
     assert reloaded.SUPABASE_URL == ""
+
+
+def test_upload_validation_rate_limit_and_ws_frame_size_limit(monkeypatch):
+    import base64
+    import config
+    from api.people import reset_enrollment_rate_limiter
+
+    reset_enrollment_rate_limiter()
+    monkeypatch.setattr(config, "MAX_ENROLLMENT_PHOTOS", 2)
+    monkeypatch.setattr(config, "MAX_ENROLLMENT_IMAGE_BYTES", 512)
+    monkeypatch.setattr(config, "ENROLLMENT_RATE_LIMIT_PER_MIN", 3)
+    monkeypatch.setattr(config, "MAX_WS_FRAME_BYTES", 256)
+
+    # 1. Too many photos (> MAX_ENROLLMENT_PHOTOS) -> 400
+    r_many = client.post(
+        "/api/people",
+        json={"name": "Too Many", "face_images_base64": ["a", "b", "c"]},
+    )
+    assert r_many.status_code == 400
+    assert "Too many photos" in r_many.json()["detail"]
+
+    # 2. Invalid MIME or non-image magic bytes -> 400
+    bad_magic = base64.b64encode(b"not-an-image-at-all-123456").decode("ascii")
+    r_type = client.post(
+        "/api/people",
+        json={"name": "Bad Format", "face_image_base64": bad_magic},
+    )
+    assert r_type.status_code == 400
+    assert "valid JPEG, PNG, or WebP" in r_type.json()["detail"]
+
+    # 3. Oversized image (> MAX_ENROLLMENT_IMAGE_BYTES) -> 400
+    oversized = base64.b64encode(b"\xff\xd8\xff" + b"x" * 1024).decode("ascii")
+    r_size = client.post(
+        "/api/people",
+        json={"name": "Too Large", "face_image_base64": oversized},
+    )
+    assert r_size.status_code == 400
+    assert "exceeds maximum allowed size" in r_size.json()["detail"]
+
+    # 4. 4th request within 60s exceeds ENROLLMENT_RATE_LIMIT_PER_MIN=3 -> 429
+    r_rate = client.post(
+        "/api/people",
+        json={"name": "Rate Limited"},
+    )
+    assert r_rate.status_code == 429
+    reset_enrollment_rate_limiter()
+
+    # 5. Oversized /ws/test-camera frame returns FRAME_TOO_LARGE error payload
+    with client.websocket_connect("/ws/test-camera") as ws:
+        ws.send_json({"image": oversized, "dwell_threshold": 10.0, "zones": []})
+        err_msg = ws.receive_json()
+        assert err_msg["code"] == "FRAME_TOO_LARGE"

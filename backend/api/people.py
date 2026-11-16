@@ -1,19 +1,68 @@
 import json
+import time
 import uuid
 import datetime
 import base64
+import threading
 import cv2
 import numpy as np
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any, Tuple
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Tuple
 from database import get_db_connection
 from face.recognizer import face_recognizer
 from face.cache import resident_cache
+import config
 from config import INSIGHTFACE_MODEL_NAME
 from services.security import sign_evidence_url
 
 router = APIRouter(prefix="/api/people", tags=["people"])
+
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
+_enrollment_rate_lock = threading.Lock()
+_enrollment_requests_by_ip: Dict[str, List[float]] = {}
+
+
+def reset_enrollment_rate_limiter():
+    with _enrollment_rate_lock:
+        _enrollment_requests_by_ip.clear()
+
+
+def _enforce_enrollment_rate_limit(request: Optional[Request]):
+    limit = int(getattr(config, "ENROLLMENT_RATE_LIMIT_PER_MIN", 10))
+    if limit <= 0:
+        return
+    client_ip = "local"
+    if request is not None and request.client and request.client.host:
+        client_ip = request.client.host
+    now = time.time()
+    window_start = now - 60.0
+    with _enrollment_rate_lock:
+        timestamps = [ts for ts in _enrollment_requests_by_ip.get(client_ip, []) if ts > window_start]
+        if len(timestamps) >= limit:
+            _enrollment_requests_by_ip[client_ip] = timestamps
+            raise HTTPException(
+                status_code=429,
+                detail="Too many enrollment requests. Please wait before retrying.",
+            )
+        timestamps.append(now)
+        _enrollment_requests_by_ip[client_ip] = timestamps
+
+
+def _has_valid_image_magic(img_bytes: bytes) -> bool:
+    if len(img_bytes) < 12:
+        return False
+    # JPEG: FF D8 FF
+    if img_bytes[:3] == b"\xff\xd8\xff":
+        return True
+    # PNG: 89 50 4E 47 0D 0A 1A 0A
+    if img_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return True
+    # WebP: RIFF....WEBP
+    if img_bytes[:4] == b"RIFF" and img_bytes[8:12] == b"WEBP":
+        return True
+    return False
+
 
 class ResidentCreate(BaseModel):
     name: str
@@ -22,24 +71,49 @@ class ResidentCreate(BaseModel):
     face_image_base64: Optional[str] = None
     face_images_base64: Optional[List[str]] = None
 
+
 class ReEnrollRequest(BaseModel):
     face_images_base64: Optional[List[str]] = None
     face_image_base64: Optional[str] = None
 
+
 def _process_enrollment_images(images_base64: List[str]) -> Tuple[List[List[float]], Optional[str]]:
     """
-    Validates and extracts 512-D ArcFace embeddings from enrollment photos.
+    Validates upload count, byte size, MIME/magic-byte format, and extracts 512-D ArcFace embeddings.
     Returns:
         (embeddings_list, error_message_if_any)
     """
+    max_photos = int(getattr(config, "MAX_ENROLLMENT_PHOTOS", 10))
+    max_bytes = int(getattr(config, "MAX_ENROLLMENT_IMAGE_BYTES", 5 * 1024 * 1024))
+
+    non_empty_photos = [p for p in images_base64 if p and isinstance(p, str)]
+    if len(non_empty_photos) > max_photos:
+        return [], f"Too many photos uploaded ({len(non_empty_photos)}). Maximum allowed is {max_photos}."
+
     valid_embeddings: List[List[float]] = []
-    
-    for idx, raw_b64 in enumerate(images_base64):
-        if not raw_b64 or not isinstance(raw_b64, str):
-            continue
+
+    for idx, raw_b64 in enumerate(non_empty_photos):
         try:
-            clean_b64 = raw_b64.split(",", 1)[1] if "," in raw_b64 else raw_b64
+            if "," in raw_b64:
+                header, clean_b64 = raw_b64.split(",", 1)
+                if header.startswith("data:") and ";base64" in header:
+                    mime = header[5:header.index(";base64")].strip().lower()
+                    if mime and mime not in ALLOWED_IMAGE_MIMES:
+                        return [], f"Photo #{idx+1} has unsupported MIME type '{mime}'. Allowed: JPEG, PNG, WebP."
+            else:
+                clean_b64 = raw_b64
+
+            # Pre-check base64 length before decoding huge buffers
+            if len(clean_b64) > int(max_bytes * 1.4) + 64:
+                return [], f"Photo #{idx+1} exceeds maximum allowed size ({max_bytes} bytes)."
+
             img_bytes = base64.b64decode(clean_b64)
+            if len(img_bytes) > max_bytes:
+                return [], f"Photo #{idx+1} exceeds maximum allowed size ({max_bytes} bytes)."
+
+            if not _has_valid_image_magic(img_bytes):
+                return [], f"Photo #{idx+1} could not be decoded as a valid JPEG, PNG, or WebP image."
+
             np_arr = np.frombuffer(img_bytes, np.uint8)
             img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
@@ -56,11 +130,12 @@ def _process_enrollment_images(images_base64: List[str]) -> Tuple[List[List[floa
 
     return valid_embeddings, None
 
+
 @router.get("")
 def get_people():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute("""
     SELECT id, name, resident_id, role, face_status, avatar_url, last_detected, detection_count, added_date
     FROM residents;
@@ -115,8 +190,10 @@ def get_people():
         "legacyReEnrollmentCount": resident_cache.legacy_count
     }
 
+
 @router.post("")
-def add_resident(req: ResidentCreate):
+def add_resident(req: ResidentCreate, request: Request = None):
+    _enforce_enrollment_rate_limit(request)
     conn = get_db_connection()
     cursor = conn.cursor()
     res_id = f"res-{uuid.uuid4().hex[:6]}"
@@ -138,7 +215,7 @@ def add_resident(req: ResidentCreate):
         if error_msg:
             conn.close()
             raise HTTPException(status_code=400, detail=error_msg)
-        
+
         if embeddings:
             embedding_payload = {
                 "version": "arcface_v1",
@@ -189,12 +266,14 @@ def add_resident(req: ResidentCreate):
         "message": f"Resident {req.name} successfully enrolled (Status: {face_status})."
     }
 
+
 @router.post("/{id}/re-enroll")
-def re_enroll_resident(id: str, req: ReEnrollRequest):
+def re_enroll_resident(id: str, req: ReEnrollRequest, request: Request = None):
     """
     Re-enrolls a resident with new ArcFace biometric photo embeddings.
     Required for legacy prototype residents or updating biometric photos.
     """
+    _enforce_enrollment_rate_limit(request)
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, name FROM residents WHERE id = ?;", (id,))
@@ -246,6 +325,7 @@ def re_enroll_resident(id: str, req: ReEnrollRequest):
         "enrolledPhotosCount": len(embeddings),
         "message": f"Resident {resident['name']} successfully re-enrolled with {len(embeddings)} ArcFace embedding(s)."
     }
+
 
 @router.delete("/{id}")
 def delete_resident(id: str):

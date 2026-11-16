@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
+import config
 from config import EVIDENCE_DIR, ALLOWED_ORIGINS
 from database import init_db, get_db_connection
 from api import cameras, detections, alerts, people, zones, analytics, health, integrations, evaluation
@@ -293,20 +294,42 @@ async def test_camera_websocket(websocket: WebSocket):
                 if message.get("type") == "websocket.disconnect":
                     break
 
+                max_frame_bytes = int(getattr(config, "MAX_WS_FRAME_BYTES", 2 * 1024 * 1024))
                 img_bytes = None
                 dwell_threshold = 10.0
                 user_zones = []
 
                 if "bytes" in message and message["bytes"]:
-                    img_bytes = message["bytes"]
+                    raw_bytes = message["bytes"]
+                    if len(raw_bytes) > max_frame_bytes:
+                        await websocket.send_json({
+                            "error": f"Frame exceeds maximum allowed size ({max_frame_bytes} bytes)",
+                            "code": "FRAME_TOO_LARGE",
+                        })
+                        continue
+                    img_bytes = raw_bytes
                 elif "text" in message and message["text"]:
+                    raw_text = message["text"]
+                    if len(raw_text) > int(max_frame_bytes * 1.5) + 4096:
+                        await websocket.send_json({
+                            "error": f"Frame exceeds maximum allowed size ({max_frame_bytes} bytes)",
+                            "code": "FRAME_TOO_LARGE",
+                        })
+                        continue
                     try:
-                        payload = json.loads(message["text"])
+                        payload = json.loads(raw_text)
                         img_str = payload.get("image", "")
                         if img_str:
                             if img_str.startswith("data:image"):
                                 img_str = img_str.split(",")[1]
-                            img_bytes = base64.b64decode(img_str)
+                            decoded = base64.b64decode(img_str)
+                            if len(decoded) > max_frame_bytes:
+                                await websocket.send_json({
+                                    "error": f"Frame exceeds maximum allowed size ({max_frame_bytes} bytes)",
+                                    "code": "FRAME_TOO_LARGE",
+                                })
+                                continue
+                            img_bytes = decoded
                         if "dwell_threshold" in payload:
                             dwell_threshold = float(payload["dwell_threshold"])
                         if "zones" in payload and isinstance(payload["zones"], list):
