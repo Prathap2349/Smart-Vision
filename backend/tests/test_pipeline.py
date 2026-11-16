@@ -533,6 +533,23 @@ def test_camera_crypto_does_not_fall_back_to_a_hardcoded_secret(monkeypatch):
         _get_signing_key()
 
 
+def test_runtime_storage_paths_can_use_mountable_directories(tmp_path):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    env = os.environ.copy()
+    env["DATA_DIR"] = str(tmp_path / "persistent-data")
+    env["MODELS_DIR"] = str(tmp_path / "baked-models")
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1])
+    result = subprocess.run(
+        [sys.executable, "-c", "import config; print(config.DATA_DIR); print(config.MODELS_DIR)"],
+        env=env, capture_output=True, text=True, check=True,
+    )
+    assert str(tmp_path / "persistent-data") in result.stdout
+    assert str(tmp_path / "baked-models") in result.stdout
+
+
 def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
     import config
     from services.security import create_hs256_jwt

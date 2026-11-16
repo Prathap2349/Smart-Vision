@@ -2,9 +2,9 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "data"))).expanduser()
 EVIDENCE_DIR = DATA_DIR / "evidence"
-MODELS_DIR = DATA_DIR / "models"
+MODELS_DIR = Path(os.getenv("MODELS_DIR", str(DATA_DIR / "models"))).expanduser()
 
 DATA_DIR.mkdir(exist_ok=True)
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
