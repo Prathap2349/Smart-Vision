@@ -1309,3 +1309,14 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
     for variable in ["VITE_API_BASE_URL", "VITE_WS_BASE_URL", "CAMERA_SECRET", "ALLOWED_ORIGINS"]:
         assert variable in guide
     subprocess.run(["bash", "-n", str(repo / "scripts" / "run_local_with_tunnel.sh")], check=True)
+
+
+def test_frontend_has_explicit_backend_unreachable_banner_and_retry():
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    banner = (repo / "src" / "components" / "common" / "BackendReachabilityBanner.tsx").read_text()
+    assert "Backend not reachable" in banner
+    assert "Demo/offline mode" in banner
+    assert "Configured API:" in banner
+    assert "Retry" in banner
+    assert "api.getHealth()" in banner

@@ -5,6 +5,7 @@ import { DemoSimulationBar } from '../common/DemoSimulationBar';
 import { FalsePositiveModal } from '../common/FalsePositiveModal';
 import { HikvisionSetupModal } from '../common/HikvisionSetupModal';
 import { DeviceCameraTestModal } from '../common/DeviceCameraTestModal';
+import { BackendReachabilityBanner } from '../common/BackendReachabilityBanner';
 import { AuroraBackground } from '../ui/AuroraBackground';
 import { useSecurity } from '../../context/SecurityContext';
 
@@ -47,6 +48,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top bar */}
           <Topbar title={title} subtitle={subtitle} />
+
+          <BackendReachabilityBanner />
 
           {/* Demo Simulation Control Banner */}
           <DemoSimulationBar />
