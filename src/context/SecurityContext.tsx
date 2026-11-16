@@ -52,7 +52,7 @@ interface SecurityContextType {
   gate1Human: boolean;
   gate2Dwell: boolean;
   gate3Unknown: boolean;
-  finalDecision: 'VERIFIED_THREAT' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR';
+  finalDecision: 'VERIFIED_THREAT' | 'UNVERIFIED_LOITERER' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR';
   overlayToggles: OverlayToggles;
 
   // Actions
@@ -172,7 +172,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const gate2Dwell = simulatedPerson.active && simulatedPerson.dwellSeconds >= settings.dwellThresholdSeconds;
   const gate3Unknown = simulatedPerson.active && simulatedPerson.faceStatus === 'UNKNOWN';
 
-  let finalDecision: 'VERIFIED_THREAT' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR' = 'CLEAR';
+  let finalDecision: 'VERIFIED_THREAT' | 'UNVERIFIED_LOITERER' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR' = 'CLEAR';
   if (simulatedPerson.active) {
     if (gate1Human && gate2Dwell && gate3Unknown) {
       finalDecision = 'VERIFIED_THREAT';

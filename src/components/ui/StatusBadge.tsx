@@ -42,6 +42,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   if (typeof displayLabel === 'string') {
     if (displayLabel.toUpperCase() === 'ONLINE') displayLabel = 'Online';
     else if (displayLabel.toUpperCase() === 'OFFLINE') displayLabel = 'Offline';
+    else if (displayLabel.toUpperCase() === 'UNVERIFIED_LOITERER') displayLabel = 'Unverified Loiterer · Face Not Visible';
     else if (displayLabel.toUpperCase() === 'THREAT' || displayLabel.toUpperCase() === 'VERIFIED_THREAT') displayLabel = 'Security Alert';
     else if (displayLabel.toUpperCase() === 'SAFE' || displayLabel.toUpperCase() === 'SAFE_RESIDENT') displayLabel = 'Household Safe';
     else if (displayLabel.toUpperCase() === 'MONITORING') displayLabel = 'Monitoring';
@@ -63,7 +64,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   } else if (
     variant === 'danger' ||
     variant === 'rose' ||
-    ['THREAT', 'CRITICAL', 'FAILED', 'HIGH', 'ALARM', 'VERIFIED_THREAT', 'SECURITY ALERT'].includes(normalized)
+    ['THREAT', 'CRITICAL', 'FAILED', 'HIGH', 'ALARM', 'VERIFIED_THREAT', 'UNVERIFIED_LOITERER', 'SECURITY ALERT'].includes(normalized)
   ) {
     colorClasses = 'bg-brand-alert/15 text-rose-400 border-brand-alert/40 shadow-rose-glow';
     dotColor = 'bg-brand-alert';

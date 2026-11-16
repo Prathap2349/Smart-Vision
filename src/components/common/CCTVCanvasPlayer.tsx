@@ -88,7 +88,7 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
         const boxY = py - 80;
 
         if (overlayToggles.boundingBoxes) {
-          const isThreat = finalDecision === 'VERIFIED_THREAT';
+          const isThreat = finalDecision === 'VERIFIED_THREAT' || finalDecision === 'UNVERIFIED_LOITERER';
           const isSafe = finalDecision === 'SAFE_RESIDENT';
           const strokeColor = isThreat ? '#ef4444' : isSafe ? '#10b981' : '#3b82f6';
 

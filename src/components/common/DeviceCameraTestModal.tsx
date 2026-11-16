@@ -35,7 +35,7 @@ interface DecisionData {
   gate1_human?: { pass: boolean; label?: string; confidence?: number };
   gate2_dwell?: { pass: boolean; label?: string; dwell_seconds?: number };
   gate3_unknown?: { pass: boolean; label?: string; face_status?: string };
-  final_decision: 'VERIFIED_THREAT' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR' | 'IDLE';
+  final_decision: 'VERIFIED_THREAT' | 'UNVERIFIED_LOITERER' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR' | 'IDLE';
 }
 
 interface EventLogItem {
@@ -418,7 +418,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
         const payload = {
           image: dataUrl,
           dwell_threshold: dwellThreshold,
-          zones: [{ name: selectedZone, polygon: polygonPoints, enabled: true }],
+          zones: [{ name: selectedZone, polygonPoints, enabled: true }],
         };
 
         inFlightRef.current = true;
@@ -874,7 +874,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 {/* Gate 1 */}
                 <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-slate-300 flex items-center gap-1.5">
+                <span className="text-slate-300 flex items-center gap-1.5">
                       <Eye className="w-3.5 h-3.5 text-cyan-400" /> GATE 1 — Human Detection
                     </span>
                     {activeTracks.length > 0 ? (
@@ -937,7 +937,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   <span className="text-[10px] text-text-muted uppercase font-bold block">PIPELINE DECISION</span>
                   <span
                     className={`text-base font-extrabold tracking-tight block ${
-                      decision.final_decision === 'VERIFIED_THREAT'
+                      decision.final_decision === 'VERIFIED_THREAT' || decision.final_decision === 'UNVERIFIED_LOITERER'
                         ? 'text-rose-400 animate-pulse'
                         : decision.final_decision === 'SAFE_RESIDENT'
                         ? 'text-emerald-400'
@@ -946,7 +946,9 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                         : 'text-text-muted'
                     }`}
                   >
-                    {decision.final_decision === 'VERIFIED_THREAT'
+                    {decision.final_decision === 'UNVERIFIED_LOITERER'
+                      ? '⚠️ UNVERIFIED LOITERER — FACE NOT VISIBLE'
+                      : decision.final_decision === 'VERIFIED_THREAT'
                       ? '🚨 VERIFIED THREAT'
                       : decision.final_decision === 'SAFE_RESIDENT'
                       ? '🛡️ SAFE RESIDENT'

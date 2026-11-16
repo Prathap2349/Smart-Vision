@@ -32,6 +32,7 @@ DEFAULT_AI_FPS = 5             # 1, 5, or 10 FPS
 DEFAULT_HUMAN_CONFIDENCE = 0.85
 DEFAULT_FACE_CONFIDENCE = 0.90
 ALERT_COOLDOWN_SECONDS = 60
+ALERT_ON_UNVERIFIED_FACE = os.getenv("ALERT_ON_UNVERIFIED_FACE", "true").lower() in {"1", "true", "yes", "on"}
 
 # Telegram Bot Integration Settings
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

@@ -67,7 +67,8 @@ class AlertManager:
         face_status: str,
         confidence: float,
         frame: Optional[Any] = None,
-        zone_name: str = "Corridor Protection Zone"
+        zone_name: str = "Corridor Protection Zone",
+        decision: str = "VERIFIED_THREAT"
     ) -> Optional[Dict[str, Any]]:
 
         if not self.should_fire_alert(track_id):
@@ -92,9 +93,13 @@ class AlertManager:
             cv2.putText(placeholder, f"EVIDENCE SNAPSHOT {alert_id}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
             cv2.imwrite(str(snapshot_path), placeholder)
 
+        unverified = decision == "UNVERIFIED_LOITERER"
+        detection_type = "Unverified Loiterer (face not visible)" if unverified else "Unknown Person Loitering"
+        severity = "HIGH" if unverified else "CRITICAL"
+
         # Send real Telegram alert
         telegram_delivered, telegram_latency, telegram_status_reason = send_telegram_alert(
-            message=f"🚨 SECURITY ALERT: {camera_name} - Unknown Person Loitering ({zone_name})",
+            message=f"🚨 SECURITY ALERT: {camera_name} - {detection_type} ({zone_name})",
             photo_path=str(snapshot_path)
         )
 
@@ -108,19 +113,20 @@ class AlertManager:
             telegram_latency, zone_name, timestamp
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """, (
-            alert_id, camera_id, camera_name, track_id, "Unknown Person Loitering",
-            dwell_duration, face_status, confidence, "CRITICAL", "ACTIVE",
+            alert_id, camera_id, camera_name, track_id, detection_type,
+            dwell_duration, face_status, confidence, severity, "ACTIVE",
             f"/api/evidence/{now_dt.strftime('%Y/%m/%d')}/{snapshot_filename}",
             1 if telegram_delivered else 0, telegram_latency, zone_name, timestamp_str
         ))
 
         # Insert audit log event
+        event_type = "Unverified loiterer (face not visible)" if unverified else "Threat verified"
         cursor.execute("""
         INSERT INTO events (id, timestamp, camera_id, camera_name, track_id, person_type, event_type, confidence, severity, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """, (
             f"evt-{uuid.uuid4().hex[:6]}", timestamp_str, camera_id, camera_name, track_id,
-            "Unknown Person", "Threat verified", confidence, "CRITICAL", "ALERT SENT"
+            "Unknown Person", event_type, confidence, severity, "ALERT SENT"
         ))
 
         conn.commit()
@@ -132,11 +138,11 @@ class AlertManager:
             "cameraName": camera_name,
             "cameraId": camera_id,
             "personTrackId": track_id,
-            "detectionType": "Unknown Person Loitering",
+            "detectionType": detection_type,
             "dwellDuration": dwell_duration,
             "faceStatus": face_status,
             "confidence": confidence,
-            "severity": "CRITICAL",
+            "severity": severity,
             "status": "ACTIVE",
             "snapshotUrl": f"/api/evidence/{now_dt.strftime('%Y/%m/%d')}/{snapshot_filename}",
             "telegramDelivered": telegram_delivered,
