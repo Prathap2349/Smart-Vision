@@ -349,6 +349,46 @@ def test_camera_websocket_sends_offline_state_for_other_camera(monkeypatch):
         assert payload_online["status"] == "ONLINE"
 
 
+def test_test_camera_websocket_offloads_to_executor_and_drops_stale_frames(monkeypatch):
+    import base64
+    import threading
+    import main as main_mod
+
+    main_thread_id = threading.get_ident()
+    worker_threads = []
+    first_started = threading.Event()
+    release_first = threading.Event()
+
+    def slow_detect(frame, conf_threshold=0.65):
+        worker_threads.append(threading.get_ident())
+        if not first_started.is_set():
+            first_started.set()
+            release_first.wait(timeout=2.0)
+        return []
+
+    monkeypatch.setattr(main_mod.yolo_detector, "detect", slow_detect)
+
+    img = np.zeros((64, 64, 3), dtype=np.uint8)
+    _, buf = cv2.imencode(".jpg", img)
+    b64_img = base64.b64encode(buf).decode("utf-8")
+
+    with client.websocket_connect("/ws/test-camera") as ws:
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        assert first_started.wait(timeout=2.0)
+        # Send 3 more frames while inference 1 is running: intermediate frames should be dropped
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        release_first.set()
+
+        resp1 = ws.receive_json()
+        resp2 = ws.receive_json()
+        assert resp1["mode"] == "DEVICE_CAMERA_TEST"
+        assert resp2["dropped_frames"] >= 2
+        assert len(worker_threads) == 2
+        assert all(tid != main_thread_id for tid in worker_threads)
+
+
 # ==========================================
 # 3. Tracker Tests & Track Recognition Cache
 # ==========================================
