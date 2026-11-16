@@ -1,5 +1,6 @@
 import asyncio
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -12,13 +13,33 @@ from api import cameras, detections, alerts, people, zones, analytics, health, i
 from services.websocket_manager import ws_manager
 from tracking.tracker import tracker_manager
 from ai.decision_engine import decision_engine
+from alerts.alert_manager import alert_manager
 from camera.rtsp_stream import rtsp_manager
 from detection_loop import detection_loop, pipeline_registry
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. Initialize SQLite Database
+    init_db()
+
+    # 2. Start every enabled camera pipeline (capture + per-camera tracker + loop)
+    started = pipeline_registry.start_all_enabled_cameras()
+    print(f"[Main Engine] Started {len(started)} enabled camera pipeline(s): {started}")
+    try:
+        yield
+    finally:
+        # 3. Graceful shutdown of camera pipelines, RTSP threads, and alert dispatcher
+        pipeline_registry.stop_all()
+        alert_manager.stop()
+        print("[Main Engine] Graceful shutdown complete.")
+
 
 app = FastAPI(
     title="Smart Vision Sentry Edge AI Engine",
     version="1.0.0",
-    description="InsightFace Biometrics + YOLO Human Detection + Lightweight IoU Tracking + Triple-Gate Decision Engine"
+    description="InsightFace Biometrics + YOLO Human Detection + Lightweight IoU Tracking + Triple-Gate Decision Engine",
+    lifespan=lifespan,
 )
 
 # Enable CORS for React frontend (port 3000 & 5173)
@@ -43,15 +64,6 @@ app.include_router(analytics.router)
 app.include_router(health.router)
 app.include_router(integrations.router)
 app.include_router(evaluation.router)
-
-@app.on_event("startup")
-def startup_event():
-    # 1. Initialize SQLite Database
-    init_db()
-
-    # 2. Start every enabled camera pipeline (capture + per-camera tracker + loop)
-    started = pipeline_registry.start_all_enabled_cameras()
-    print(f"[Main Engine] Started {len(started)} enabled camera pipeline(s): {started}")
 
 # Real-time WebSocket Endpoint
 @app.websocket("/ws/cameras/{camera_id}")
