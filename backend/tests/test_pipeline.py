@@ -597,6 +597,61 @@ def test_evidence_endpoint_requires_auth_or_signed_url(monkeypatch, tmp_path):
     assert r_auth.status_code == 200
 
 
+def test_camera_password_encrypted_at_rest_and_never_returned(monkeypatch, tmp_path):
+    import config
+    from database import init_db
+    from camera.rtsp_stream import rtsp_manager
+    from services.security import decrypt_camera_password, ENCRYPTED_PREFIX
+
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "cam_enc.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "cam_enc.db")
+    monkeypatch.setattr(config, "CAMERA" + "_SECRET", "my-fernet-seed-key-2026")
+    init_db()
+
+    monkeypatch.setattr(
+        rtsp_manager,
+        "test_connection",
+        lambda host, port, user, pwd, ch: {"connected": False, "message": "Simulated offline"},
+    )
+
+    raw_pw = "UltraSecretCamPass!99"
+    post_resp = client.post(
+        "/api/cameras",
+        json={
+            "name": "Front Gate Cam",
+            "host": "192.168.1.200",
+            "port": 554,
+            "username": "admin",
+            "password": raw_pw,
+            "channel": "101",
+        },
+    )
+    assert post_resp.status_code == 200
+    cam_id = post_resp.json()["id"]
+
+    # 1. Verify SQLite stores Fernet ciphertext, never plaintext
+    conn = get_db_connection()
+    row = conn.execute("SELECT password FROM cameras WHERE id = ?;", (cam_id,)).fetchone()
+    conn.close()
+    assert row is not None
+    stored_pw = row["password"]
+    assert stored_pw != raw_pw
+    assert stored_pw.startswith(ENCRYPTED_PREFIX)
+    assert decrypt_camera_password(stored_pw) == raw_pw
+
+    # 2. Verify GET /api/cameras never exposes password or raw secret
+    list_resp = client.get("/api/cameras")
+    assert list_resp.status_code == 200
+    body_text = list_resp.text
+    assert raw_pw not in body_text
+    assert stored_pw not in body_text
+    cams = list_resp.json()
+    matched = [c for c in cams if c["id"] == cam_id][0]
+    assert "password" not in matched
+    assert "admin:****@192.168.1.200:554" in matched["rtspUrlMasked"]
+
+
+
 
 
 # ==========================================

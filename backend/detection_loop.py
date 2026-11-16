@@ -10,6 +10,7 @@ from ai.decision_engine import decision_engine
 from alerts.alert_manager import alert_manager
 from database import get_db_connection
 from config import TRACK_RECOGNITION_INTERVAL
+from services.security import decrypt_camera_password
 
 
 class ContinuousDetectionLoop(threading.Thread):

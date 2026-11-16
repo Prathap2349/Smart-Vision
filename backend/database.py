@@ -121,12 +121,23 @@ def init_db():
     """)
 
     # Seed Default Hikvision Camera if empty
+    from services.security import encrypt_camera_password, ENCRYPTED_PREFIX
     cursor.execute("SELECT COUNT(*) FROM cameras;")
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
         INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, resolution, fps, enabled, status)
-        VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'your_camera_username', 'your_camera_password', '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE');
-        """)
+        VALUES ('cam-01', 'Residential Corridor Hikvision', '192.168.1.104', 554, 'your_camera_username', ?, '101', 'RTSP', '1920x1080', 10, 1, 'OFFLINE');
+        """, (encrypt_camera_password("your_camera_password"),))
+
+    # Migrate any legacy plaintext camera passwords to Fernet encryption at rest
+    cursor.execute("SELECT id, password FROM cameras;")
+    for cam_row in cursor.fetchall():
+        raw_pwd = cam_row["password"] or ""
+        if raw_pwd and not raw_pwd.startswith(ENCRYPTED_PREFIX):
+            cursor.execute(
+                "UPDATE cameras SET password = ? WHERE id = ?;",
+                (encrypt_camera_password(raw_pwd), cam_row["id"]),
+            )
 
     # Seed Default Detection Zones if empty
     cursor.execute("SELECT COUNT(*) FROM detection_zones;")

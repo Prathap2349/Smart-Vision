@@ -10,6 +10,7 @@ from camera.rtsp_stream import rtsp_manager
 from detection_loop import pipeline_registry
 from tracking.tracker import tracker_manager
 from services.onvif_scanner import onvif_scanner
+from services.security import encrypt_camera_password, decrypt_camera_password
 
 router = APIRouter(prefix="/api/cameras", tags=["cameras"])
 
@@ -82,12 +83,13 @@ def add_camera(cam: CameraCreate):
     is_online = conn_res.get("connected", False)
     initial_status = "ONLINE" if is_online else "OFFLINE"
 
+    encrypted_password = encrypt_camera_password(cam.password)
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
     INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, enabled, status, user_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?);
-    """, (cam_id, cam.name, cam.host, cam.port, cam.username, cam.password, cam.channel, cam.stream_type, initial_status, user_id))
+    """, (cam_id, cam.name, cam.host, cam.port, cam.username, encrypted_password, cam.channel, cam.stream_type, initial_status, user_id))
     conn.commit()
     conn.close()
 
@@ -143,7 +145,8 @@ def test_camera_connection(id: str, req: Optional[TestRTSPRequest] = None):
         conn.close()
         if not r:
             raise HTTPException(status_code=404, detail="Camera not found.")
-        res = rtsp_manager.test_connection(r["host"], r["port"], r["username"], r["password"], r["channel"])
+        plain_password = decrypt_camera_password(r["password"] or "")
+        res = rtsp_manager.test_connection(r["host"], r["port"], r["username"], plain_password, r["channel"])
     
     return res
 
