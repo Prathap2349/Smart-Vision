@@ -1221,3 +1221,12 @@ def test_upload_validation_rate_limit_and_ws_frame_size_limit(monkeypatch):
         ws.send_json({"image": oversized, "dwell_threshold": 10.0, "zones": []})
         err_msg = ws.receive_json()
         assert err_msg["code"] == "FRAME_TOO_LARGE"
+
+
+def test_vercel_serverless_api_removed_and_vercel_json_frontend_only():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    assert not (root / "api" / "index.py").exists()
+    vercel_cfg = json.loads((root / "vercel.json").read_text())
+    assert vercel_cfg.get("framework") == "vite"
+    assert all("/api" not in r.get("destination", "") for r in vercel_cfg.get("rewrites", []))
