@@ -118,7 +118,7 @@ def get_system_metrics():
         "inferenceLatencyMs": inference_latency,
         "networkLatencyMs": network_latency,
         "queueSize": 0,
-        "uptimeSeconds": int(time.time() - psutil.boot_time()),
+        "uptimeSeconds": _uptime_seconds(),
         "yoloStatus": yolo_status,
         "trackerStatus": tracker_status,
         "faceMatcherStatus": face_status,
@@ -130,3 +130,10 @@ def get_system_metrics():
         "cachedResidents": len(resident_cache),
         "legacyReEnrollmentCount": resident_cache.legacy_count
     }
+
+
+def _uptime_seconds():
+    try:
+        return int(time.time() - psutil.boot_time())
+    except (OSError, PermissionError):
+        return None
