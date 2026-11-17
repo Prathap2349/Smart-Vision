@@ -41,7 +41,9 @@ Set backend secrets in the host's secret manager, not in source control. `DEV_MO
 | `ENROLLMENT_RATE_LIMIT_PER_MIN` | Enrollment request limit (default `10`). |
 | `MAX_WS_FRAME_BYTES` | WebSocket image/frame byte limit (default `2097152`). |
 | `FACE_MIN_SIZE` / `FACE_MIN_BLUR_SCORE` | Passive face quality thresholds. |
-| `FACE_SIMILARITY_THRESHOLD` | Face embedding match threshold. |
+| `DETECTOR_CONFIDENCE_THRESHOLD` | YOLO candidate cutoff (default `0.65`). |
+| `GATE_HUMAN_CONFIDENCE_THRESHOLD` | Minimum human confidence for decision Gate 1 (default `0.70`). |
+| `FACE_SIMILARITY_THRESHOLD` | ArcFace embedding match threshold (default `0.50`). |
 | `TRACK_RECOGNITION_INTERVAL` | Seconds between per-track face checks. |
 | `INSIGHTFACE_MODEL_NAME` | InsightFace pack name (default `buffalo_s`). |
 

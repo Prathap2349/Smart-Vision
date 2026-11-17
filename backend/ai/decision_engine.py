@@ -7,6 +7,7 @@ from config import (
     NIGHT_DWELL_THRESHOLD,
     DAY_DWELL_THRESHOLD,
     ALERT_ON_UNVERIFIED_FACE,
+    GATE_HUMAN_CONFIDENCE_THRESHOLD,
 )
 
 
@@ -80,7 +81,7 @@ class DecisionEngine:
         is_known_resident = face_status in {"KNOWN", "VERIFIED_RESIDENT"}
         face_not_visible = face_status in {"NO_FACE", "LOW_QUALITY"}
 
-        gate1_pass = is_human and (human_confidence >= 0.70)
+        gate1_pass = is_human and (human_confidence >= GATE_HUMAN_CONFIDENCE_THRESHOLD)
         gate2_pass = dwell_seconds >= effective_threshold
         gate3_pass = (not is_known_resident) and (
             (face_status == "UNKNOWN")

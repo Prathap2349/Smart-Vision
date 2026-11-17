@@ -86,8 +86,8 @@ interface SecurityContextType {
 }
 
 const defaultSettings: AISettings = {
-  humanConfidenceThreshold: 0.85,
-  faceConfidenceThreshold: 0.90,
+  humanConfidenceThreshold: 0.70,
+  faceConfidenceThreshold: 0.50,
   dwellThresholdSeconds: 20,
   maxTrackingAgeSeconds: 30,
   targetFps: 5,

@@ -137,6 +137,16 @@ def test_decision_engine_canonical_parameter():
     assert res["gate3_unknown"]["pass"] is True
 
 
+def test_pipeline_confidence_thresholds_are_centralized():
+    import config
+    from ai.detector import DETECTOR_CONFIDENCE_THRESHOLD
+    from ai.decision_engine import GATE_HUMAN_CONFIDENCE_THRESHOLD
+    assert config.DETECTOR_CONFIDENCE_THRESHOLD == DETECTOR_CONFIDENCE_THRESHOLD == 0.65
+    assert config.GATE_HUMAN_CONFIDENCE_THRESHOLD == GATE_HUMAN_CONFIDENCE_THRESHOLD == 0.70
+    assert config.DEFAULT_HUMAN_CONFIDENCE == config.GATE_HUMAN_CONFIDENCE_THRESHOLD
+    assert config.DEFAULT_FACE_CONFIDENCE == config.FACE_SIMILARITY_THRESHOLD == 0.50
+
+
 def test_decision_engine_kwargs_fallback():
     """Verify evaluate_gates backward-compatible fallback for human_conf/confidence kwargs."""
     res1 = decision_engine.evaluate_gates(is_human=True, human_conf=0.88, dwell_seconds=5.0)

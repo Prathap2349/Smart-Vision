@@ -29,8 +29,10 @@ HIKVISION_CHANNEL = os.getenv("HIKVISION_CHANNEL", "101")
 # AI & Dwell Threshold Defaults
 DEFAULT_DWELL_THRESHOLD = 20  # seconds
 DEFAULT_AI_FPS = 5             # 1, 5, or 10 FPS
-DEFAULT_HUMAN_CONFIDENCE = 0.85
-DEFAULT_FACE_CONFIDENCE = 0.90
+DETECTOR_CONFIDENCE_THRESHOLD = float(os.getenv("DETECTOR_CONFIDENCE_THRESHOLD", "0.65"))
+GATE_HUMAN_CONFIDENCE_THRESHOLD = float(os.getenv("GATE_HUMAN_CONFIDENCE_THRESHOLD", "0.70"))
+DEFAULT_HUMAN_CONFIDENCE = GATE_HUMAN_CONFIDENCE_THRESHOLD
+DEFAULT_FACE_CONFIDENCE = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.50"))
 ALERT_COOLDOWN_SECONDS = 60
 ALERT_ON_UNVERIFIED_FACE = os.getenv("ALERT_ON_UNVERIFIED_FACE", "true").lower() in {"1", "true", "yes", "on"}
 
@@ -59,7 +61,7 @@ INSIGHTFACE_PROVIDERS = ["CoreMLExecutionProvider", "CPUExecutionProvider"]
 # Passive face-quality filtering; not full liveness detection.
 FACE_MIN_SIZE = int(os.getenv("FACE_MIN_SIZE", "32"))  # Min pixel width/height (32x32)
 FACE_MIN_BLUR_SCORE = float(os.getenv("FACE_MIN_BLUR_SCORE", "30.0"))  # Laplacian variance threshold
-FACE_SIMILARITY_THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.50"))  # ArcFace Cosine Similarity Threshold
+FACE_SIMILARITY_THRESHOLD = DEFAULT_FACE_CONFIDENCE  # ArcFace cosine similarity threshold
 TRACK_RECOGNITION_INTERVAL = float(os.getenv("TRACK_RECOGNITION_INTERVAL", "1.0"))  # Seconds between face re-verification
 
 # Phase 3 Security & Hardening Settings

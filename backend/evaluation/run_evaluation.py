@@ -32,6 +32,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 from config import (
     INSIGHTFACE_MODEL_NAME,
     FACE_SIMILARITY_THRESHOLD,
+    DETECTOR_CONFIDENCE_THRESHOLD,
     TRACK_RECOGNITION_INTERVAL
 )
 from face.recognizer import face_recognizer
@@ -183,7 +184,7 @@ def run_pipeline_on_clip(
         h, w = frame.shape[:2]
 
         # 1. YOLO Human Detection
-        detections = yolo_detector.detect(frame, conf_threshold=0.65)
+        detections = yolo_detector.detect(frame, conf_threshold=DETECTOR_CONFIDENCE_THRESHOLD)
 
         # 2. Lightweight IoU Multi-Object Tracking
         tracks = tracker.update_tracks(detections, zones, frame_w=w, frame_h=h, frame=frame)
