@@ -1446,8 +1446,9 @@ def test_dockerfile_uses_secure_persistent_model_ready_runtime():
     assert "USER sentry" in dockerfile
     assert "HEALTHCHECK" in dockerfile
     assert "${PORT:-8000}" in dockerfile
-    assert "pip uninstall -y opencv-python" in dockerfile
-    assert 'python -c "import cv2"' in dockerfile
+    assert "pip uninstall -y opencv-python opencv-python-headless" in dockerfile
+    assert "--force-reinstall --no-deps opencv-python-headless==4.10.0.84" in dockerfile
+    assert 'python -c "import cv2; print(cv2.__version__)"' in dockerfile
 
 
 def test_deployment_guide_and_tunnel_script_cover_supported_paths():

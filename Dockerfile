@@ -18,7 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip uninstall -y opencv-python && python -c "import cv2"
+RUN pip uninstall -y opencv-python opencv-python-headless \
+    && pip install --no-cache-dir --force-reinstall --no-deps opencv-python-headless==4.10.0.84 \
+    && python -c "import cv2; print(cv2.__version__)"
 
 COPY backend/ ./
 
