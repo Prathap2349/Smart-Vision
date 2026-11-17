@@ -48,7 +48,7 @@ All routes below require auth unless explicitly marked public. Path parameters a
 | `DELETE /api/zones/{id}` | Zone ID | Success and message. |
 | `GET /api/analytics` | None | Aggregate counts, hourly series, pie data, latency histogram, confidence distribution, and uptime percentage. |
 | `GET /api/integrations/hikconnect` | None | Current local RTSP status and optional Hik-Connect/HikCentral integration status. |
-| `GET /api/evaluation/latest` | None | Latest measured evaluation if present; otherwise `status: "NO_EVALUATION_DATA"` and metric fields are `null`. |
+| `GET /api/evaluation/latest` | None | `INSUFFICIENT_DATASET` plus the current clip inventory and `metrics: null` until real labelled clips are present and a report has completed. Completed responses include held-out metrics and sample size. |
 | `GET /api/evidence/{file_path}` | Bearer/API key **or** valid `exp` and `sig` query parameters | Evidence file bytes; 401 if neither auth method succeeds, 400 for path traversal, 404 if absent. |
 
 ## WebSocket routes
@@ -59,3 +59,7 @@ All routes below require auth unless explicitly marked public. Path parameters a
 | `/ws/test-camera` | Bearer token or API key. Browser clients may pass `?token=` or `?api_key=`. | Client sends JPEG bytes or JSON `{ "image": "data:image/jpeg;base64,...", "dwell_threshold": 10, "zones": [{"name":"entry","polygonPoints":[{"x":0,"y":0}, ...],"enabled":true}] }`. `polygon` is accepted as a legacy alias. Server sends test mode, tracks, a decision, latency, and dropped-frame count. Frames over `MAX_WS_FRAME_BYTES` receive `{ "error": ..., "code": "FRAME_TOO_LARGE" }`; the connection stays open. |
 
 WebSocket authentication failures close with code **1008**. WebSockets do not use the HTTP JSON error envelope.
+
+## Evaluation response behavior
+
+`GET /api/evaluation/latest` reads the current `evaluation/dataset/labels.csv` and clip inventory. Zero clips, extra unlabelled files, invalid labels, or a missing completed report do not produce metric values. The response uses `status: "INSUFFICIENT_DATASET"`, includes inventory details (including missing labelled files), and sets `metrics` to `null`. A completed report exposes metrics computed only on the held-out split; its sample size is returned alongside them. Old reports are not served as current results when no clips are on disk or the inventory contains unlabelled/invalid files.

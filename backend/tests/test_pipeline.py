@@ -1424,6 +1424,8 @@ def test_dockerfile_uses_secure_persistent_model_ready_runtime():
     assert "USER sentry" in dockerfile
     assert "HEALTHCHECK" in dockerfile
     assert "${PORT:-8000}" in dockerfile
+    assert "pip uninstall -y opencv-python" in dockerfile
+    assert 'python -c "import cv2"' in dockerfile
 
 
 def test_deployment_guide_and_tunnel_script_cover_supported_paths():
@@ -1447,6 +1449,8 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
     testing_doc = (repo / "docs" / "TESTING.md").read_text()
     architecture_doc = (repo / "docs" / "ARCHITECTURE.md").read_text()
     readme = (repo / "README.md").read_text()
+    assert "starlette==0.41.3" in (repo / "backend" / "requirements.txt").read_text()
+    assert "starlette==0.41.3" in (repo / "backend" / "requirements-ci.txt").read_text()
     for endpoint in ["/api/health", "/api/cameras", "/api/people", "/api/zones", "/api/evidence/{file_path}", "/ws/cameras/{camera_id}", "/ws/test-camera"]:
         assert endpoint in api_doc
     from main import app
@@ -1483,6 +1487,9 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
     assert "UNVERIFIED_LOITERER" in architecture_doc
     assert "resolve_dwell_threshold" in architecture_doc
     assert "docs/API.md" in readme and "docs/DEPLOYMENT.md" in readme
+    assert "docs/EVALUATION_CHECKLIST.md" in readme
+    assert "No accuracy metrics are available" in readme
+    assert '"INSUFFICIENT_DATASET"' in api_doc
     assert "actions/workflows/ci.yml/badge.svg" in readme
 
 

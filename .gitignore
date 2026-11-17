@@ -31,15 +31,29 @@ backend/data/models/*
 *.jpeg
 *.png
 !src/assets/*
-!evaluation/results/*.png
 !backend/benchmarks/results/*.png
 eval_data/
 datasets/
 evaluation/dataset/**/*.mp4
 evaluation/dataset/**/*.avi
 evaluation/dataset/**/*.mov
+evaluation/dataset/**/*.mkv
+evaluation/dataset/**/*.m4v
 evaluation/dataset/**/*.jpg
 evaluation/dataset/enrollment/
+evaluation/dataset/**/*.webp
+evaluation/dataset/**/*.onnx
+evaluation/dataset/**/*.pt
+evaluation/dataset/**/*.pth
+evaluation/dataset/**/*.safetensors
+evaluation/dataset/**/*.engine
+evaluation/dataset/**/*.bin
+evaluation/dataset/**/*.weights
+evaluation/dataset/**/*.tflite
+evaluation/dataset/**/*.mlmodel
+evaluation/results/**
+!evaluation/results/results.json
+!evaluation/results/results.md
 *.m4v
 
 # System & OS

@@ -24,6 +24,8 @@ The CI backend job uses Python 3.11 and `backend/requirements-ci.txt`. It inject
 
 Some tracker and cache tests use SQLite temp databases or monkeypatches. The enrollment and recognition tests do not use real faces. For real camera behavior or FP/FN performance, use physical streams and the evaluation dataset workflow; unit tests do not establish those results.
 
+Evaluation tooling tests may use temporary filenames and synthetic unit-test inputs to exercise validation and metric calculations. Those fixtures are not evaluation clips and are never written to `evaluation/dataset/`. Real evaluation uses only user-recorded clips, checked with `PYTHONPATH=./backend python scripts/validate_evaluation_dataset.py` and described in [EVALUATION_CHECKLIST.md](EVALUATION_CHECKLIST.md).
+
 ## CI jobs
 
 - **Backend tests (Python 3.11):** install the lightweight pinned test dependencies and run `PYTHONPATH=./backend pytest backend/tests -q`.

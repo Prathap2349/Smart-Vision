@@ -9,13 +9,13 @@
 [![InsightFace](https://img.shields.io/badge/InsightFace-ArcFace%20512--D-blueviolet)](https://github.com/deepinsight/insightface)
 [![YOLOv8](https://img.shields.io/badge/Ultralytics-YOLOv8-FF6F00?logo=yolo)](https://docs.ultralytics.com)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
-![Backend tests](https://img.shields.io/badge/backend%20tests-79%20passed-brightgreen)
+![Backend tests](https://img.shields.io/badge/backend%20tests-85%20passed-brightgreen)
 
 ---
 
 ## 1. Project Architecture
 
-Smart Vision Sentry (SVS) is an Edge-AI video analytics system engineered to eliminate CCTV false alarms caused by moving foliage, sunlight shifts, animals, and delivery drop-offs. The system executes locally on edge hardware (Apple Silicon with CoreML, NVIDIA Jetson, or x86 CPU) with zero per-frame cloud transmission dependencies.
+Smart Vision Sentry (SVS) is an Edge-AI video analytics prototype designed to distinguish people and dwell behavior from environmental motion. Real-world accuracy has not yet been measured. The system is designed to execute locally on edge hardware (Apple Silicon with CoreML, NVIDIA Jetson, or x86 CPU).
 
 ```
 RTSP Camera Stream / Video Feed
@@ -146,23 +146,31 @@ PYTHONPATH=./backend python backend/benchmarks/benchmark_pipeline.py --duration 
 
 ## 9. Evaluation Commands
 
-Run the real-world FP/FN scenario evaluation suite:
+Run the evaluation tooling against real, labelled clips only:
 
 ```bash
-# Run real pipeline evaluation across all dataset scenarios
+# Validate that real clip files and labels agree
+PYTHONPATH=./backend python scripts/validate_evaluation_dataset.py
+
+# Enroll consenting residents from evaluation/dataset/enrollment/<name>/ photos
+PYTHONPATH=./backend python scripts/enroll_evaluation_residents.py
+
+# Run the evaluation; with no real clips it writes INSUFFICIENT_DATASET and inventory only
 PYTHONPATH=./backend python backend/evaluation/run_evaluation.py
 
 # Run evaluation with custom threshold and skip threshold sweep
 PYTHONPATH=./backend python backend/evaluation/run_evaluation.py --threshold 0.50 --no-sweep
 ```
 
-*Evaluation reports and inventory audits are saved to `evaluation/results/`.*
+*The evaluator writes `evaluation/results/results.json` and `results.md`. It does not emit accuracy metrics until real clips are present and processed.*
+
+Current real clip inventory: **0 clips on disk; 20 labelled clip rows are missing their video files.** No accuracy metrics are available. See the [real clip recording checklist](docs/EVALUATION_CHECKLIST.md) before collecting footage.
 
 ---
 
 ## 10. Dataset Structure
 
-Evaluation data is organized in `evaluation/dataset/` across 11 scenarios with ground-truth labels in `labels.csv`:
+The full dataset is organized in `evaluation/dataset/` across 11 scenarios with ground-truth labels in `labels.csv`. The checklist explains camera placement, consent, filming, and a 10–12 clip minimum viable first evaluation. The complete scenario matrix uses two clips per scenario.
 
 ```
 evaluation/dataset/
@@ -241,4 +249,4 @@ The CI workflow tests the backend on Python 3.11, builds the frontend, and runs 
 ---
 
 ## 🔒 Privacy Notice
-Raw face photos, evaluation video recordings, and local `.env` configuration files are strictly excluded from version control via `.gitignore`. Only aggregated benchmark reports and manifests are versioned.
+Raw face photos, evaluation video recordings, and local `.env` configuration files are excluded from version control via `.gitignore`. Under `evaluation/`, only `labels.csv` and the evaluation `results.json`/`results.md` are tracked.
