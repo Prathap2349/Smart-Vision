@@ -1349,6 +1349,7 @@ def test_privacy_copy_matches_test_mode_and_production_data_paths():
     settings = (root / "src" / "pages" / "SettingsPage.tsx").read_text()
     architecture = (root / "docs" / "ARCHITECTURE.md").read_text()
     assert "getConfiguredBackendHost()" in modal
+    assert "frames only to the configured Smart Vision backend" in modal
     assert "processed in memory" in modal
     assert "not written to persistent evidence storage" in modal
     assert "Stopping Test Mode stops camera capture" in modal

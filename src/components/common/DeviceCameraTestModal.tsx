@@ -1218,7 +1218,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
         <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3 text-xs text-text-muted">
           <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
           <p className="leading-tight">
-            <strong>Test Mode data flow:</strong> Webcam frames are sent to the configured Smart Vision backend at <code className="font-mono text-text-primary">{getConfiguredBackendHost()}</code> and processed in memory. Test snapshots are returned to this browser and are not written to persistent evidence storage by <code>/ws/test-camera</code>. Production camera alerts use a separate path that saves evidence on the backend and can send alert text and snapshots to Telegram when enabled. Stopping Test Mode stops camera capture, closes the WebSocket, and clears the test snapshot gallery.
+            <strong>Test Mode data flow:</strong> Test Mode sends webcam frames only to the configured Smart Vision backend at <code className="font-mono text-text-primary">{getConfiguredBackendHost()}</code>, where they are processed in memory. Test snapshots are returned to this browser and are not written to persistent evidence storage by <code>/ws/test-camera</code>. Production camera alerts use a separate path that saves evidence on the backend and can send alert text and snapshots to Telegram when enabled. Stopping Test Mode stops camera capture, closes the WebSocket, and clears the test snapshot gallery.
           </p>
         </div>
       </div>
