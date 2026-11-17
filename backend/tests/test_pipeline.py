@@ -1157,6 +1157,35 @@ def test_evaluation_manifest_loader():
         assert sc in inventory["missing_by_scenario"]
 
 
+def test_evaluation_dataset_validator_reports_missing_extra_and_unlabelled(tmp_path):
+    import csv
+    from evaluation.dataset_validator import validate_dataset
+
+    (tmp_path / "extra.mp4").write_bytes(b"unit-test placeholder")
+    labels = tmp_path / "labels.csv"
+    with labels.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=["video", "scenario", "expected_alert", "resident_present", "notes"])
+        writer.writeheader()
+        writer.writerow({"video": "missing.mp4", "scenario": "test", "expected_alert": "0", "resident_present": "0", "notes": ""})
+    report = validate_dataset(tmp_path)
+    assert report["status"] == "INVALID_DATASET"
+    assert report["missing_files"] == ["missing.mp4"]
+    assert report["extra_files"] == ["extra.mp4"]
+    assert report["unlabelled_clips"] == ["extra.mp4"]
+
+
+def test_evaluation_dataset_validator_rejects_invalid_labels(tmp_path):
+    from evaluation.dataset_validator import validate_dataset
+
+    (tmp_path / "labels.csv").write_text(
+        "video,scenario,expected_alert,resident_present,notes\n../escape.mp4,x,yes,0,\n",
+        encoding="utf-8",
+    )
+    report = validate_dataset(tmp_path)
+    assert report["status"] == "INVALID_DATASET"
+    assert report["invalid_rows"]
+
+
 def test_evaluation_metrics_computation():
     """Verify compute_metrics calculates exact TP, FP, TN, FN, Precision, Recall, F1, and FA/hour."""
     from evaluation.run_evaluation import compute_metrics
