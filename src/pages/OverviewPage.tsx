@@ -39,7 +39,9 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
     unknownPersons,
     cameras,
     simulatedPerson,
+    operatingMode,
   } = useSecurity();
+  const isOffline = operatingMode === 'OFFLINE';
 
   const [selectedCameraId, setSelectedCameraId] = useState<string>(cameras[0]?.id || 'cam-01');
   const [greeting, setGreeting] = useState<string>('Good day');
@@ -61,6 +63,15 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({ onNavigateTab }) => 
     location: 'Main Entrance',
     status: 'ONLINE',
   };
+
+  if (isOffline) {
+    return <div className="space-y-6">
+      <SectionHeader title="Home overview" subtitle="Backend offline — monitoring status is unknown." icon={<ShieldAlert className="w-5 h-5" />} />
+      <Card className="p-6 space-y-2"><h2 className="text-lg font-bold">Not monitoring - backend offline</h2><p className="text-sm text-text-secondary">Status unknown. No live camera or security data is available.</p></Card>
+      <div className="grid grid-cols-2 gap-4"><Card className="p-4"><p className="text-xs">Cameras</p><p className="font-semibold">No cameras connected</p></Card><Card className="p-4"><p className="text-xs">Security status</p><p className="font-semibold">Status unknown</p></Card></div>
+      <Card className="p-5"><p className="mb-3 text-xs font-semibold uppercase tracking-wide text-amber-200">Demo preview (simulated)</p><CCTVCanvasPlayer cameraId="demo-preview" /></Card>
+    </div>;
+  }
 
   // 4 Simple At-a-Glance Summary Cards
   const summaryItems: StatItem[] = [

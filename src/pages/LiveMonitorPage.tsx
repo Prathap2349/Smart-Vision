@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 
 export const LiveMonitorPage: React.FC = () => {
-  const { overlayToggles, setOverlayToggles, cameras, simulatedPerson } = useSecurity();
+  const { overlayToggles, setOverlayToggles, cameras, simulatedPerson, operatingMode } = useSecurity();
+  const isOffline = operatingMode === 'OFFLINE';
   const [selectedCamId, setSelectedCamId] = useState<string>(cameras[0]?.id || 'cam-01');
 
   const activeCam = cameras.find((c) => c.id === selectedCamId) || cameras[0] || {
@@ -30,6 +31,8 @@ export const LiveMonitorPage: React.FC = () => {
     latency: 1.4,
     status: 'ONLINE',
   };
+
+  if (isOffline) return <div className="space-y-6"><SectionHeader title="Camera monitor" subtitle="Backend offline — camera and detection status are unknown." icon={<Camera className="w-5 h-5" />} /><Card className="p-5"><h2 className="font-semibold">Not monitoring - backend offline</h2><p className="text-sm text-text-secondary mt-1">No live camera feed or detection data is available.</p><p className="mt-3 text-xs text-amber-200">Demo preview (simulated)</p><CCTVCanvasPlayer /></Card></div>;
 
   return (
     <div className="space-y-6">

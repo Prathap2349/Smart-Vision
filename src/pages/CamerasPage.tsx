@@ -22,7 +22,8 @@ import {
 import { api, API_BASE } from '../services/api';
 
 export const CamerasPage: React.FC = () => {
-  const { cameras, addCamera } = useSecurity();
+  const { cameras, addCamera, operatingMode } = useSecurity();
+  const isOffline = operatingMode === 'OFFLINE';
 
   const [selectedCam, setSelectedCam] = useState<CameraDevice | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -90,6 +91,8 @@ export const CamerasPage: React.FC = () => {
         }
       />
 
+      {isOffline && <Card className="p-5"><h2 className="font-semibold">No cameras connected</h2><p className="text-sm text-text-secondary mt-1">Status unknown while the backend is offline. Camera streams and saved camera inventory cannot be checked.</p></Card>}
+
       {/* Offline Camera Notice */}
       {cameras.some((c) => c.status === 'OFFLINE') && (
         <div className="p-4 bg-amber-500/10 border border-amber-400/20 rounded-2xl text-xs text-amber-200 flex items-center gap-3">
@@ -99,7 +102,7 @@ export const CamerasPage: React.FC = () => {
       )}
 
       {/* Camera Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {!isOffline && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {cameras.map((cam) => {
           const isOnline = cam.status === 'ONLINE';
           return (
@@ -186,7 +189,7 @@ export const CamerasPage: React.FC = () => {
             </Card>
           );
         })}
-      </div>
+      </div>}
 
       {/* Camera Live Stream Drawer */}
       <Drawer

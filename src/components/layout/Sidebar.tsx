@@ -35,11 +35,15 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
   const { user, logout } = useAuth();
-  const { alerts, cameras } = useSecurity();
+  const { alerts, cameras, operatingMode } = useSecurity();
 
   const activeAlertCount = alerts.filter(a => a.status === 'ACTIVE').length;
   const onlineCameras = cameras.filter(c => c.status === 'ONLINE').length;
   const allOnline = cameras.length > 0 && onlineCameras === cameras.length;
+  const isOffline = operatingMode === 'OFFLINE';
+  const displayName = user?.name || 'Homeowner';
+  const phoneDigits = displayName.replace(/\D/g, '');
+  const maskedName = phoneDigits.length >= 7 ? `Resident (****${phoneDigits.slice(-4)})` : displayName;
 
   const primaryNav = [
     { id: 'overview', label: 'Home', icon: Home },
@@ -150,10 +154,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
             <AIStatusOrb status={activeAlertCount > 0 ? 'ALERT' : allOnline ? 'ACTIVE' : 'WARNING'} size="sm" />
             <div className="truncate">
               <p className="text-xs font-bold text-text-primary leading-tight">
-                {activeAlertCount > 0 ? 'Attention needed' : 'Home protected'}
+                {isOffline ? 'Not monitoring - backend offline' : activeAlertCount > 0 ? 'Attention needed' : 'Home protected'}
               </p>
               <p className="text-[11px] text-text-muted leading-tight mt-0.5">
-                {cameras.length === 0 ? 'No cameras' : `${onlineCameras} camera${onlineCameras !== 1 ? 's' : ''} online`}
+                {isOffline ? 'Status unknown' : cameras.length === 0 ? 'No cameras' : `${onlineCameras} camera${onlineCameras !== 1 ? 's' : ''} online`}
               </p>
             </div>
           </div>
@@ -163,10 +167,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
         <div className="flex items-center justify-between pt-1 px-1">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-brand-blue/20 border border-brand-blue/30 flex items-center justify-center text-xs font-bold text-brand-cyan shrink-0">
-              {user?.name ? user.name[0].toUpperCase() : 'H'}
+              {maskedName[0].toUpperCase()}
             </div>
             <div className="truncate min-w-0">
-              <p className="text-xs font-bold text-text-primary truncate leading-tight">{user?.name || 'Homeowner'}</p>
+              <p className="text-xs font-bold text-text-primary truncate leading-tight">{maskedName}</p>
               <p className="text-[11px] text-text-muted truncate leading-tight">Household admin</p>
             </div>
           </div>

@@ -2,6 +2,8 @@
 
 The API and WebSocket endpoint must use a public HTTPS/WSS URL when the frontend is hosted on Vercel. Browsers block insecure HTTP/WS calls from an HTTPS page (mixed content). Set `VITE_API_BASE_URL` to the backend origin plus `/api`, and `VITE_WS_BASE_URL` to the backend origin without a path.
 
+If the current Vercel `VITE_API_BASE_URL` or `VITE_WS_BASE_URL` points to an unavailable host, update both Vercel variables to the active tunnel URL or hosted backend URL, then redeploy the frontend. The API value must use `https://` and end in `/api`; the WebSocket value must use `wss://`. A local tunnel URL may change between runs.
+
 ## Vercel frontend variables
 
 Set these in the Vercel project and redeploy after changing them:

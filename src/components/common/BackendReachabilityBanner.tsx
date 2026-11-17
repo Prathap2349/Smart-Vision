@@ -30,15 +30,16 @@ export const BackendReachabilityBanner: React.FC = () => {
   }, [checkBackend]);
 
   if (reachable !== false) return null;
+  const configuredHost = API_BASE ? (() => { try { return new URL(API_BASE).host; } catch { return API_BASE; } })() : null;
 
   return (
     <div role="status" className="mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-amber-100 sm:mx-6">
       <div className="flex min-w-0 items-start gap-2.5">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
         <div className="min-w-0">
-          <p className="text-sm font-semibold">Backend not reachable · Demo/offline mode</p>
+          <p className="text-sm font-semibold">{configuredHost ? 'Backend not reachable' : 'No backend configured - set VITE_API_BASE_URL (see docs/DEPLOYMENT.md)'}</p>
           <p className="mt-0.5 break-all text-xs text-amber-100/75">
-            Configured API: {API_BASE ?? 'not configured'} · Camera detections are unavailable; demo content is simulated.
+            {configuredHost ? `Configured API: ${configuredHost}. Demo/offline mode — camera detections are unavailable and demo content is simulated.` : 'Demo/offline mode — camera detections are unavailable.'}
           </p>
         </div>
       </div>

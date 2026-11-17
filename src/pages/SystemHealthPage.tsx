@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 
 export const SystemHealthPage: React.FC = () => {
-  const { metrics, cameras } = useSecurity();
+  const { metrics, cameras, operatingMode } = useSecurity();
+  const isOffline = operatingMode === 'OFFLINE';
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
   const onlineCameras = cameras.filter((c) => c.status === 'ONLINE').length;
@@ -80,13 +81,14 @@ export const SystemHealthPage: React.FC = () => {
         icon={<Activity className="w-5 h-5" />}
         action={
           <div className="flex items-center gap-2">
-            <StatusBadge variant="success" label="All Systems Healthy" />
+            <StatusBadge variant={isOffline ? 'warning' : 'success'} label={isOffline ? 'Status unknown' : 'All Systems Healthy'} />
           </div>
         }
       />
+      {isOffline && <Card className="p-5"><h2 className="font-semibold">Backend offline — system status unknown</h2><p className="text-sm text-text-secondary mt-1">Live component health, camera streams, and performance metrics are unavailable.</p></Card>}
 
       {/* 4 Simple Consumer Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {!isOffline && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Cameras */}
         <Card className="bg-aurora-surface/90 border-white/10 shadow-xs p-5 space-y-3">
           <div className="flex items-center justify-between">
@@ -150,10 +152,10 @@ export const SystemHealthPage: React.FC = () => {
             <span className="font-semibold text-text-primary">{metrics.tempCelsius || 38}°C (Cool)</span>
           </div>
         </Card>
-      </div>
+      </div>}
 
       {/* End-to-End Pipeline Overview */}
-      <Card className="bg-aurora-surface/90 border-white/10 shadow-xs space-y-4">
+      {!isOffline && <Card className="bg-aurora-surface/90 border-white/10 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div>
             <h3 className="text-sm font-bold text-text-primary">Protection Pipeline Architecture</h3>
@@ -186,10 +188,10 @@ export const SystemHealthPage: React.FC = () => {
             </div>
           ))}
         </div>
-      </Card>
+      </Card>}
 
       {/* Advanced Diagnostics (Collapsible) */}
-      <Card className="bg-aurora-surface/90 border-white/10 shadow-xs space-y-4">
+      {!isOffline && <Card className="bg-aurora-surface/90 border-white/10 shadow-xs space-y-4">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="w-full flex items-center justify-between text-left py-1"
@@ -282,7 +284,7 @@ export const SystemHealthPage: React.FC = () => {
             </div>
           </div>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 };

@@ -10,12 +10,14 @@ export const DemoSimulationBar: React.FC = () => {
     setHikvisionSetupModalOpen,
     setDeviceCameraModalOpen,
     isSimulating,
+    operatingMode,
     toggleSimulation,
     triggerThreatSimulation,
     triggerResidentSimulation,
     feedbackToastMessage,
     setFeedbackToastMessage,
   } = useSecurity();
+  const offline = operatingMode === 'OFFLINE';
 
   return (
     <div className="bg-aurora-surface/60 backdrop-blur-md border-b border-white/10 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs select-none">
@@ -26,7 +28,7 @@ export const DemoSimulationBar: React.FC = () => {
           </Badge>
         ) : (
           <Badge variant="warning">
-            Demo Preview Mode
+            {offline ? 'Demo preview (simulated) · backend offline' : 'Demo preview (simulated)'}
           </Badge>
         )}
 

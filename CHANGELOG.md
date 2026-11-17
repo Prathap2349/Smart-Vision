@@ -22,3 +22,12 @@ This changelog summarizes the Phase 1–3 work recorded in the repository histor
 ## Follow-up hardening
 
 Subsequent commits added production fail-closed configuration, deployment packaging, API error/request-ID handling, frontend error boundaries, centralized thresholds, Python 3.11 CI configuration, and honest real-footage evaluation tooling. Current measured verification and deployment limitations are in the [Phase 3 report](docs/PHASE3_REPORT.md).
+
+## Post-release follow-up
+
+- Offline views now show unknown/unavailable state instead of implying active protection; simulated previews are labelled.
+- Gate 3 now names the InsightFace `buffalo_s` (SCRFD + ArcFace/MobileFaceNet) matcher.
+- Sidebar phone-number names are masked to the final four digits.
+- The backend banner identifies the configured backend host or points to the deployment guide when no backend is configured; deployment docs explain replacing unavailable Vercel URLs.
+- CI passed on PR #1 with 89 backend tests on Python 3.11, frontend build, and Docker image build. v0.3.0 is published.
+- Evaluation remains `INSUFFICIENT_DATASET`; the tracked results inventory has 0 clips on disk and 20 labelled entries missing. See the [Phase 3 report](docs/PHASE3_REPORT.md); no accuracy values are available.
