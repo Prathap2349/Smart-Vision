@@ -1,272 +1,96 @@
 import React, { useEffect, useState } from 'react';
+import { Activity, BarChart2, ShieldCheck } from 'lucide-react';
 import { Card } from '../components/ui/Card';
-import { MetricCard } from '../components/ui/MetricCard';
-import { StatusBadge } from '../components/ui/StatusBadge';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { EmptyState } from '../components/ui/EmptyState';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import {
-  ShieldCheck,
-  Zap,
-  Activity,
-  BarChart2,
-  Cpu,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Camera,
-  Users,
-  TrendingUp,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
 import { api } from '../services/api';
 
-const activityByHour = [
-  { hour: '12 AM', events: 0 },
-  { hour: '4 AM', events: 0 },
-  { hour: '8 AM', events: 3 },
-  { hour: '12 PM', events: 5 },
-  { hour: '4 PM', events: 2 },
-  { hour: '8 PM', events: 4 },
-];
-
-const cameraShareData = [
-  { name: 'Front Door', value: 65, color: '#3b82f6' },
-  { name: 'Back Garden', value: 20, color: '#10b981' },
-  { name: 'Garage', value: 15, color: '#f59e0b' },
-];
-
-const householdVsVisitorData = [
-  { category: 'Household Members', count: 18, color: '#10b981' },
-  { category: 'Visitors / Delivery', count: 4, color: '#3b82f6' },
-  { category: 'Unfamiliar / Loitering', count: 1, color: '#ef4444' },
-];
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-aurora-surface/90 border border-white/10 p-3 rounded-xl shadow-lg text-xs">
-        <p className="text-text-primary font-bold mb-1">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} style={{ color: entry.color || entry.fill }}>
-            {entry.name || 'Count'}: <span className="font-bold">{entry.value}</span>
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+type EvaluationResponse = {
+  status: string;
+  has_evaluation_results: boolean;
+  metrics?: Record<string, number | null> | null;
+  sample_size?: number;
+  warning?: string | null;
+  inventory?: {
+    clips_on_disk_count?: number;
+    missing_files?: string[];
+    unlabelled_clips?: string[];
+    clip_inventory?: Array<{ video: string; labelled: boolean }>;
+  };
+  message?: string;
 };
 
+const metricLabels: Array<[string, string, boolean]> = [
+  ['precision', 'Precision', true],
+  ['recall', 'Recall', true],
+  ['f1_score', 'F1', true],
+  ['false_alarms_per_hour', 'False alarms per hour', false],
+  ['false_accept_rate', 'False accept rate (FAR)', true],
+  ['false_reject_rate', 'False reject rate (FRR)', true],
+];
+
 export const AnalyticsPage: React.FC = () => {
-  const [evalData, setEvalData] = useState<any>(null);
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const [evaluation, setEvaluation] = useState<EvaluationResponse | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-    api.getLatestEvaluation().then((res) => {
-      if (isMounted) {
-        setEvalData(res);
-      }
+    let active = true;
+    api.getLatestEvaluation().then((result) => {
+      if (active) setEvaluation(result);
     });
-    return () => {
-      isMounted = false;
-    };
+    return () => { active = false; };
   }, []);
 
-  const benchmark = evalData?.benchmark;
-  const singleStream = benchmark?.single_stream_benchmark;
-
+  const metrics = evaluation?.metrics;
   return (
     <div className="space-y-6">
-      {/* Header */}
       <SectionHeader
-        title="Security Insights"
-        subtitle="Household activity trends, daily patterns, and protection accuracy"
-        icon={<TrendingUp className="w-5 h-5" />}
-        action={
-          <div className="flex items-center gap-2">
-            <StatusBadge variant="success" label="99.1% Alarm Accuracy" />
-          </div>
-        }
+        title="Evaluation"
+        subtitle="Results from real labelled clips, with held-out sample sizes shown alongside every metric."
+        icon={<BarChart2 className="w-5 h-5" />}
       />
 
-      {/* Top 4 Consumer Insight Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title="False Alarms Blocked"
-          value="98.2%"
-          subtitle="Family members passed silently"
-          statusText="Optimal"
-          statusVariant="emerald"
-          icon={<ShieldCheck className="w-5 h-5 text-emerald-300" />}
-        />
-
-        <MetricCard
-          title="Most Active Camera"
-          value="Front Door"
-          subtitle="65% of daily motion events"
-          statusText="Normal"
-          statusVariant="blue"
-          icon={<Camera className="w-5 h-5 text-blue-300" />}
-        />
-
-        <MetricCard
-          title="Household Members"
-          value="2 Registered"
-          subtitle="Enrolled for quiet passage"
-          statusText="Recognized"
-          statusVariant="emerald"
-          icon={<Users className="w-5 h-5 text-violet-300" />}
-        />
-
-        <MetricCard
-          title="Response Time"
-          value="1.3 seconds"
-          subtitle="Instant phone notification"
-          statusText="Fast"
-          statusVariant="emerald"
-          icon={<Clock className="w-5 h-5 text-emerald-300" />}
-        />
-      </div>
-
-      {/* Useful Household Activity Visualizations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart 1: Activity by Time of Day */}
-        <Card className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-white/10">
-            <div>
-              <h3 className="text-sm font-bold text-text-primary">Activity by Time of Day</h3>
-              <p className="text-xs text-text-muted">Typical movement around your home</p>
-            </div>
-            <StatusBadge variant="info" label="24-Hour Pattern" size="sm" />
+      <Card className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="w-5 h-5 text-blue-300 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-bold text-text-primary">Dataset status: {evaluation?.status ?? 'LOADING'}</h3>
+            <p className="text-xs text-text-secondary mt-1">
+              {evaluation?.message ?? 'Checking the real clip inventory.'}
+            </p>
+            {evaluation?.warning && <p className="text-xs text-amber-300 mt-2">{evaluation.warning}</p>}
           </div>
+        </div>
 
-          <div className="h-56 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={activityByHour}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="hour" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="events" stroke="#3b82f6" fill="rgba(59, 130, 246, 0.12)" strokeWidth={2.5} />
-              </AreaChart>
-            </ResponsiveContainer>
+        {evaluation?.has_evaluation_results && metrics ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" aria-label="Held-out evaluation metrics">
+            {metricLabels.map(([key, label, percentage]) => {
+              const value = metrics[key];
+              return (
+                <div key={key} className="rounded-lg border border-white/10 bg-aurora-elevated/60 p-3">
+                  <div className="text-xs text-text-muted">{label}</div>
+                  <div className="text-lg font-semibold text-text-primary mt-1">
+                    {value == null ? 'Not measurable' : `${percentage ? `${(value * 100).toFixed(1)}%` : value.toFixed(2)}`}
+                  </div>
+                  <div className="text-xs text-text-secondary mt-1">Held-out sample: n={evaluation.sample_size ?? 0} clips</div>
+                </div>
+              );
+            })}
           </div>
-        </Card>
-
-        {/* Chart 2: Movement by Category */}
-        <Card className="space-y-4 bg-aurora-surface/90 border-white/10 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-white/10">
-            <div>
-              <h3 className="text-sm font-bold text-text-primary">Detected People Breakdown</h3>
-              <p className="text-xs text-text-muted">Household family vs unfamiliar visitors</p>
+        ) : (
+          <div className="rounded-lg border border-white/10 bg-aurora-elevated/60 p-4 text-sm text-text-secondary">
+            <div className="flex items-center gap-2 font-semibold text-text-primary">
+              <Activity className="w-4 h-4" /> INSUFFICIENT_DATASET
             </div>
-            <StatusBadge variant="success" label="Safe Ratio" size="sm" />
-          </div>
-
-          <div className="h-56 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={householdVsVisitorData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis dataKey="category" type="category" stroke="#64748b" fontSize={11} tickLine={false} width={130} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      {/* Advanced Diagnostics Section (Collapsible) */}
-      <Card className="bg-aurora-surface/90 border-white/10 shadow-xs space-y-4">
-        <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="w-full flex items-center justify-between text-left py-1"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-white/5 text-text-secondary flex items-center justify-center">
-              <Cpu className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-text-primary">Advanced AI Diagnostics &amp; Benchmark Data</h3>
-              <p className="text-xs text-text-muted">Technical inferencing latency, frame rates, and academic dataset benchmarks</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-300">
-            <span>{showAdvanced ? 'Hide technical data' : 'Show technical data'}</span>
-            {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </button>
-
-        {showAdvanced && (
-          <div className="pt-4 border-t border-white/10 space-y-6 animate-fadeIn">
-            {/* Measured Benchmark Table */}
-            <div>
-              <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">
-                Multi-Stream Concurrency Benchmark (Real Hardware)
-              </h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left font-mono border border-white/10 rounded-xl overflow-hidden">
-                  <thead className="bg-aurora-elevated/70 text-text-secondary uppercase">
-                    <tr>
-                      <th className="p-3">Streams</th>
-                      <th className="p-3">FPS per Stream</th>
-                      <th className="p-3">Aggregate FPS</th>
-                      <th className="p-3">Average Latency</th>
-                      <th className="p-3">Processor Load</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-text-secondary">
-                    <tr>
-                      <td className="p-3 font-bold text-text-primary">1 Stream</td>
-                      <td className="p-3 text-emerald-300 font-bold">41.8 FPS</td>
-                      <td className="p-3 text-emerald-300 font-bold">41.8 FPS</td>
-                      <td className="p-3">24.0 ms</td>
-                      <td className="p-3">25.2% CPU</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-bold text-text-primary">2 Streams</td>
-                      <td className="p-3 text-blue-300 font-bold">25.7 FPS</td>
-                      <td className="p-3 text-blue-300 font-bold">51.2 FPS</td>
-                      <td className="p-3">38.9 ms</td>
-                      <td className="p-3">29.8% CPU</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-bold text-text-primary">4 Streams</td>
-                      <td className="p-3 text-violet-300 font-bold">13.1 FPS</td>
-                      <td className="p-3 text-violet-300 font-bold">52.3 FPS</td>
-                      <td className="p-3">76.3 ms</td>
-                      <td className="p-3">30.4% CPU</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Dataset evaluation notice */}
-            <div className="p-4 bg-aurora-elevated/70 rounded-xl border border-white/10 text-xs text-text-secondary">
-              <span className="font-bold text-text-primary">Ground-truth dataset state: </span>
-              {evalData?.has_evaluation_results
-                ? `Measured on ${evalData.dataset_size} verified test clips across 11 scenarios.`
-                : 'No synthetic numbers fabricated. Physical scenario dataset recording in progress.'}
-            </div>
+            <p className="mt-2">No accuracy numbers are available until real clips are recorded and labelled. No demo values are substituted.</p>
+            <p className="mt-2">
+              Clips on disk: {evaluation?.inventory?.clips_on_disk_count ?? 0}; missing labelled clips: {evaluation?.inventory?.missing_files?.length ?? 0}; unlabelled clips: {evaluation?.inventory?.unlabelled_clips?.length ?? 0}.
+            </p>
+            {evaluation?.inventory?.clip_inventory?.length ? (
+              <ul className="mt-2 max-h-48 overflow-auto list-disc pl-5">
+                {evaluation.inventory.clip_inventory.map((clip) => (
+                  <li key={clip.video}>{clip.video} — {clip.labelled ? 'labelled' : 'unlabelled'}</li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         )}
       </Card>

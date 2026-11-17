@@ -1157,6 +1157,28 @@ def test_evaluation_manifest_loader():
         assert sc in inventory["missing_by_scenario"]
 
 
+def test_empty_evaluation_writes_inventory_without_metric_values(tmp_path, monkeypatch):
+    from evaluation import run_evaluation
+
+    dataset = tmp_path / "dataset"
+    dataset.mkdir()
+    (dataset / "labels.csv").write_text(
+        "video,scenario,expected_alert,resident_present,notes\nmissing.mp4,unknown_loitering,1,0,test\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_evaluation, "check_preconditions", lambda: (_ for _ in ()).throw(AssertionError("models must not load for empty data")))
+    output = tmp_path / "results"
+    report = run_evaluation.execute_evaluation(dataset, results_dir=output)
+    assert report["status"] == "INSUFFICIENT_DATASET"
+    assert report["inventory"]["clip_inventory"] == [{"video": "missing.mp4", "labelled": True}]
+    serialized = (output / "results.json").read_text()
+    markdown = (output / "results.md").read_text()
+    for key in ("precision", "recall", "f1_score", "false_alarms_per_hour", "false_accept_rate", "false_reject_rate"):
+        assert key not in serialized
+    assert "No accuracy metrics are available" in markdown
+    assert "precision" not in markdown.lower()
+
+
 def test_evaluation_dataset_validator_reports_missing_extra_and_unlabelled(tmp_path):
     import csv
     from evaluation.dataset_validator import validate_dataset
@@ -1206,6 +1228,19 @@ def test_evaluation_metrics_computation():
     assert pytest.approx(metrics["f1_score"], 0.01) == 2 / 3
     # 1 FP over 3600 seconds (1.0 hour) of negative footage -> 1.0 FA/hr
     assert pytest.approx(metrics["false_alarms_per_hour"], 0.01) == 1.0
+
+
+def test_evaluation_metrics_leave_undefined_rates_unreported():
+    from evaluation.run_evaluation import compute_metrics
+    metrics = compute_metrics([{
+        "expected_alert": 0, "actual_alert": False, "duration_seconds": 30.0,
+        "resident_present": 0, "recognized_residents": [],
+    }])
+    assert metrics["precision"] is None
+    assert metrics["recall"] is None
+    assert metrics["f1_score"] is None
+    assert metrics["false_accept_rate"] is None
+    assert metrics["false_reject_rate"] is None
 
 
 # ==========================================
@@ -1278,6 +1313,21 @@ def test_evaluation_api_latest_endpoint():
     assert "status" in data
     assert "engine" in data
     assert data["engine"] == "InsightFace / ArcFace"
+    if data["status"] == "INSUFFICIENT_DATASET":
+        assert data["metrics"] is None
+        assert data["sample_size"] == 0
+        assert data["inventory"]["clips_on_disk_count"] == 0
+
+
+def test_frontend_does_not_present_unmeasured_accuracy_or_demo_counts():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    analytics = (root / "src" / "pages" / "AnalyticsPage.tsx").read_text()
+    landing = (root / "src" / "pages" / "LandingPage.tsx").read_text()
+    for fabricated in ("99.1% Alarm Accuracy", "98.2%", "99 times a day", "96 of them are just wind", "verified alerts / day"):
+        assert fabricated not in analytics + landing
+    assert "INSUFFICIENT_DATASET" in analytics
+    assert "no performance claims are measured here" in landing
 
 
 def test_supabase_url_has_no_hardcoded_default(monkeypatch):
