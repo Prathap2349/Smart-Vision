@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 
 export const AlertsPage: React.FC = () => {
-  const { alerts, confirmAlertThreat, resolveAlert, setFeedbackModalAlert } = useSecurity();
+  const { alerts, confirmAlertThreat, resolveAlert, setFeedbackModalAlert, operatingMode } = useSecurity();
+  const isOffline = operatingMode === 'OFFLINE';
 
   const [activeFilter, setActiveFilter] = useState<string>('ALL');
   const [selectedAlertDrawer, setSelectedAlertDrawer] = useState<SecurityAlert | null>(null);
@@ -45,6 +46,7 @@ export const AlertsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {isOffline && <div role="status" className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-text-secondary">Alert status unknown — the backend is offline, so alert history cannot be checked.</div>}
       {/* Top Header */}
       <SectionHeader
         title="Security Alerts"
@@ -55,7 +57,7 @@ export const AlertsPage: React.FC = () => {
             <StatusBadge
               variant={filterCounts.ACTIVE > 0 ? 'danger' : 'success'}
               pulse={filterCounts.ACTIVE > 0}
-              label={filterCounts.ACTIVE > 0 ? `${filterCounts.ACTIVE} Needs Attention` : 'All Resolved'}
+              label={isOffline ? 'Status unknown' : filterCounts.ACTIVE > 0 ? `${filterCounts.ACTIVE} Needs Attention` : 'All Resolved'}
             />
           </div>
         }
@@ -105,7 +107,7 @@ export const AlertsPage: React.FC = () => {
 
       {/* Incidents List */}
       <div className="space-y-4">
-        {filteredAlerts.length === 0 ? (
+        {isOffline ? null : filteredAlerts.length === 0 ? (
           <EmptyState
             title="No Alerts Found"
             description={

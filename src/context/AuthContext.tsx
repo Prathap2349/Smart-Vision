@@ -97,11 +97,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Graceful Prototype/Demo Fallback
+    // Graceful demo sign-in fallback
     const profile: UserProfile = {
       id: identifier || 'default_user',
       name: identifier.includes('@') ? identifier.split('@')[0] : `Resident (${identifier})`,
-      role: 'Home Resident Owner (Prototype)',
+      role: 'Home Resident Owner (Demo)',
       department: 'Smart Vision Mobile',
       institution: 'Smart Vision Home',
       email: identifier.includes('@') ? identifier : `${identifier}@mobile.user`,

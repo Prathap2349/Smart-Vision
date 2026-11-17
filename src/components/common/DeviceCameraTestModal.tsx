@@ -945,7 +945,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                     )}
                   </div>
                   <p className="text-[10px] text-text-muted font-mono">
-                    Prototype Visual Feature Vector Matcher
+                    InsightFace buffalo_s (SCRFD + ArcFace/MobileFaceNet)
                   </p>
                 </div>
 

@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 
 export const EventHistoryPage: React.FC = () => {
-  const { events } = useSecurity();
+  const { events, operatingMode } = useSecurity();
+  const isOffline = operatingMode === 'OFFLINE';
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'PEOPLE' | 'ALERTS' | 'CAMERAS'>('ALL');
@@ -63,6 +64,7 @@ export const EventHistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {isOffline && <div role="status" className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-text-secondary">Activity status unknown — the backend is offline, so recent events are unavailable.</div>}
       {/* Header */}
       <SectionHeader
         title="Home Activity Timeline"
@@ -124,7 +126,7 @@ export const EventHistoryPage: React.FC = () => {
       </div>
 
       {/* Activity Timeline List */}
-      {filteredEvents.length === 0 ? (
+      {isOffline ? null : filteredEvents.length === 0 ? (
         <EmptyState
           title="No Activity Found"
           description="No activity matching your search filter was recorded."

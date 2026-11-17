@@ -32,6 +32,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
   const hasThreat = finalDecision === 'VERIFIED_THREAT' || alerts.some(a => a.status === 'ACTIVE');
   const activeCameras = cameras.filter(c => c.status === 'ONLINE').length;
   const isDemoMode = operatingMode === 'DEMO_SIMULATION';
+  const isOffline = operatingMode === 'OFFLINE';
 
   return (
     <header className="bg-aurora-surface/60 backdrop-blur-xl border-b border-white/10 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30 select-none">
@@ -54,7 +55,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
         )}
 
         {/* Real-time Status Pill */}
-        {hasThreat ? (
+        {isOffline ? <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-text-secondary text-xs font-semibold">Status unknown</div> : hasThreat ? (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-alert/15 border border-brand-alert/30 text-rose-400 text-xs font-semibold shadow-rose-glow">
             <AIStatusOrb status="ALERT" size="sm" />
             <span>Attention needed</span>
@@ -69,7 +70,7 @@ export const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
         {/* Camera Count */}
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-text-secondary font-medium text-xs">
           <Wifi className="w-3.5 h-3.5 text-brand-cyan" />
-          <span>{activeCameras} / {cameras.length} Cameras</span>
+          <span>{isOffline ? 'No cameras connected' : `${activeCameras} / ${cameras.length} Cameras`}</span>
         </div>
 
         {/* Test Camera Trigger */}
