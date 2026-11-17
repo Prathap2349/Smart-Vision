@@ -2,6 +2,14 @@
 
 ## Local commands
 
+Create a local environment using the pinned runtime dependencies with:
+
+```bash
+python3 -m venv .venv && pip install -r backend/requirements.txt pytest python-dotenv
+```
+
+Tests run against the pinned dependency versions (including FastAPI 0.115.6 and Starlette 0.41.3); CI uses the lightweight pinned Python 3.11 test set.
+
 ```bash
 PYTHONPATH=./backend pytest backend/tests -q
 npm ci

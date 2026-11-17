@@ -1359,11 +1359,31 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
     for endpoint in ["/api/health", "/api/cameras", "/api/people", "/api/zones", "/api/evidence/{file_path}", "/ws/cameras/{camera_id}", "/ws/test-camera"]:
         assert endpoint in api_doc
     from main import app
-    registered_paths = {
-        route.path.replace(":path", "")
-        for route in app.routes
-        if route.path.startswith(("/api/", "/ws/"))
-    }
+    registered_paths = set()
+    visited = set()
+
+    def walk_routes(routes, prefix=""):
+        for route in routes or ():
+            if id(route) in visited:
+                continue
+            visited.add(id(route))
+            path = getattr(route, "path", None)
+            full_path = f"{prefix}{path}" if path else prefix
+            if path:
+                full_path = full_path.replace("//", "/").replace(":path", "")
+                if full_path.startswith(("/api/", "/ws/")):
+                    registered_paths.add(full_path)
+            nested_prefix = full_path if path else prefix
+            children = getattr(route, "routes", None)
+            if children is not None:
+                walk_routes(children, nested_prefix)
+            for attr in ("router", "app", "_router"):
+                child = getattr(route, attr, None)
+                child_routes = getattr(child, "routes", None)
+                if child_routes is not None:
+                    walk_routes(child_routes, nested_prefix)
+
+    walk_routes(app.routes)
     for path in registered_paths:
         assert path in api_doc, f"Registered API route missing from docs/API.md: {path}"
     for table in ["cameras", "residents", "detection_zones", "alerts", "events"]:

@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip uninstall -y opencv-python && python -c "import cv2"
 
 COPY backend/ ./
 
