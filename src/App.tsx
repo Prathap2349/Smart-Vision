@@ -6,6 +6,7 @@ import { NavTab } from './components/layout/Sidebar';
 
 import { LandingPage } from './pages/LandingPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { PageErrorBoundary } from './components/common/PageErrorBoundary';
 
 const LiveMonitorPage = lazy(() => import('./pages/LiveMonitorPage').then(m => ({ default: m.LiveMonitorPage })));
 const AlertsPage = lazy(() => import('./pages/AlertsPage').then(m => ({ default: m.AlertsPage })));
@@ -23,11 +24,15 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
+const guardedPage = (pageName: string, page: React.ReactNode) => (
+  <PageErrorBoundary key={pageName} pageName={pageName}>{page}</PageErrorBoundary>
+);
+
 const DashboardView: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <LandingPage />;
+    return guardedPage('Welcome', <LandingPage />);
   }
 
   return (
@@ -37,27 +42,27 @@ const DashboardView: React.FC = () => {
           {(() => {
             switch (currentTab) {
               case 'overview':
-                return <OverviewPage onNavigateTab={setTab} />;
+                return guardedPage('Overview', <OverviewPage onNavigateTab={setTab} />);
               case 'live-monitor':
-                return <LiveMonitorPage />;
+                return guardedPage('Live Monitor', <LiveMonitorPage />);
               case 'alerts':
-                return <AlertsPage />;
+                return guardedPage('Alerts', <AlertsPage />);
               case 'people':
-                return <PeoplePage />;
+                return guardedPage('People', <PeoplePage />);
               case 'cameras':
-                return <CamerasPage />;
+                return guardedPage('Cameras', <CamerasPage />);
               case 'zones':
-                return <DetectionZonesPage />;
+                return guardedPage('Detection Zones', <DetectionZonesPage />);
               case 'history':
-                return <EventHistoryPage />;
+                return guardedPage('Event History', <EventHistoryPage />);
               case 'analytics':
-                return <AnalyticsPage />;
+                return guardedPage('Analytics', <AnalyticsPage />);
               case 'health':
-                return <SystemHealthPage />;
+                return guardedPage('System Health', <SystemHealthPage />);
               case 'settings':
-                return <SettingsPage />;
+                return guardedPage('Settings', <SettingsPage />);
               default:
-                return <OverviewPage onNavigateTab={setTab} />;
+                return guardedPage('Overview', <OverviewPage onNavigateTab={setTab} />);
             }
           })()}
         </Suspense>

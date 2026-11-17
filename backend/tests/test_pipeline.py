@@ -1376,3 +1376,14 @@ def test_deployment_environment_paths_are_documented_in_env_example():
     example = (Path(__file__).resolve().parents[2] / ".env.example").read_text()
     assert "DATA_DIR=" in example
     assert "MODELS_DIR=" in example
+
+
+def test_error_boundary_wraps_every_page_with_friendly_fallback():
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    app_source = (repo / "src" / "App.tsx").read_text()
+    boundary_source = (repo / "src" / "components" / "common" / "PageErrorBoundary.tsx").read_text()
+    for page in ["Welcome", "Overview", "Live Monitor", "Alerts", "People", "Cameras", "Detection Zones", "Event History", "Analytics", "System Health", "Settings"]:
+        assert f"guardedPage('{page}'" in app_source
+    assert "role=\"alert\"" in boundary_source
+    assert "Retry page" in boundary_source
