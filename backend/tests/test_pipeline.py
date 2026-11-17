@@ -1438,6 +1438,8 @@ def test_dockerfile_uses_secure_persistent_model_ready_runtime():
     from pathlib import Path
     dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text()
     assert "FROM python:3.11-slim" in dockerfile
+    assert "https://download.pytorch.org/whl/cpu" in dockerfile
+    assert "torch==2.5.1+cpu torchvision==0.20.1+cpu" in dockerfile
     assert "DEV_MODE=false" in dockerfile
     assert "DATA_DIR=/data" in dockerfile
     assert "MODELS_DIR=/opt/models" in dockerfile
@@ -1449,6 +1451,7 @@ def test_dockerfile_uses_secure_persistent_model_ready_runtime():
     assert "pip uninstall -y opencv-python opencv-python-headless" in dockerfile
     assert "--force-reinstall --no-deps opencv-python-headless==4.10.0.84" in dockerfile
     assert 'python -c "import cv2; print(cv2.__version__)"' in dockerfile
+    assert "onnx==1.19.0" in (Path(__file__).resolve().parents[2] / "backend" / "requirements.txt").read_text()
 
 
 def test_deployment_guide_and_tunnel_script_cover_supported_paths():
