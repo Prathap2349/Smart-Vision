@@ -1348,6 +1348,7 @@ def test_privacy_copy_matches_test_mode_and_production_data_paths():
     modal = (root / "src" / "components" / "common" / "DeviceCameraTestModal.tsx").read_text()
     settings = (root / "src" / "pages" / "SettingsPage.tsx").read_text()
     architecture = (root / "docs" / "ARCHITECTURE.md").read_text()
+    backend_env_template = (root / "backend" / ".env.example").read_text()
     assert "getConfiguredBackendHost()" in modal
     assert "frames only to the configured Smart Vision backend" in modal
     assert "processed in memory" in modal
@@ -1356,6 +1357,9 @@ def test_privacy_copy_matches_test_mode_and_production_data_paths():
     assert "100% Local Privacy Notice" not in modal
     assert "Zero raw video is ever uploaded" not in settings
     assert "frames are sent to that cloud host" in settings
+    assert "VITE_API_KEY" not in backend_env_template
+    assert "API_KEY=change_me" not in backend_env_template
+    assert "CAMERA_SECRET=your_" not in backend_env_template
     for path in ("/ws/test-camera", "DATA_DIR/evidence", "Telegram", "Supabase Auth", "face embeddings"):
         assert path in architecture
 
