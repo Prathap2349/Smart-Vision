@@ -3,12 +3,13 @@
 > **Edge-AI CCTV False-Alarm Elimination & Residential Security System**  
 > *Combining YOLOv8 silhouette detection, IoU loitering tracking, and InsightFace ArcFace biometric verification.*
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![CI](https://github.com/Prathap2349/Smart-Vision/actions/workflows/ci.yml/badge.svg?branch=phase-3-hardening)](https://github.com/Prathap2349/Smart-Vision/actions/workflows/ci.yml)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688?logo=fastapi)](https://fastapi.tiangolo.com)
 [![InsightFace](https://img.shields.io/badge/InsightFace-ArcFace%20512--D-blueviolet)](https://github.com/deepinsight/insightface)
 [![YOLOv8](https://img.shields.io/badge/Ultralytics-YOLOv8-FF6F00?logo=yolo)](https://docs.ultralytics.com)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
-[![Pytest Passing](https://img.shields.io/badge/Pytest-35%2F35%20Passed-brightgreen)](backend/tests)
+![Backend tests](https://img.shields.io/badge/backend%20tests-79%20passed-brightgreen)
 
 ---
 
@@ -28,7 +29,7 @@ RTSP Camera Stream / Video Feed
                         ▼
  ┌─────────────────────────────────────────────────────────────┐
  │ 2. YOLOV8-NANO SILHOUETTE DETECTION                         │
- │    COCO Class 0 (Person), Confidence Threshold ≥ 0.65        │
+ │    COCO Class 0 (Person), candidate threshold 0.65           │
  └──────────────────────┬──────────────────────────────────────┘
                         │
                         ▼
@@ -50,9 +51,9 @@ RTSP Camera Stream / Video Feed
                         ▼
  ┌─────────────────────────────────────────────────────────────┐
  │ 5. TRIPLE-GATE DECISION ENGINE                              │
- │    Gate 1: Human Detected (Conf ≥ 0.70)                     │
- │    Gate 2: Dwell Time ≥ Loitering Threshold (Day:20s/Night:10s)│
- │    Gate 3: Face Status == UNKNOWN (Resident Match Suppressed) │
+ │    Gate 1: Human confidence ≥ 0.70                           │
+ │    Gate 2: Dwell ≥ zone/schedule threshold                   │
+ │    Gate 3: unknown threat; hidden face unverified alert       │
  └──────────────────────┬──────────────────────────────────────┘
                         │
                         ▼
@@ -68,9 +69,9 @@ RTSP Camera Stream / Video Feed
 
 Traditional CCTV motion detectors generate dozens of false notifications daily. Smart Vision Sentry uses three cascading decision gates before firing an alert:
 
-1. **Gate 1 (Human Presence):** YOLOv8-Nano verifies human silhouette presence ($\ge 0.70$ confidence). Motion from trees, shadows, or animals is filtered out here.
-2. **Gate 2 (Loitering Duration):** An IoU tracker tracks the person's dwell time within configured polygon protection zones. Transient passers-by and delivery couriers who depart in $<20$ seconds do not trigger an alert. (At night, threshold tightens to $10$ seconds).
-3. **Gate 3 (Biometric Identity Verification):** If a person loiters beyond the threshold, InsightFace extracts 512-D facial embeddings and compares them against whitelisted residents. If recognized as a resident (`KNOWN`), the alert is suppressed. Only unverified strangers (`UNKNOWN`) trigger `VERIFIED_THREAT`.
+1. **Gate 1 (Human Presence):** YOLO's candidate cutoff is `0.65`; Gate 1 then requires human confidence `>= 0.70`. Both are configured in `backend/config.py`.
+2. **Gate 2 (Loitering Duration):** An IoU tracker measures dwell in configured polygon zones. An explicit zone threshold is used during the day; at night the effective value is the lower of the zone threshold and the night profile. Without a zone value, the schedule supplies the threshold (20 seconds day, 10 seconds night by default).
+3. **Gate 3 (Identity and face visibility):** A known resident is safe and suppresses alerts. An `UNKNOWN` face can produce `VERIFIED_THREAT` (critical). `NO_FACE` or `LOW_QUALITY` produces `UNVERIFIED_LOITERER` (high) when `ALERT_ON_UNVERIFIED_FACE=true`; this labels a loiterer whose face cannot be verified. Face similarity defaults to `0.50` in `backend/config.py`.
 
 ---
 
@@ -113,11 +114,11 @@ To prevent redundant neural inference on every frame:
 
 ---
 
-## 7. Performance Architecture (Zero Per-Frame SQLite I/O)
+## 7. Performance Architecture
 
-* **Previous Issue:** Frame loops repeatedly queried SQLite for zones, residents, and camera names on every track/frame.
-* **Solution:** `ResidentCache` loads all active verified resident embeddings into memory as $(N, 512)$ NumPy matrices during startup and reloads only on mutation events.
-* **Result:** **Zero disk I/O in the core detection loop.** Vectorized in-memory cosine matching runs in $<1.5$ ms.
+* `ResidentCache` keeps verified resident embeddings in memory and refreshes on mutation.
+* Each camera loop caches zones between refreshes rather than querying SQLite on every frame.
+* See the committed benchmark reports for measured hardware-specific performance; no universal latency is claimed here.
 
 ---
 
@@ -222,22 +223,20 @@ To prevent overfitting:
 
 ## 14. Deployment & Verification
 
+The recommended review setup is the Vercel frontend with a local Mac backend exposed through Cloudflare Tunnel or ngrok. Local processing can use CoreML and reach an RTSP camera on the same LAN. Hosted cloud backends cannot directly reach private `192.168.x.x` cameras; use browser-webcam frames for a cloud demo. Docker/Hugging Face Spaces and an eligible paid Railway plan are documented options.
+
 ```bash
-# 1. Run unit and integration tests (31/31 passing)
-./.venv313/bin/pytest backend/tests/test_pipeline.py -v
+# Backend tests and frontend build
+PYTHONPATH=./backend pytest backend/tests -q
+npm ci && npm run build
 
-# 2. Run backend server
-PYTHONPATH=./backend ./.venv313/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
-
-# 3. Check live health endpoint
-curl http://localhost:8000/api/health
-
-# 4. Check evaluation results endpoint
-curl http://localhost:8000/api/evaluation/latest
-
-# 5. Build React frontend
-npm run build
+# Local backend + tunnel launcher (requires cloudflared or ngrok)
+scripts/run_local_with_tunnel.sh
 ```
+
+Read [Deployment](docs/DEPLOYMENT.md) for host setup, environment variables, and the HTTPS/WSS mixed-content requirement. API auth and evidence URLs are described in [API](docs/API.md). See [Database](docs/DATABASE.md), [Testing](docs/TESTING.md), and [Architecture](docs/ARCHITECTURE.md) for implementation details.
+
+The CI workflow tests the backend on Python 3.11, builds the frontend, and runs a separate Docker image build job.
 
 ---
 

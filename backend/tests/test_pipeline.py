@@ -1351,6 +1351,21 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
         assert variable in guide
     subprocess.run(["bash", "-n", str(repo / "scripts" / "run_local_with_tunnel.sh")], check=True)
 
+    api_doc = (repo / "docs" / "API.md").read_text()
+    db_doc = (repo / "docs" / "DATABASE.md").read_text()
+    testing_doc = (repo / "docs" / "TESTING.md").read_text()
+    architecture_doc = (repo / "docs" / "ARCHITECTURE.md").read_text()
+    readme = (repo / "README.md").read_text()
+    for endpoint in ["/api/health", "/api/cameras", "/api/people", "/api/zones", "/api/evidence/{file_path}", "/ws/cameras/{camera_id}", "/ws/test-camera"]:
+        assert endpoint in api_doc
+    for table in ["cameras", "residents", "detection_zones", "alerts", "events"]:
+        assert f"`{table}`" in db_doc
+    assert "Python 3.11" in testing_doc
+    assert "UNVERIFIED_LOITERER" in architecture_doc
+    assert "resolve_dwell_threshold" in architecture_doc
+    assert "docs/API.md" in readme and "docs/DEPLOYMENT.md" in readme
+    assert "actions/workflows/ci.yml/badge.svg" in readme
+
 
 def test_frontend_has_explicit_backend_unreachable_banner_and_retry():
     from pathlib import Path
