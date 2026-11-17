@@ -1,6 +1,7 @@
 import cv2
 import json
 import time
+import uuid
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -75,7 +76,7 @@ def get_cameras(user_id: Optional[str] = None):
 
 @router.post("")
 def add_camera(cam: CameraCreate):
-    cam_id = f"cam-0{int(time.time()) % 100}"
+    cam_id = f"cam-{uuid.uuid4().hex[:8]}"
     user_id = cam.user_id if cam.user_id else "default_user"
     
     # 1. Test RTSP Connection before setting status to ONLINE

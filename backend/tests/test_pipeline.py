@@ -170,7 +170,9 @@ def test_decision_engine_safe_resident():
 
 def test_decision_engine_monitoring():
     """Verify decision engine returns MONITORING when loitering threshold is not reached."""
-    res = decision_engine.evaluate_gates(
+    import datetime as dt
+    fixed_noon = lambda tz: dt.datetime(2026, 1, 15, 12, tzinfo=tz)
+    res = DecisionEngine(clock=fixed_noon).evaluate_gates(
         is_human=True,
         human_confidence=0.90,
         dwell_seconds=10.0,
@@ -178,6 +180,29 @@ def test_decision_engine_monitoring():
         face_status="UNKNOWN"
     )
     assert res["final_decision"] == "MONITORING"
+
+
+@pytest.mark.parametrize(
+    ("local_hour", "expected_profile"),
+    [(12, "DAY_STANDARD"), (2, "NIGHT_STRICT")],
+)
+def test_scheduled_profile_has_deterministic_day_and_night_cases(monkeypatch, local_hour, expected_profile):
+    import datetime as dt
+    import ai.decision_engine as decision_module
+
+    monkeypatch.setattr(decision_module, "TIMEZONE", "Asia/Kolkata")
+    engine = DecisionEngine(clock=lambda tz: dt.datetime(2026, 1, 15, local_hour, tzinfo=tz))
+    assert engine.get_current_schedule_profile()["name"] == expected_profile
+
+
+def test_schedule_timezone_converts_clock_to_configured_zone(monkeypatch):
+    import datetime as dt
+    import ai.decision_engine as decision_module
+
+    monkeypatch.setattr(decision_module, "TIMEZONE", "Asia/Kolkata")
+    utc_time = dt.datetime(2026, 1, 15, 18, 30, tzinfo=dt.timezone.utc)
+    engine = DecisionEngine(clock=lambda zone: utc_time.astimezone(zone))
+    assert engine.get_current_schedule_profile()["name"] == "NIGHT_STRICT"
 
 
 @pytest.mark.parametrize("face_status", ["NO_FACE", "LOW_QUALITY"])
@@ -687,6 +712,8 @@ def test_evidence_endpoint_requires_auth_or_signed_url(monkeypatch, tmp_path):
 
 
 def test_camera_password_encrypted_at_rest_and_never_returned(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import api.cameras as cameras_api
     import config
     from database import init_db
     from camera.rtsp_stream import rtsp_manager
@@ -696,6 +723,8 @@ def test_camera_password_encrypted_at_rest_and_never_returned(monkeypatch, tmp_p
     monkeypatch.setattr("config.DB_PATH", tmp_path / "cam_enc.db")
     monkeypatch.setattr(config, "CAMERA" + "_SECRET", "my-fernet-seed-key-2026")
     init_db()
+    # A frozen wall clock used to collide with the seeded cam-01 identifier.
+    monkeypatch.setattr(cameras_api, "time", SimpleNamespace(time=lambda: 1700000001))
 
     monkeypatch.setattr(
         rtsp_manager,
@@ -717,6 +746,19 @@ def test_camera_password_encrypted_at_rest_and_never_returned(monkeypatch, tmp_p
     )
     assert post_resp.status_code == 200
     cam_id = post_resp.json()["id"]
+    second_response = client.post(
+        "/api/cameras",
+        json={
+            "name": "Side Gate Cam",
+            "host": "192.168.1.201",
+            "port": 554,
+            "username": "admin",
+            "password": "another-secret",
+            "channel": "101",
+        },
+    )
+    assert second_response.status_code == 200
+    assert second_response.json()["id"] != cam_id
 
     # 1. Verify SQLite stores Fernet ciphertext, never plaintext
     conn = get_db_connection()
@@ -1468,6 +1510,7 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
         assert section in guide
     for variable in ["VITE_API_BASE_URL", "VITE_WS_BASE_URL", "CAMERA_SECRET", "ALLOWED_ORIGINS"]:
         assert variable in guide
+    assert "`TIMEZONE`" in guide and "Asia/Kolkata" in guide
     subprocess.run(["bash", "-n", str(repo / "scripts" / "run_local_with_tunnel.sh")], check=True)
 
     api_doc = (repo / "docs" / "API.md").read_text()
@@ -1512,6 +1555,9 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
     assert "Python 3.11" in testing_doc
     assert "UNVERIFIED_LOITERER" in architecture_doc
     assert "resolve_dwell_threshold" in architecture_doc
+    assert "TIMEZONE" in architecture_doc
+    assert "TIMEZONE=Asia/Kolkata" in (repo / ".env.example").read_text()
+    assert "TIMEZONE=Asia/Kolkata" in (repo / "backend" / ".env.example").read_text()
     assert "docs/API.md" in readme and "docs/DEPLOYMENT.md" in readme
     assert "docs/EVALUATION_CHECKLIST.md" in readme
     assert "No accuracy metrics are available" in readme
