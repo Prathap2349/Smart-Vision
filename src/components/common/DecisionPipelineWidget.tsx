@@ -8,7 +8,8 @@ export const DecisionPipelineWidget: React.FC = () => {
   const { simulatedPerson, gate1Human, gate2Dwell, gate3Unknown, finalDecision, settings } = useSecurity();
   const [showTechnical, setShowTechnical] = useState(false);
 
-  const isAlert = finalDecision === 'VERIFIED_THREAT';
+  const isAlert = finalDecision === 'VERIFIED_THREAT' || finalDecision === 'UNVERIFIED_LOITERER';
+  const isUnverified = finalDecision === 'UNVERIFIED_LOITERER';
   const isSafe = finalDecision === 'SAFE_RESIDENT';
   const isMonitoring = finalDecision === 'MONITORING';
 
@@ -31,7 +32,7 @@ export const DecisionPipelineWidget: React.FC = () => {
 
           <StatusBadge
             variant={isAlert ? 'danger' : isSafe ? 'success' : isMonitoring ? 'info' : 'neutral'}
-            label={isAlert ? 'Alert Fired' : isSafe ? 'Verified Safe' : isMonitoring ? 'Analyzing' : 'All Clear'}
+            label={isUnverified ? 'Unverified Loiterer' : isAlert ? 'Alert Fired' : isSafe ? 'Verified Safe' : isMonitoring ? 'Analyzing' : 'All Clear'}
           />
         </div>
 
@@ -98,6 +99,8 @@ export const DecisionPipelineWidget: React.FC = () => {
               <p className="font-semibold text-text-primary">
                 {isSafe
                   ? `Recognized household member: ${simulatedPerson.residentName || 'Resident'}`
+                  : isUnverified
+                  ? 'Face not visible — unverified loiterer'
                   : isAlert
                   ? 'Unrecognized person'
                   : 'Verifying face biometrics'}
@@ -105,6 +108,8 @@ export const DecisionPipelineWidget: React.FC = () => {
               <p className="text-text-secondary text-[11px] mt-0.5">
                 {isSafe
                   ? 'Known family member detected — alerts automatically silenced.'
+                  : isUnverified
+                  ? 'Face not visible or low quality while loitering beyond threshold.'
                   : isAlert
                   ? 'Person is not registered on your household whitelist.'
                   : 'Checking against enrolled household face database.'}

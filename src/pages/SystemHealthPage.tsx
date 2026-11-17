@@ -122,12 +122,12 @@ export const SystemHealthPage: React.FC = () => {
         {/* Card 3: Storage */}
         <Card className="bg-aurora-surface/90 border-white/10 shadow-xs p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Local Storage</span>
+            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Backend Storage</span>
             <HardDrive className="w-5 h-5 text-violet-300" />
           </div>
           <div>
             <h3 className="text-2xl font-bold text-text-primary">Healthy</h3>
-            <p className="text-xs text-text-muted mt-1">Local encrypted video cache</p>
+            <p className="text-xs text-text-muted mt-1">Alert evidence on the backend volume</p>
           </div>
           <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-text-muted">
             <span>Retention:</span>

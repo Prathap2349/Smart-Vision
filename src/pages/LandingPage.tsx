@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSecurity } from '../context/SecurityContext';
 import { TripleGate3DStage } from '../components/common/TripleGate3DStage';
@@ -21,24 +21,6 @@ export const LandingPage: React.FC = () => {
   const { login } = useAuth();
   const { deviceCameraModalOpen, setDeviceCameraModalOpen } = useSecurity();
   const [loginModalOpen, setLoginModalOpen] = useState<boolean>(false);
-
-  // Counter animation: 99 false alarms down to 3
-  const [alarmCount, setAlarmCount] = useState<number>(99);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const interval = setInterval(() => {
-        setAlarmCount(prev => {
-          if (prev <= 3) {
-            clearInterval(interval);
-            return 3;
-          }
-          return prev - 4;
-        });
-      }, 40);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <AuroraBackground>
@@ -93,34 +75,16 @@ export const LandingPage: React.FC = () => {
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-extrabold text-text-primary tracking-tight leading-tight">
-              Your camera pings you 99 times a day.{' '}
+              Security cameras can mistake routine motion for a threat.{' '}
               <span className="bg-gradient-to-r from-brand-cyan to-brand-blue bg-clip-text text-transparent">
-                96 of them are just wind.
+                Smart Vision is built to add context.
               </span>
             </h1>
 
             <p className="text-text-secondary text-sm sm:text-base leading-relaxed">
-              Smart Vision only notifies you for genuine strangers lingering near your home — not swaying trees, not shadows, and not your family returning home.
+              Smart Vision combines person detection, dwell time, and resident verification. Real-world evaluation is not yet available; no performance claims are measured here.
             </p>
 
-            {/* Animated 99 -> 3 Alert Counter */}
-            <div className="p-6 rounded-2xl bg-aurora-surface/90 border border-white/10 shadow-card-glass backdrop-blur-md max-w-xl mx-auto flex items-center justify-around">
-              <div className="text-center">
-                <span className="text-xs text-text-muted block uppercase font-semibold">Traditional CCTV</span>
-                <span className="text-3xl sm:text-4xl font-extrabold text-brand-alert line-through">99+</span>
-                <span className="text-xs text-text-secondary block mt-0.5">pings / day (mostly false)</span>
-              </div>
-
-              <span className="text-2xl text-text-muted font-bold">→</span>
-
-              <div className="text-center">
-                <span className="text-xs text-text-muted block uppercase font-semibold">Smart Vision</span>
-                <span className="text-3xl sm:text-4xl font-extrabold text-brand-success animate-pulse">
-                  &lt;{alarmCount}
-                </span>
-                <span className="text-xs text-brand-success font-semibold block mt-0.5">verified alerts / day</span>
-              </div>
-            </div>
           </div>
 
           {/* Section 2: 3D Interactive Triple-Gate Demonstration */}
@@ -206,7 +170,7 @@ export const LandingPage: React.FC = () => {
           <p>Smart Vision • Intelligent Home Security Application</p>
           <div className="flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1 text-brand-success font-medium">
-              <Lock className="w-3.5 h-3.5" /> 100% Local Edge Privacy
+              <Lock className="w-3.5 h-3.5" /> Local-first video processing
             </span>
             <span>FastAPI + React</span>
           </div>

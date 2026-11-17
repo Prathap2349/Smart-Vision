@@ -8,6 +8,8 @@ from ai.detector import yolo_detector
 from tracking.tracker import tracker_manager
 from face.recognizer import face_recognizer
 from face.cache import resident_cache
+from camera.rtsp_stream import rtsp_manager
+from detection_loop import pipeline_registry
 
 router = APIRouter(tags=["health"])
 
@@ -19,16 +21,24 @@ def health_check():
     face_ready = (face_recognizer is not None) and face_recognizer.is_ready
     device_test_ready = yolo_ready and tracker_ready and opencv_ready and face_ready
 
+    stream_statuses = rtsp_manager.get_all_statuses()
+    pipeline_health = pipeline_registry.get_all_health()
+    last_error = next((st["last_error"] for st in stream_statuses.values() if st.get("last_error")), None)
+
     # Query actual camera status from DB
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT status FROM cameras WHERE enabled = 1 LIMIT 1;")
+        cursor.execute("SELECT id, status FROM cameras WHERE enabled = 1 LIMIT 1;")
         cam_row = cursor.fetchone()
         conn.close()
         if cam_row:
-            cam_status = cam_row["status"]
-            camera_health = "CONNECTED" if cam_status == "ONLINE" else ("OFFLINE" if cam_status == "OFFLINE" else "NOT_CONFIGURED")
+            live_st = stream_statuses.get(cam_row["id"])
+            if live_st and live_st.get("connected"):
+                camera_health = "CONNECTED"
+            else:
+                cam_status = cam_row["status"]
+                camera_health = "CONNECTED" if cam_status == "ONLINE" else ("OFFLINE" if cam_status == "OFFLINE" else "NOT_CONFIGURED")
         else:
             camera_health = "NOT_CONFIGURED"
     except Exception:
@@ -38,6 +48,9 @@ def health_check():
         "status": "ONLINE",
         "backend": "ONLINE",
         "camera": camera_health,
+        "last_error": last_error,
+        "camera_streams": stream_statuses,
+        "cameras": pipeline_health,
         "yolo": "READY" if yolo_ready else "ERROR",
         "tracker": "READY" if tracker_ready else "ERROR",
         "opencv": "READY" if opencv_ready else "ERROR",
@@ -118,7 +131,7 @@ def get_system_metrics():
         "inferenceLatencyMs": inference_latency,
         "networkLatencyMs": network_latency,
         "queueSize": 0,
-        "uptimeSeconds": int(time.time() - psutil.boot_time()),
+        "uptimeSeconds": _uptime_seconds(),
         "yoloStatus": yolo_status,
         "trackerStatus": tracker_status,
         "faceMatcherStatus": face_status,
@@ -130,3 +143,10 @@ def get_system_metrics():
         "cachedResidents": len(resident_cache),
         "legacyReEnrollmentCount": resident_cache.legacy_count
     }
+
+
+def _uptime_seconds():
+    try:
+        return int(time.time() - psutil.boot_time())
+    except (OSError, PermissionError):
+        return None

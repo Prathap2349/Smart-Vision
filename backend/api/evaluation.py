@@ -8,6 +8,7 @@ from face.recognizer import face_recognizer
 router = APIRouter(prefix="/api/evaluation", tags=["evaluation"])
 
 EVAL_RESULTS_DIR = Path(__file__).resolve().parent.parent.parent / "evaluation" / "results"
+EVAL_DATASET_DIR = Path(__file__).resolve().parent.parent.parent / "evaluation" / "dataset"
 BENCHMARK_RESULTS_DIR = Path(__file__).resolve().parent.parent / "benchmarks" / "results"
 
 def _get_latest_benchmark() -> Optional[Dict[str, Any]]:
@@ -35,8 +36,34 @@ def get_latest_evaluation() -> Dict[str, Any]:
 
     bench_data = _get_latest_benchmark()
 
+    from evaluation.dataset_validator import validate_dataset
+    try:
+        inventory = validate_dataset(EVAL_DATASET_DIR)
+    except (OSError, ValueError) as exc:
+        inventory = {"status": "INVALID_DATASET", "clip_inventory": [], "missing_files": [], "extra_files": [], "unlabelled_clips": [], "clips_on_disk_count": 0}
+        inventory_error = str(exc)
+    else:
+        inventory_error = None
+    # Never serve old metrics after clips have been removed or the data is incomplete.
+    if (inventory.get("clips_on_disk_count", 0) == 0
+            or inventory.get("extra_files")
+            or inventory.get("invalid_rows")):
+        return {
+            "has_evaluation_results": False,
+            "status": "INSUFFICIENT_DATASET",
+            "message": "Real, labelled evaluation clips are required before accuracy metrics can be reported.",
+            "inventory": inventory,
+            "inventory_error": inventory_error,
+            "sample_size": 0,
+            "metrics": None,
+            "engine": engine_name,
+            "model": model_name,
+            "execution_provider": provider_name,
+            "timestamp": None,
+            "benchmark": bench_data,
+        }
+
     eval_json_path = EVAL_RESULTS_DIR / "results.json"
-    audit_json_path = EVAL_RESULTS_DIR / "dataset_inventory_audit.json"
 
     # Case 1: Real-world evaluation results file exists
     if eval_json_path.exists():
@@ -49,21 +76,13 @@ def get_latest_evaluation() -> Dict[str, Any]:
             meta = eval_data.get("metadata", {})
 
             return {
-                "has_evaluation_results": True,
-                "status": "COMPLETED",
-                "TP": test_m.get("TP", 0),
-                "FP": test_m.get("FP", 0),
-                "TN": test_m.get("TN", 0),
-                "FN": test_m.get("FN", 0),
-                "precision": test_m.get("precision", 0.0),
-                "recall": test_m.get("recall", 0.0),
-                "F1": test_m.get("f1_score", 0.0),
-                "false_alarms_per_hour": test_m.get("false_alarms_per_hour", 0.0),
-                "resident_recognition_accuracy": test_m.get("resident_recognition_accuracy", 0.0),
-                "false_accept_rate": test_m.get("false_accept_rate", 0.0),
-                "false_reject_rate": test_m.get("false_reject_rate", 0.0),
+                "has_evaluation_results": eval_data.get("status") == "COMPLETED",
+                "status": eval_data.get("status", "INSUFFICIENT_DATASET"),
+                "metrics": test_m if eval_data.get("status") == "COMPLETED" else None,
+                "sample_size": eval_data.get("sample_sizes", {}).get("held_out_clips", 0),
+                "warning": eval_data.get("warning"),
                 "threshold": split.get("selected_frozen_threshold", 0.50),
-                "dataset_size": split.get("tuning_set_count", 0) + split.get("held_out_test_count", 0),
+                "dataset_size": eval_data.get("sample_sizes", {}).get("labelled_clips_on_disk", 0),
                 "tuning_test_split": f"{split.get('tuning_set_count', 0)} tuning / {split.get('held_out_test_count', 0)} held-out test",
                 "engine": meta.get("face_engine", engine_name),
                 "model": meta.get("face_model", model_name),
@@ -74,35 +93,16 @@ def get_latest_evaluation() -> Dict[str, Any]:
         except Exception as e:
             print(f"[Evaluation API Warning] Failed to parse results.json: {e}")
 
-    # Case 2: No physical clips recorded yet -> Return truthful empty/unmeasured state
-    inventory_data = {}
-    if audit_json_path.exists():
-        try:
-            with open(audit_json_path, "r") as f:
-                audit_data = json.load(f)
-                inventory_data = audit_data.get("inventory", {})
-        except Exception:
-            pass
-
+    # A missing report never turns inventory into fabricated zero-valued metrics.
     return {
         "has_evaluation_results": False,
-        "status": "NO_EVALUATION_DATA",
-        "message": "No evaluation results available. Real-world video clips are missing from evaluation/dataset/.",
-        "TP": None,
-        "FP": None,
-        "TN": None,
-        "FN": None,
-        "precision": None,
-        "recall": None,
-        "F1": None,
-        "false_alarms_per_hour": None,
-        "resident_recognition_accuracy": None,
-        "false_accept_rate": None,
-        "false_reject_rate": None,
+        "status": "INSUFFICIENT_DATASET",
+        "message": "Real evaluation clips are present, but no completed evaluation report is available.",
+        "inventory": inventory,
+        "metrics": None,
+        "sample_size": 0,
         "threshold": getattr(face_recognizer, "similarity_threshold", 0.50),
-        "dataset_size": inventory_data.get("existing_clips_count", 0),
-        "missing_clips_count": inventory_data.get("missing_clips_count", 20),
-        "missing_scenarios": inventory_data.get("missing_scenarios", []),
+        "dataset_size": inventory.get("clips_on_disk_count", 0),
         "tuning_test_split": "0 tuning / 0 held-out test",
         "engine": engine_name,
         "model": model_name,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
-import { api } from '../../services/api';
+import { api, appendAuthQuery } from '../../services/api';
 import { DeviceCameraTestResult, TestTrack, TestSnapshotEvent } from '../../types';
 import {
   Camera,
@@ -35,7 +35,7 @@ interface DecisionData {
   gate1_human?: { pass: boolean; label?: string; confidence?: number };
   gate2_dwell?: { pass: boolean; label?: string; dwell_seconds?: number };
   gate3_unknown?: { pass: boolean; label?: string; face_status?: string };
-  final_decision: 'VERIFIED_THREAT' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR' | 'IDLE';
+  final_decision: 'VERIFIED_THREAT' | 'UNVERIFIED_LOITERER' | 'SAFE_RESIDENT' | 'MONITORING' | 'CLEAR' | 'IDLE';
 }
 
 interface EventLogItem {
@@ -171,6 +171,17 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     return null; // Deployed HTTPS Vercel without VITE_WS_BASE_URL configured
   };
 
+  const getConfiguredBackendHost = (): string => {
+    const socketUrl = getWebSocketUrl();
+    if (!socketUrl) return 'not configured';
+    try {
+      const parsed = new URL(socketUrl);
+      return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+      return socketUrl;
+    }
+  };
+
   const startSelfTestAndCamera = async () => {
     setPermissionError(null);
     setSummaryData(null);
@@ -257,7 +268,8 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
       }));
 
       addLog(`Connected to FastAPI Edge AI Backend. Components — YOLO: ${health.yolo}, Tracker: ${health.tracker}, OpenCV: ${health.opencv}`, 'info');
-      connectFastApiWebSocket(wsUrl);
+      const authedWsUrl = await appendAuthQuery(wsUrl);
+      connectFastApiWebSocket(authedWsUrl);
     } else {
       setEngineMode('BACKEND_DISCONNECTED');
       setSelfTest(prev => ({
@@ -418,7 +430,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
         const payload = {
           image: dataUrl,
           dwell_threshold: dwellThreshold,
-          zones: [{ name: selectedZone, polygon: polygonPoints, enabled: true }],
+          zones: [{ name: selectedZone, polygonPoints, enabled: true }],
         };
 
         inFlightRef.current = true;
@@ -449,6 +461,11 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+
+    // Test snapshots exist only in the browser state and the test WebSocket's
+    // in-memory tracker. Clear browser references when the session stops.
+    setSnapshotGallery([]);
+    setSelectedSnapshot(null);
 
     const stats = sessionStatsRef.current;
     if (stats.startTime > 0 && stats.framesProcessed > 0) {
@@ -874,7 +891,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                 {/* Gate 1 */}
                 <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-slate-300 flex items-center gap-1.5">
+                <span className="text-slate-300 flex items-center gap-1.5">
                       <Eye className="w-3.5 h-3.5 text-cyan-400" /> GATE 1 — Human Detection
                     </span>
                     {activeTracks.length > 0 ? (
@@ -937,7 +954,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                   <span className="text-[10px] text-text-muted uppercase font-bold block">PIPELINE DECISION</span>
                   <span
                     className={`text-base font-extrabold tracking-tight block ${
-                      decision.final_decision === 'VERIFIED_THREAT'
+                      decision.final_decision === 'VERIFIED_THREAT' || decision.final_decision === 'UNVERIFIED_LOITERER'
                         ? 'text-rose-400 animate-pulse'
                         : decision.final_decision === 'SAFE_RESIDENT'
                         ? 'text-emerald-400'
@@ -946,7 +963,9 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
                         : 'text-text-muted'
                     }`}
                   >
-                    {decision.final_decision === 'VERIFIED_THREAT'
+                    {decision.final_decision === 'UNVERIFIED_LOITERER'
+                      ? '⚠️ UNVERIFIED LOITERER — FACE NOT VISIBLE'
+                      : decision.final_decision === 'VERIFIED_THREAT'
                       ? '🚨 VERIFIED THREAT'
                       : decision.final_decision === 'SAFE_RESIDENT'
                       ? '🛡️ SAFE RESIDENT'
@@ -1143,7 +1162,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
               </div>
 
               <p className="text-[11px] text-text-muted bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                ℹ️ <strong>Temporary Storage Note:</strong> This webcam snapshot is saved only in local application memory for test verification and will be auto-deleted when test mode is exited.
+                ℹ️ <strong>Test Snapshot Note:</strong> The configured backend returns this snapshot to the browser over the test WebSocket. It is held in session memory and is not written to persistent evidence storage by Test Mode.
               </p>
             </div>
           </div>
@@ -1190,7 +1209,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             </div>
 
             <p className="text-xs text-text-muted bg-slate-950 p-3 rounded-xl border border-slate-800">
-              ℹ️ <strong>Honest Evaluation Note:</strong> Live webcam frames were processed locally by FastAPI Edge AI Engine. Temporary test snapshots have been purged from active memory.
+              ℹ️ <strong>Test Session Note:</strong> Frames were processed by the configured FastAPI backend. Stopping Test Mode closed the camera and WebSocket session and cleared the test snapshot gallery.
             </p>
           </div>
         )}
@@ -1199,7 +1218,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
         <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3 text-xs text-text-muted">
           <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
           <p className="leading-tight">
-            <strong>100% Local Privacy Notice:</strong> Camera frames are processed locally by the Edge AI engine and are not uploaded to cloud storage. Camera access ends immediately when Test Mode is stopped.
+            <strong>Test Mode data flow:</strong> Test Mode sends webcam frames only to the configured Smart Vision backend at <code className="font-mono text-text-primary">{getConfiguredBackendHost()}</code>, where they are processed in memory. Test snapshots are returned to this browser and are not written to persistent evidence storage by <code>/ws/test-camera</code>. Production camera alerts use a separate path that saves evidence on the backend and can send alert text and snapshots to Telegram when enabled. Stopping Test Mode stops camera capture, closes the WebSocket, and clears the test snapshot gallery.
           </p>
         </div>
       </div>

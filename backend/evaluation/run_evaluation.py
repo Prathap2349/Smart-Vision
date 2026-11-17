@@ -32,13 +32,13 @@ sys.path.insert(0, str(BACKEND_DIR))
 from config import (
     INSIGHTFACE_MODEL_NAME,
     FACE_SIMILARITY_THRESHOLD,
+    DETECTOR_CONFIDENCE_THRESHOLD,
     TRACK_RECOGNITION_INTERVAL
 )
-from face.recognizer import face_recognizer
-from face.cache import resident_cache
-from ai.detector import yolo_detector
-from tracking.tracker import LightweightIoUTracker
-from ai.decision_engine import decision_engine
+face_recognizer = None
+yolo_detector = None
+LightweightIoUTracker = None
+decision_engine = None
 
 
 ALL_REQUIRED_SCENARIOS = [
@@ -58,6 +58,13 @@ ALL_REQUIRED_SCENARIOS = [
 
 def check_preconditions() -> Dict[str, Any]:
     """Verifies that active engine is InsightFace/ArcFace."""
+    global face_recognizer, yolo_detector, LightweightIoUTracker, decision_engine
+    from face.recognizer import face_recognizer as recognizer
+    from ai.detector import yolo_detector as detector
+    from tracking.tracker import LightweightIoUTracker as tracker
+    from ai.decision_engine import decision_engine as engine
+    face_recognizer, yolo_detector = recognizer, detector
+    LightweightIoUTracker, decision_engine = tracker, engine
     if face_recognizer is None or not getattr(face_recognizer, "is_ready", False):
         err = getattr(face_recognizer, "initialization_error", "Face recognizer not initialized")
         print(f"\n[EVALUATION ABORTED] Precondition failed: InsightFace engine is NOT ready! Error: {err}")
@@ -89,9 +96,23 @@ def load_dataset_manifest(dataset_dir: Path) -> Tuple[List[Dict[str, Any]], Dict
     Returns:
         (registered_clips, dataset_inventory_report)
     """
+    from evaluation.dataset_validator import validate_dataset
+    try:
+        disk_audit = validate_dataset(dataset_dir)
+    except (OSError, ValueError) as exc:
+        return [], {
+            "total_manifest_entries": 0,
+            "existing_clips_count": 0,
+            "missing_clips_count": 0,
+            "existing_by_scenario": {s: 0 for s in ALL_REQUIRED_SCENARIOS},
+            "missing_by_scenario": {s: 0 for s in ALL_REQUIRED_SCENARIOS},
+            "missing_scenarios": list(ALL_REQUIRED_SCENARIOS),
+            "clip_inventory": [],
+            "extra_files": [],
+            "unlabelled_clips": [],
+            "invalid_rows": [{"reason": str(exc)}],
+        }
     labels_file = dataset_dir / "labels.csv"
-    if not labels_file.exists():
-        return [], {"error": f"labels.csv not found at {labels_file}"}
 
     manifest_entries = []
     with open(labels_file, "r") as f:
@@ -129,6 +150,12 @@ def load_dataset_manifest(dataset_dir: Path) -> Tuple[List[Dict[str, Any]], Dict
         "missing_by_scenario": missing_by_scenario,
         "missing_scenarios": [s for s, cnt in existing_by_scenario.items() if cnt == 0]
     }
+    inventory.update({
+        "clip_inventory": disk_audit["clip_inventory"],
+        "extra_files": disk_audit["extra_files"],
+        "unlabelled_clips": disk_audit["unlabelled_clips"],
+        "invalid_rows": disk_audit["invalid_rows"],
+    })
     return manifest_entries, inventory
 
 
@@ -151,6 +178,10 @@ def run_pipeline_on_clip(
             "recognized_residents": [],
             "face_events": []
         }
+
+    previous_threshold = getattr(face_recognizer, "similarity_threshold", None)
+    if previous_threshold is not None:
+        face_recognizer.similarity_threshold = similarity_threshold
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 10.0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -183,7 +214,7 @@ def run_pipeline_on_clip(
         h, w = frame.shape[:2]
 
         # 1. YOLO Human Detection
-        detections = yolo_detector.detect(frame, conf_threshold=0.65)
+        detections = yolo_detector.detect(frame, conf_threshold=DETECTOR_CONFIDENCE_THRESHOLD)
 
         # 2. Lightweight IoU Multi-Object Tracking
         tracks = tracker.update_tracks(detections, zones, frame_w=w, frame_h=h, frame=frame)
@@ -225,6 +256,8 @@ def run_pipeline_on_clip(
                 alert_reason = gate_eval.get("explainable_summary", "Triple-Gate threat verified")
 
     cap.release()
+    if previous_threshold is not None:
+        face_recognizer.similarity_threshold = previous_threshold
 
     return {
         "actual_alert": actual_alert,
@@ -306,28 +339,29 @@ def compute_metrics(eval_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     tn = sum(1 for r in eval_results if r["expected_alert"] == 0 and r["actual_alert"] is False)
     fn = sum(1 for r in eval_results if r["expected_alert"] == 1 and r["actual_alert"] is False)
 
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    precision = tp / (tp + fp) if (tp + fp) > 0 else None
+    recall = tp / (tp + fn) if (tp + fn) > 0 else None
+    f1 = (2 * (precision * recall) / (precision + recall)
+          if precision is not None and recall is not None and (precision + recall) > 0 else None)
 
     # Negative footage duration for False Alarms / Hour
     neg_duration_seconds = sum(r["duration_seconds"] for r in eval_results if r["expected_alert"] == 0)
     neg_duration_hours = neg_duration_seconds / 3600.0 if neg_duration_seconds > 0 else 0.0
-    fa_per_hour = (fp / neg_duration_hours) if neg_duration_hours > 0 else 0.0
+    fa_per_hour = (fp / neg_duration_hours) if neg_duration_hours > 0 else None
 
     # Face metrics
     resident_clips = [r for r in eval_results if r["resident_present"] == 1]
     recognized_residents_count = sum(1 for r in resident_clips if len(r.get("recognized_residents", [])) > 0)
-    resident_accuracy = (recognized_residents_count / len(resident_clips)) if resident_clips else 0.0
+    resident_accuracy = (recognized_residents_count / len(resident_clips)) if resident_clips else None
 
     # FRR: Resident clips where resident was present but not recognized and incorrectly alerted
     frr_count = sum(1 for r in resident_clips if r["actual_alert"] is True and r["expected_alert"] == 0)
-    frr = (frr_count / len(resident_clips)) if resident_clips else 0.0
+    frr = (frr_count / len(resident_clips)) if resident_clips else None
 
     # FAR: Non-resident loitering clips falsely recognized as resident and suppressed
     intruder_clips = [r for r in eval_results if r["resident_present"] == 0 and r["expected_alert"] == 1]
     far_count = sum(1 for r in intruder_clips if len(r.get("recognized_residents", [])) > 0 or r["actual_alert"] is False)
-    far = (far_count / len(intruder_clips)) if intruder_clips else 0.0
+    far = (far_count / len(intruder_clips)) if intruder_clips else None
 
     return {
         "total_clips": len(eval_results),
@@ -335,70 +369,46 @@ def compute_metrics(eval_results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "FP": fp,
         "TN": tn,
         "FN": fn,
-        "precision": round(precision, 4),
-        "recall": round(recall, 4),
-        "f1_score": round(f1, 4),
+        "precision": round(precision, 4) if precision is not None else None,
+        "recall": round(recall, 4) if recall is not None else None,
+        "f1_score": round(f1, 4) if f1 is not None else None,
         "negative_footage_hours": round(neg_duration_hours, 4),
-        "false_alarms_per_hour": round(fa_per_hour, 2),
-        "resident_recognition_accuracy": round(resident_accuracy, 4),
-        "false_accept_rate": round(far, 4),
-        "false_reject_rate": round(frr, 4)
+        "false_alarms_per_hour": round(fa_per_hour, 2) if fa_per_hour is not None else None,
+        "resident_recognition_accuracy": round(resident_accuracy, 4) if resident_accuracy is not None else None,
+        "false_accept_rate": round(far, 4) if far is not None else None,
+        "false_reject_rate": round(frr, 4) if frr is not None else None
     }
 
 
 def execute_evaluation(
     dataset_dir: Path,
     similarity_threshold: float = 0.50,
-    perform_sweep: bool = True
+    perform_sweep: bool = True,
+    results_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """
-    Main evaluation pipeline orchestrator.
-    """
-    meta = check_preconditions()
+    """Inventory real labelled clips, tune on one split, and report held-out only."""
+    output_dir = results_dir or RESULTS_DIR
+    output_dir.mkdir(parents=True, exist_ok=True)
     manifest_entries, inventory = load_dataset_manifest(dataset_dir)
-
-    print(f"\n=======================================================")
-    print(f"SMART VISION SENTRY — EVALUATION AUDIT (RUN 3)")
-    print(f"=======================================================")
-    print(f"Engine:              {meta['face_engine']}")
-    print(f"Model:               {meta['face_model']}")
-    print(f"Provider:            {meta['execution_provider']}")
-    print(f"Manifest Clips:      {inventory['total_manifest_entries']}")
-    print(f"Clips on Disk:       {inventory['existing_clips_count']}")
-    print(f"Missing Clips:       {inventory['missing_clips_count']}")
-    print(f"Missing Scenarios:   {len(inventory['missing_scenarios'])} of {len(ALL_REQUIRED_SCENARIOS)}")
-    print(f"=======================================================\n")
-
-    # If insufficient real videos exist, DO NOT fabricate results
     valid_clips = [e for e in manifest_entries if e["exists"]]
-    if len(valid_clips) == 0:
-        missing_report = {
+    if len(valid_clips) < 2 or inventory.get("extra_files") or inventory.get("invalid_rows"):
+        report = {
             "status": "INSUFFICIENT_DATASET",
-            "metadata": meta,
             "inventory": inventory,
-            "recommendation": {
-                "minimum_clips_required": 22,
-                "recommended_per_scenario": "2 to 3 clips per scenario",
-                "missing_scenarios": ALL_REQUIRED_SCENARIOS,
-                "guidelines": "Record 10-45s MP4 clips for each scenario in evaluation/dataset/<scenario>/ and populate labels.csv."
-            }
+            "sample_sizes": {"labelled_clips_on_disk": len(valid_clips), "tuning": 0, "held_out": 0},
+            "warning": "At least two real, labelled clips are required to create disjoint tuning and held-out splits; 10-12 clips are recommended for a small first evaluation.",
         }
-        
-        # Save inventory audit to results
-        audit_path = RESULTS_DIR / "dataset_inventory_audit.json"
-        with open(audit_path, "w") as f:
-            json.dump(missing_report, f, indent=2)
-            
-        print(f"[DATASET AUDIT] No physical video files found in evaluation/dataset/.")
-        print(f"[DATASET AUDIT] Detailed inventory audit saved to: {audit_path}")
-        return missing_report
+        _write_evaluation_report(report, output_dir)
+        return report
+
+    meta = check_preconditions()
 
     # Split into Tuning Set (50%) and Held-out Test Set (50%)
     import random
     random.seed(42)
     shuffled = list(valid_clips)
     random.shuffle(shuffled)
-    split_idx = max(1, len(shuffled) // 2)
+    split_idx = len(shuffled) // 2
     tuning_clips = shuffled[:split_idx]
     test_clips = shuffled[split_idx:]
 
@@ -424,20 +434,13 @@ def execute_evaluation(
                 th_evals.append({**clip_entry, **res})
 
             th_metrics = compute_metrics(th_evals)
-            sweep_results.append({
-                "threshold": th,
-                "precision": th_metrics["precision"],
-                "recall": th_metrics["recall"],
-                "f1_score": th_metrics["f1_score"],
-                "false_alarms_per_hour": th_metrics["false_alarms_per_hour"]
-            })
-            print(f"    Threshold {th:.2f} -> Precision: {th_metrics['precision']:.2f}, Recall: {th_metrics['recall']:.2f}, F1: {th_metrics['f1_score']:.2f}")
+            sweep_results.append(th)
 
             if th_metrics["f1_score"] > best_f1:
                 best_f1 = th_metrics["f1_score"]
                 selected_threshold = th
 
-        print(f"✓ Optimal threshold selected from Tuning Set: {selected_threshold:.2f} (F1 = {best_f1:.2f})")
+        print(f"Threshold frozen from tuning set: {selected_threshold:.2f}")
 
     # Freeze threshold and evaluate on HELD-OUT TEST SET
     print(f"\n--> Running final evaluation on HELD-OUT TEST SET (Frozen Threshold = {selected_threshold:.2f})...")
@@ -452,6 +455,16 @@ def execute_evaluation(
         )
         b_res = run_motion_baseline_on_clip(clip_entry["video_path"])
 
+        if p_res.get("error") or p_res.get("total_frames", 0) <= 0:
+            report = {
+                "status": "INSUFFICIENT_DATASET",
+                "metadata": meta,
+                "inventory": inventory,
+                "sample_sizes": {"labelled_clips_on_disk": len(valid_clips), "tuning": len(tuning_clips), "held_out": len(test_clips)},
+                "warning": f"A labelled clip could not be processed ({clip_entry['video_rel']}); no metrics are reported.",
+            }
+            _write_evaluation_report(report, output_dir)
+            return report
         test_evaluations.append({
             "video": clip_entry["video_rel"],
             "scenario": clip_entry["scenario"],
@@ -470,39 +483,59 @@ def execute_evaluation(
         })
 
     pipeline_metrics = compute_metrics(test_evaluations)
-    baseline_metrics = compute_metrics(baseline_evaluations)
-
-    # Save CSV Report
-    csv_path = RESULTS_DIR / "results.csv"
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["video", "scenario", "expected_alert", "actual_alert", "alert_timestamp_sec", "recognized_residents", "duration_sec", "notes"])
-        for r in test_evaluations:
-            writer.writerow([
-                r["video"], r["scenario"], r["expected_alert"], 1 if r["actual_alert"] else 0,
-                r.get("alert_timestamp") or "N/A", "|".join(r.get("recognized_residents", [])),
-                r["duration_seconds"], r["notes"]
-            ])
-
-    # Save JSON Report
-    timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+    baseline_metrics = compute_metrics([
+        {**r, "resident_present": 0, "recognized_residents": []} for r in baseline_evaluations
+    ])
     report_data = {
+        "status": "COMPLETED",
         "metadata": meta,
+        "inventory": inventory,
         "dataset_split": {
             "tuning_set_count": len(tuning_clips),
             "held_out_test_count": len(test_clips),
             "selected_frozen_threshold": selected_threshold
         },
         "threshold_sweep_tuning": sweep_results,
+        "sample_sizes": {
+            "labelled_clips_on_disk": len(valid_clips),
+            "tuning_clips": len(tuning_clips),
+            "held_out_clips": len(test_clips),
+            "held_out_positive_clips": sum(r["expected_alert"] == 1 for r in test_evaluations),
+            "held_out_negative_clips": sum(r["expected_alert"] == 0 for r in test_evaluations),
+        },
+        "warning": "Small sample: interpret cautiously; these clips do not establish deployment performance." if len(valid_clips) < 22 else None,
         "held_out_test_metrics": pipeline_metrics,
-        "opencv_motion_baseline_metrics": baseline_metrics
+        "opencv_motion_baseline_metrics": baseline_metrics,
     }
-
-    json_path = RESULTS_DIR / "results.json"
-    with open(json_path, "w") as f:
-        json.dump(report_data, f, indent=2)
-
+    _write_evaluation_report(report_data, output_dir)
     return report_data
+
+
+def _write_evaluation_report(report: Dict[str, Any], output_dir: Path) -> None:
+    """Write machine-readable and human-readable reports without inventing metrics."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "results.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    lines = ["# Evaluation results", "", f"**Status:** {report['status']}", ""]
+    inventory = report.get("inventory", {})
+    lines += ["## Clip inventory", "", f"- Label rows: {inventory.get('total_manifest_entries', 0)}",
+              f"- Labelled clips on disk: {inventory.get('existing_clips_count', 0)}",
+              f"- Missing labelled clips: {inventory.get('missing_clips_count', 0)}",
+              f"- Extra/unlabelled clips: {len(inventory.get('unlabelled_clips', []))}", ""]
+    if report["status"] != "COMPLETED":
+        lines += ["No accuracy metrics are available. Record and label real clips before evaluation.", ""]
+    else:
+        sizes = report["sample_sizes"]
+        metrics = report["held_out_test_metrics"]
+        lines += ["## Held-out metrics", "", f"Held-out sample size: {sizes['held_out_clips']} clips",
+                  f"Positive clips: {sizes['held_out_positive_clips']}; negative clips: {sizes['held_out_negative_clips']}", ""]
+        for key, label in (("precision", "Precision"), ("recall", "Recall"), ("f1_score", "F1"),
+                           ("false_alarms_per_hour", "False alarms per hour"),
+                           ("false_accept_rate", "FAR"), ("false_reject_rate", "FRR")):
+            lines.append(f"- {label} (n={sizes['held_out_clips']}): {metrics[key]}")
+        if report.get("warning"):
+            lines += ["", f"**Warning:** {report['warning']}"]
+        lines.append("")
+    (output_dir / "results.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def main():

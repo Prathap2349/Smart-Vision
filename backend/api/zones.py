@@ -1,4 +1,5 @@
 import json
+import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
@@ -14,7 +15,7 @@ class ZoneCreate(BaseModel):
     name: str
     camera_id: str = "cam-01"
     type: str = "CORRIDOR"
-    dwell_threshold: int = 20
+    dwell_threshold: Optional[int] = None
     enabled: bool = True
     color: str = "#00f0ff"
     polygon_points: List[PolygonPoint]
@@ -48,8 +49,8 @@ def get_zones():
 def add_zone(req: ZoneCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
-    zone_id = f"zone-0{int(json.dumps(req.name).__hash__() % 1000)}"
-    poly_json = json.dumps([p.dict() for p in req.polygon_points])
+    zone_id = f"zone-{uuid.uuid4()}"
+    poly_json = json.dumps([p.model_dump() if hasattr(p, "model_dump") else p.dict() for p in req.polygon_points])
 
     cursor.execute("""
     INSERT INTO detection_zones (id, name, camera_id, type, dwell_threshold, enabled, color, polygon_json)
@@ -70,7 +71,7 @@ def add_zone(req: ZoneCreate):
 def update_zone(id: str, req: ZoneCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
-    poly_json = json.dumps([p.dict() for p in req.polygon_points])
+    poly_json = json.dumps([p.model_dump() if hasattr(p, "model_dump") else p.dict() for p in req.polygon_points])
 
     cursor.execute("""
     UPDATE detection_zones SET name = ?, type = ?, dwell_threshold = ?, enabled = ?, color = ?, polygon_json = ?

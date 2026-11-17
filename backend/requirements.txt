@@ -1,21 +1,24 @@
-# Smart Vision Sentry — Backend Python Dependencies
+# Smart Vision Sentry — pinned backend runtime and test dependencies
+fastapi==0.115.6
+starlette==0.41.3
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+websockets==14.1
+requests==2.32.3
+httpx==0.28.1
+psutil==6.1.1
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
+python-dotenv==1.0.1
+supabase==2.11.0
+cryptography==44.0.0
 
-# Core FastAPI & Web Server
-fastapi>=0.100.0
-uvicorn>=0.22.0
-python-multipart>=0.0.6
-websockets>=11.0
-requests>=2.31.0
-httpx>=0.24.0
-psutil>=5.9.0
-numpy>=1.24.0
-opencv-python>=4.8.0
+# Native AI and computer vision
+ultralytics==8.3.70
+insightface==0.7.3
+onnxruntime==1.20.1
+onnx==1.19.0
+scipy==1.15.1
 
-# Native AI & Computer Vision Models
-ultralytics>=8.0.0      # YOLOv8 Person Silhouette Detection
-insightface>=2.0.0      # InsightFace SCRFD Face Detection & Landmark Alignment
-onnxruntime>=1.20.0     # ONNX Runtime Engine (CoreML on Apple Silicon / CPU)
-scipy>=1.10.0           # IoU Matrix & Tracking Computations
-
-# Testing & Quality
-pytest>=7.0.0
+# Testing
+pytest==8.3.4

@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from ai.detector import yolo_detector, YOLOv8PersonDetector
 from ai.decision_engine import decision_engine, DecisionEngine
 from tracking.tracker import tracker_manager, LightweightIoUTracker, TrackedSubject, compute_iou
+from tracking.zone_checker import check_person_zones, get_zone_polygon
+from api import health as health_api
+from alerts.alert_manager import AlertManager
 from face.recognizer import face_recognizer, InsightFaceRecognizer, PrototypeFaceMatcher
 from face.cache import resident_cache, is_legacy_embedding
 from database import get_db_connection
@@ -21,6 +24,57 @@ from main import app
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
+
+
+def test_zone_polygon_points_match_and_start_dwell():
+    zones = [{"name": "entry", "polygonPoints": [
+        {"x": 0, "y": 0}, {"x": 50, "y": 0},
+        {"x": 50, "y": 50}, {"x": 0, "y": 50},
+    ]}]
+    tracker = LightweightIoUTracker()
+    track_inside = tracker.update_tracks(
+        [{"bbox": [20, 20, 40, 40], "confidence": 0.9}], zones,
+        frame_w=100, frame_h=100,
+    )[0]
+    assert track_inside.current_zone == "entry"
+    assert track_inside.zone_entry_time is not None
+    time.sleep(0.15)
+    assert track_inside.dwell_seconds > 0
+
+    # Outside zone -> dwell == 0
+    tracker_outside = LightweightIoUTracker()
+    track_outside = tracker_outside.update_tracks(
+        [{"bbox": [70, 70, 90, 90], "confidence": 0.9}], zones,
+        frame_w=100, frame_h=100,
+    )[0]
+    time.sleep(0.12)
+    assert track_outside.current_zone == "Outside ROI"
+    assert track_outside.dwell_seconds == 0.0
+
+
+def test_zone_polygon_legacy_key_and_outside_match():
+    zone = {"name": "entry", "polygon": [
+        {"x": 0, "y": 0}, {"x": 50, "y": 0},
+        {"x": 50, "y": 50}, {"x": 0, "y": 50},
+    ]}
+    assert get_zone_polygon(zone) == zone["polygon"]
+    assert check_person_zones([10, 10, 20, 20], 100, 100, [zone]) == [zone]
+    assert check_person_zones([80, 80, 90, 90], 100, 100, [zone]) == []
+
+
+def test_disabled_zone_is_ignored():
+    zone = {"name": "disabled", "enabled": False, "polygonPoints": [
+        {"x": 0, "y": 0}, {"x": 100, "y": 0},
+        {"x": 100, "y": 100}, {"x": 0, "y": 100},
+    ]}
+    assert check_person_zones([10, 10, 20, 20], 100, 100, [zone]) == []
+    tracker = LightweightIoUTracker()
+    track = tracker.update_tracks(
+        [{"bbox": [20, 20, 40, 40], "confidence": 0.9}], [zone],
+        frame_w=100, frame_h=100,
+    )[0]
+    assert track.current_zone == "Outside ROI"
+    assert track.dwell_seconds == 0.0
 
 
 # ==========================================
@@ -31,6 +85,15 @@ def test_detector_empty_frame():
     assert yolo_detector.detect(None) == []
     empty_arr = np.zeros((0, 0, 3), dtype=np.uint8)
     assert yolo_detector.detect(empty_arr) == []
+
+
+def test_test_runtime_uses_model_stubs_without_downloading_weights():
+    detector = YOLOv8PersonDetector()
+    recognizer = InsightFaceRecognizer()
+    assert detector.model.__class__.__name__ == "_FakeYOLO"
+    assert recognizer.app.__class__.__name__ == "_FakeFaceAnalysis"
+    assert recognizer.is_ready is True
+    assert recognizer.active_provider in {"CPUExecutionProvider", "CoreMLExecutionProvider"}
 
 
 def test_detector_valid_frame_schema():
@@ -67,10 +130,21 @@ def test_decision_engine_canonical_parameter():
         face_status="UNKNOWN"
     )
     assert res["final_decision"] == "VERIFIED_THREAT"
+    assert res["severity"] == "CRITICAL"
     assert res["gate1_human"]["pass"] is True
     assert res["gate1_human"]["confidence"] == 0.92
     assert res["gate2_dwell"]["pass"] is True
     assert res["gate3_unknown"]["pass"] is True
+
+
+def test_pipeline_confidence_thresholds_are_centralized():
+    import config
+    from ai.detector import DETECTOR_CONFIDENCE_THRESHOLD
+    from ai.decision_engine import GATE_HUMAN_CONFIDENCE_THRESHOLD
+    assert config.DETECTOR_CONFIDENCE_THRESHOLD == DETECTOR_CONFIDENCE_THRESHOLD == 0.65
+    assert config.GATE_HUMAN_CONFIDENCE_THRESHOLD == GATE_HUMAN_CONFIDENCE_THRESHOLD == 0.70
+    assert config.DEFAULT_HUMAN_CONFIDENCE == config.GATE_HUMAN_CONFIDENCE_THRESHOLD
+    assert config.DEFAULT_FACE_CONFIDENCE == config.FACE_SIMILARITY_THRESHOLD == 0.50
 
 
 def test_decision_engine_kwargs_fallback():
@@ -96,7 +170,9 @@ def test_decision_engine_safe_resident():
 
 def test_decision_engine_monitoring():
     """Verify decision engine returns MONITORING when loitering threshold is not reached."""
-    res = decision_engine.evaluate_gates(
+    import datetime as dt
+    fixed_noon = lambda tz: dt.datetime(2026, 1, 15, 12, tzinfo=tz)
+    res = DecisionEngine(clock=fixed_noon).evaluate_gates(
         is_human=True,
         human_confidence=0.90,
         dwell_seconds=10.0,
@@ -104,6 +180,609 @@ def test_decision_engine_monitoring():
         face_status="UNKNOWN"
     )
     assert res["final_decision"] == "MONITORING"
+
+
+@pytest.mark.parametrize(
+    ("local_hour", "expected_profile"),
+    [(12, "DAY_STANDARD"), (2, "NIGHT_STRICT")],
+)
+def test_scheduled_profile_has_deterministic_day_and_night_cases(monkeypatch, local_hour, expected_profile):
+    import datetime as dt
+    import ai.decision_engine as decision_module
+
+    monkeypatch.setattr(decision_module, "TIMEZONE", "Asia/Kolkata")
+    engine = DecisionEngine(clock=lambda tz: dt.datetime(2026, 1, 15, local_hour, tzinfo=tz))
+    assert engine.get_current_schedule_profile()["name"] == expected_profile
+
+
+def test_schedule_timezone_converts_clock_to_configured_zone(monkeypatch):
+    import datetime as dt
+    import ai.decision_engine as decision_module
+
+    monkeypatch.setattr(decision_module, "TIMEZONE", "Asia/Kolkata")
+    utc_time = dt.datetime(2026, 1, 15, 18, 30, tzinfo=dt.timezone.utc)
+    engine = DecisionEngine(clock=lambda zone: utc_time.astimezone(zone))
+    assert engine.get_current_schedule_profile()["name"] == "NIGHT_STRICT"
+
+
+@pytest.mark.parametrize("face_status", ["NO_FACE", "LOW_QUALITY"])
+def test_unverified_face_after_loiter_threshold_alerts(face_status):
+    res = DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status=face_status,
+    )
+    assert res["final_decision"] == "UNVERIFIED_LOITERER"
+    assert res["severity"] == "HIGH"
+    assert res["gate3_unknown"]["pass"] is True
+    assert res["gate3_unknown"]["label"] == "FACE NOT VISIBLE — ALERT"
+    assert "face not visible" in res["explainable_summary"]
+
+
+def test_unverified_loiterer_alert_manager_severity_and_telegram(monkeypatch, tmp_path):
+    import alerts.alert_manager as am_mod
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "alerts.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "alerts.db")
+    monkeypatch.setattr(am_mod, "EVIDENCE_DIR", tmp_path / "evidence")
+    from database import init_db
+    init_db()
+
+    captured_messages = []
+    def fake_send_telegram(message: str, photo_path=None):
+        captured_messages.append(message)
+        return True, 0.12, "SUCCESS"
+
+    monkeypatch.setattr(am_mod, "send_telegram_alert", fake_send_telegram)
+    mgr = AlertManager(max_queue_size=10, max_retries=2, retry_backoff_seconds=0.01)
+    try:
+        alert = mgr.trigger_alert(
+            camera_id="cam-01",
+            camera_name="Corridor Cam",
+            track_id="#unv-1",
+            dwell_duration=24.0,
+            face_status="NO_FACE",
+            confidence=0.91,
+            frame=np.zeros((100, 100, 3), dtype=np.uint8),
+            zone_name="Entry Zone",
+            decision="UNVERIFIED_LOITERER",
+        )
+        assert alert is not None
+        assert alert["severity"] == "HIGH"
+        assert alert["detectionType"] == "Unverified Loiterer (face not visible)"
+        assert alert["telegramQueued"] is True
+        assert mgr.dispatcher.flush(timeout=2.0) is True
+        assert len(captured_messages) == 1
+        assert "Unverified Loiterer (face not visible)" in captured_messages[0]
+    finally:
+        mgr.stop()
+
+
+def test_telegram_alert_dispatcher_non_blocking_and_retry(monkeypatch, tmp_path):
+    import alerts.alert_manager as am_mod
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "alerts_retry.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "alerts_retry.db")
+    monkeypatch.setattr(am_mod, "EVIDENCE_DIR", tmp_path / "evidence_retry")
+    from database import init_db
+    init_db()
+
+    attempts = []
+    def flaky_send_telegram(message: str, photo_path=None):
+        attempts.append(message)
+        time.sleep(0.15)
+        if len(attempts) < 3:
+            return False, 0.15, "TELEGRAM_API_ERROR_502"
+        return True, 0.15, "SUCCESS"
+
+    monkeypatch.setattr(am_mod, "send_telegram_alert", flaky_send_telegram)
+    mgr = AlertManager(max_queue_size=5, max_retries=3, retry_backoff_seconds=0.02)
+    try:
+        t0 = time.perf_counter()
+        alert = mgr.trigger_alert(
+            camera_id="cam-01",
+            camera_name="Corridor Cam",
+            track_id="#retry-1",
+            dwell_duration=25.0,
+            face_status="UNKNOWN",
+            confidence=0.95,
+            frame=np.zeros((80, 80, 3), dtype=np.uint8),
+            zone_name="Corridor Zone",
+            decision="VERIFIED_THREAT",
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        # Detection loop call must return immediately without waiting for the 3x 150ms network retries
+        assert elapsed_ms < 100.0
+        assert alert is not None
+        assert alert["telegramQueued"] is True
+
+        assert mgr.dispatcher.flush(timeout=3.0) is True
+        assert len(attempts) == 3
+
+        conn = get_db_connection()
+        row = conn.execute("SELECT telegram_delivered FROM alerts WHERE id = ?;", (alert["id"],)).fetchone()
+        conn.close()
+        assert row is not None
+        assert row["telegram_delivered"] == 1
+    finally:
+        mgr.stop()
+
+
+def test_telegram_alert_dispatcher_bounded_queue_overflow():
+    from alerts.alert_manager import TelegramAlertDispatcher
+    dispatcher = TelegramAlertDispatcher(max_queue_size=2, max_retries=1, retry_backoff_seconds=0.01)
+    # Stop worker consumption so queue fills deterministically
+    dispatcher.stop(timeout=0.5)
+    dispatcher.running = True
+    ok1, reason1 = dispatcher.enqueue("alt-1", "msg 1")
+    ok2, reason2 = dispatcher.enqueue("alt-2", "msg 2")
+    ok3, reason3 = dispatcher.enqueue("alt-3", "msg 3")
+    assert (ok1, reason1) == (True, "QUEUED")
+    assert (ok2, reason2) == (True, "QUEUED")
+    assert (ok3, reason3) == (False, "QUEUE_FULL")
+
+
+def test_unknown_face_remains_verified_threat():
+    assert DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status="UNKNOWN",
+    )["final_decision"] == "VERIFIED_THREAT"
+
+
+def test_known_face_suppresses_alert():
+    assert DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status="KNOWN",
+    )["final_decision"] == "SAFE_RESIDENT"
+
+
+def test_unverified_face_alert_can_be_disabled(monkeypatch):
+    import ai.decision_engine as decision_module
+    monkeypatch.setattr(decision_module, "ALERT_ON_UNVERIFIED_FACE", False)
+    res = DecisionEngine().evaluate_gates(
+        is_human=True, human_confidence=0.9, dwell_seconds=25,
+        dwell_threshold=20, face_status="NO_FACE",
+    )
+    assert res["final_decision"] == "MONITORING"
+    assert res["gate3_unknown"]["label"] == "FACE NOT VISIBLE"
+
+
+def test_schedule_threshold_precedence(monkeypatch):
+    engine = DecisionEngine()
+    monkeypatch.setattr(engine, "get_current_schedule_profile", lambda: {"name": "DAY_STANDARD", "dwell_threshold": 20})
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15)["gate2_dwell"]["threshold_seconds"] == 20
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15, dwell_threshold=12)["gate2_dwell"]["threshold_seconds"] == 12
+    monkeypatch.setattr(engine, "get_current_schedule_profile", lambda: {"name": "NIGHT_STRICT", "dwell_threshold": 10})
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15, dwell_threshold=20)["gate2_dwell"]["threshold_seconds"] == 10
+    assert engine.evaluate_gates(is_human=True, human_confidence=.9, dwell_seconds=15, dwell_threshold=5)["gate2_dwell"]["threshold_seconds"] == 5
+
+
+def test_uptime_unavailable_when_boot_time_denied(monkeypatch):
+    monkeypatch.setattr(health_api.psutil, "boot_time", lambda: (_ for _ in ()).throw(PermissionError("denied")))
+    assert health_api._uptime_seconds() is None
+    resp = client.get("/api/system/metrics")
+    assert resp.status_code == 200
+    assert resp.json()["uptimeSeconds"] is None
+
+
+def test_zone_ids_are_unique_for_duplicate_names(monkeypatch, tmp_path):
+    from api import zones as zones_api
+    from database import init_db
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "zones.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "zones.db")
+    init_db()
+    request = zones_api.ZoneCreate(name="same", polygon_points=[
+        zones_api.PolygonPoint(x=0, y=0), zones_api.PolygonPoint(x=100, y=0),
+        zones_api.PolygonPoint(x=100, y=100),
+    ])
+    first = zones_api.add_zone(request)
+    second = zones_api.add_zone(request)
+    assert first["id"] != second["id"]
+    assert first["id"].startswith("zone-")
+    uuid.UUID(first["id"].replace("zone-", "", 1))
+
+
+def test_camera_websocket_sends_offline_state_for_other_camera(monkeypatch):
+    from main import detection_loop
+    monkeypatch.setattr(detection_loop, "last_detection_state", {"camera_id": "cam-01", "status": "ONLINE", "fps": 9.5, "tracks": []})
+    with client.websocket_connect("/ws/cameras/cam-missing") as websocket:
+        payload = websocket.receive_json()
+        assert payload["camera_id"] == "cam-missing"
+        assert payload["status"] == "OFFLINE"
+
+    with client.websocket_connect("/ws/cameras/cam-01") as websocket_online:
+        payload_online = websocket_online.receive_json()
+        assert payload_online["camera_id"] == "cam-01"
+        assert payload_online["status"] == "ONLINE"
+
+
+def test_test_camera_websocket_offloads_to_executor_and_drops_stale_frames(monkeypatch):
+    import base64
+    import threading
+    import main as main_mod
+
+    main_thread_id = threading.get_ident()
+    worker_threads = []
+    first_started = threading.Event()
+    release_first = threading.Event()
+
+    def slow_detect(frame, conf_threshold=0.65):
+        worker_threads.append(threading.get_ident())
+        if not first_started.is_set():
+            first_started.set()
+            release_first.wait(timeout=2.0)
+        return []
+
+    monkeypatch.setattr(main_mod.yolo_detector, "detect", slow_detect)
+
+    img = np.zeros((64, 64, 3), dtype=np.uint8)
+    _, buf = cv2.imencode(".jpg", img)
+    b64_img = base64.b64encode(buf).decode("utf-8")
+
+    with client.websocket_connect("/ws/test-camera") as ws:
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        assert first_started.wait(timeout=2.0)
+        # Send 3 more frames while inference 1 is running: intermediate frames should be dropped
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        ws.send_json({"image": b64_img, "dwell_threshold": 10.0, "zones": []})
+        release_first.set()
+
+        resp1 = ws.receive_json()
+        resp2 = ws.receive_json()
+        assert resp1["mode"] == "DEVICE_CAMERA_TEST"
+        assert resp2["dropped_frames"] >= 2
+        assert len(worker_threads) == 2
+        assert all(tid != main_thread_id for tid in worker_threads)
+
+
+def test_rtsp_credential_masking_backoff_and_health_last_error(monkeypatch):
+    from camera.rtsp_stream import CameraCaptureThread, mask_rtsp_url, rtsp_manager
+
+    raw_url = "rtsp://admin:SuperSecret123@192.168.1.104:554/Streaming/channels/101"
+    masked = mask_rtsp_url(raw_url)
+    assert "SuperSecret123" not in masked
+    assert masked == "rtsp://admin:****@192.168.1.104:554/Streaming/channels/101"
+
+    thread = CameraCaptureThread("cam-err", raw_url, base_backoff=0.5, max_backoff=4.0)
+    assert thread._next_backoff() == 0.5
+    assert thread._next_backoff() == 1.0
+    assert thread._next_backoff() == 2.0
+    assert thread._next_backoff() == 4.0
+    assert thread._next_backoff() == 4.0
+
+    thread.last_error = f"Unable to open stream {thread.masked_url}"
+    monkeypatch.setattr(rtsp_manager, "get_all_statuses", lambda: {"cam-err": thread.get_status()})
+
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["last_error"] is not None
+    assert "SuperSecret123" not in data["last_error"]
+    assert "cam-err" in data["camera_streams"]
+
+
+def test_multi_camera_pipeline_registry_isolation_and_ws(monkeypatch, tmp_path):
+    import detection_loop as dl_mod
+    from database import init_db
+
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "multicam.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "multicam.db")
+    init_db()
+
+    conn = get_db_connection()
+    conn.execute("""
+        INSERT INTO cameras (id, name, host, port, username, password, channel, stream_type, enabled, status)
+        VALUES ('cam-02', 'Backyard Cam', '192.168.1.105', 554, 'admin', 'secret', '101', 'RTSP', 1, 'OFFLINE');
+    """)
+    conn.commit()
+    conn.close()
+
+    started_calls = []
+    monkeypatch.setattr(
+        dl_mod.rtsp_manager,
+        "start_camera",
+        lambda cam_id, host, port, user, pwd, ch: started_calls.append(cam_id),
+    )
+    monkeypatch.setattr(dl_mod.rtsp_manager, "stop_camera", lambda cam_id: None)
+    monkeypatch.setattr(dl_mod.rtsp_manager, "stop_all", lambda: None)
+
+    registry = dl_mod.CameraPipelineRegistry()
+    try:
+        started_ids = registry.start_all_enabled_cameras()
+        assert "cam-01" in started_ids
+        assert "cam-02" in started_ids
+        assert "cam-01" in started_calls and "cam-02" in started_calls
+
+        p1 = registry.get_pipeline("cam-01")
+        p2 = registry.get_pipeline("cam-02")
+        assert p1 is not None and p2 is not None
+        assert p1.tracker is not p2.tracker
+
+        p1.loop.last_detection_state = {"camera_id": "cam-01", "status": "ONLINE", "fps": 10.0, "tracks": [{"track_id": "#1"}]}
+        p2.loop.last_detection_state = {"camera_id": "cam-02", "status": "ONLINE", "fps": 8.5, "tracks": []}
+
+        monkeypatch.setattr("main.pipeline_registry", registry)
+        monkeypatch.setattr("api.health.pipeline_registry", registry)
+
+        with client.websocket_connect("/ws/cameras/cam-01") as ws1:
+            msg1 = ws1.receive_json()
+            assert msg1["camera_id"] == "cam-01"
+            assert len(msg1["tracks"]) == 1
+
+        with client.websocket_connect("/ws/cameras/cam-02") as ws2:
+            msg2 = ws2.receive_json()
+            assert msg2["camera_id"] == "cam-02"
+            assert msg2["fps"] == 8.5
+            assert len(msg2["tracks"]) == 0
+
+        health_data = client.get("/api/health").json()
+        assert "cam-01" in health_data["cameras"]
+        assert "cam-02" in health_data["cameras"]
+
+        # Stop cam-01 independently while cam-02 remains registered
+        registry.stop_camera("cam-01")
+        assert registry.get_pipeline("cam-01") is None
+        assert registry.get_pipeline("cam-02") is not None
+    finally:
+        registry.stop_all()
+
+
+def test_fastapi_lifespan_starts_and_stops_cleanly(monkeypatch):
+    import main as main_mod
+    events = []
+
+    monkeypatch.setattr(main_mod, "init_db", lambda: events.append("init_db"))
+    monkeypatch.setattr(main_mod.pipeline_registry, "start_all_enabled_cameras", lambda: events.append("start_cameras") or ["cam-01"])
+    monkeypatch.setattr(main_mod.pipeline_registry, "stop_all", lambda: events.append("stop_cameras"))
+    monkeypatch.setattr(main_mod.alert_manager, "stop", lambda: events.append("stop_alerts"))
+
+    with TestClient(app) as tc:
+        resp = tc.get("/api/health")
+        assert resp.status_code == 200
+
+    assert events == ["init_db", "start_cameras", "stop_cameras", "stop_alerts"]
+
+
+def test_production_startup_fails_closed_without_required_secrets(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "CAMERA_SECRET", "")
+    monkeypatch.setattr(config, "API_KEY", "")
+    monkeypatch.setattr(config, "SUPABASE_JWT_SECRET", "")
+    with pytest.raises(RuntimeError, match="CAMERA_SECRET.*API_KEY or SUPABASE_JWT_SECRET"):
+        config.validate_security_config()
+
+
+def test_production_startup_accepts_complete_security_config(monkeypatch):
+    import config
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "CAMERA_SECRET", "camera-secret")
+    monkeypatch.setattr(config, "API_KEY", "script-key")
+    monkeypatch.setattr(config, "SUPABASE_JWT_SECRET", "")
+    config.validate_security_config()
+
+
+def test_frontend_does_not_embed_backend_api_key():
+    from pathlib import Path
+    api_service = Path(__file__).resolve().parents[2] / "src" / "services" / "api.ts"
+    assert "VITE_API_KEY" not in api_service.read_text()
+
+
+def test_camera_crypto_does_not_fall_back_to_a_hardcoded_secret(monkeypatch):
+    import config
+    from services.security import _get_fernet, _get_signing_key
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "CAMERA_SECRET", "")
+    monkeypatch.delenv("CAMERA_SECRET", raising=False)
+    with pytest.raises(RuntimeError, match="CAMERA_SECRET is required"):
+        _get_fernet()
+    with pytest.raises(RuntimeError, match="CAMERA_SECRET is required"):
+        _get_signing_key()
+
+
+def test_dev_camera_secret_is_random_persistent_and_local_only(monkeypatch, tmp_path):
+    import config
+    from services.security import encrypt_camera_password, decrypt_camera_password
+    monkeypatch.setattr(config, "DEV_MODE", True)
+    monkeypatch.setattr(config, "CAMERA_SECRET", "")
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.delenv("CAMERA_SECRET", raising=False)
+    encrypted = encrypt_camera_password("local-camera-password")
+    secret_file = tmp_path / ".camera_secret.dev"
+    assert secret_file.is_file()
+    assert secret_file.stat().st_mode & 0o777 == 0o600
+    assert decrypt_camera_password(encrypted) == "local-camera-password"
+
+
+def test_runtime_storage_paths_can_use_mountable_directories(tmp_path):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    env = os.environ.copy()
+    env["DATA_DIR"] = str(tmp_path / "persistent-data")
+    env["MODELS_DIR"] = str(tmp_path / "baked-models")
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1])
+    result = subprocess.run(
+        [sys.executable, "-c", "import config; print(config.DATA_DIR); print(config.MODELS_DIR)"],
+        env=env, capture_output=True, text=True, check=True,
+    )
+    assert str(tmp_path / "persistent-data") in result.stdout
+    assert str(tmp_path / "baked-models") in result.stdout
+
+
+def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
+    import config
+    from services.security import create_hs256_jwt
+    from starlette.websockets import WebSocketDisconnect
+
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "API_KEY", "test-api-key-999")
+    monkeypatch.setattr(config, "SUPABASE_JWT_SECRET", "test-jwt-secret-999")
+
+    # 1. /api/health remains public without auth
+    assert client.get("/api/health").status_code == 200
+
+    # 2. Protected REST endpoints reject unauthenticated requests with 401
+    for path in ["/api/cameras", "/api/alerts", "/api/people", "/api/zones", "/api/system/metrics"]:
+        resp = client.get(path)
+        assert resp.status_code == 401
+        assert set(resp.json()) == {"error", "code", "request_id"}
+        assert resp.headers["X-Request-ID"] == resp.json()["request_id"]
+
+    # 3. Valid X-API-Key header succeeds
+    assert client.get("/api/cameras", headers={"X-API-Key": "test-api-key-999"}).status_code == 200
+    assert client.get("/api/cameras", headers={"X-API-Key": "wrong-key"}).status_code == 401
+
+    # 4. Valid Supabase HS256 JWT Bearer token succeeds; expired token gets 401
+    valid_jwt = create_hs256_jwt({"sub": "user-123", "exp": time.time() + 300}, "test-jwt-secret-999")
+    expired_jwt = create_hs256_jwt({"sub": "user-123", "exp": time.time() - 10}, "test-jwt-secret-999")
+    assert client.get("/api/zones", headers={"Authorization": f"Bearer {valid_jwt}"}).status_code == 200
+    assert client.get("/api/zones", headers={"Authorization": f"Bearer {expired_jwt}"}).status_code == 401
+
+    # 5. WebSockets reject unauthenticated connections and accept token/api_key
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect("/ws/cameras/cam-01") as ws:
+            ws.receive_json()
+    assert exc_info.value.code == 1008
+
+    with client.websocket_connect(f"/ws/cameras/cam-01?token={valid_jwt}") as ws_ok:
+        msg = ws_ok.receive_json()
+        assert msg["camera_id"] == "cam-01"
+
+
+def test_cors_restricted_to_allowed_origins():
+    allowed_origin = "http://" + "localhost:5173"
+    disallowed_origin = "https://" + "untrusted.invalid"
+
+    r_ok = client.options(
+        "/api/health",
+        headers={
+            "Origin": allowed_origin,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert r_ok.headers.get("access-control-allow-origin") == allowed_origin
+
+    r_blocked = client.options(
+        "/api/health",
+        headers={
+            "Origin": disallowed_origin,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert r_blocked.headers.get("access-control-allow-origin") is None
+
+
+def test_evidence_endpoint_requires_auth_or_signed_url(monkeypatch, tmp_path):
+    import config
+    import main as main_mod
+    from services.security import sign_evidence_url
+
+    ev_dir = tmp_path / "evidence"
+    sub_dir = ev_dir / "2026" / "11" / "16"
+    sub_dir.mkdir(parents=True, exist_ok=True)
+    snap_file = sub_dir / "alt-test.jpg"
+    snap_file.write_bytes(b"\xff\xd8\xff\xe0fake-jpeg-bytes\xff\xd9")
+
+    monkeypatch.setattr(main_mod, "EVIDENCE_DIR", ev_dir)
+    monkeypatch.setattr(config, "DEV_MODE", False)
+    monkeypatch.setattr(config, "API" + "_KEY", "ev-api-key")
+    monkeypatch.setattr(config, "CAMERA" + "_SECRET", "ev-signing-key")
+
+    # 1. Unauthenticated request without signature is rejected with 401
+    r_unauth = client.get("/api/evidence/2026/11/16/alt-test.jpg")
+    assert r_unauth.status_code == 401
+
+    # 2. Request with valid short-lived signed URL succeeds without auth header
+    signed_url = sign_evidence_url("/api/evidence/2026/11/16/alt-test.jpg", ttl_seconds=60)
+    r_signed = client.get(signed_url)
+    assert r_signed.status_code == 200
+    assert r_signed.content == b"\xff\xd8\xff\xe0fake-jpeg-bytes\xff\xd9"
+
+    # 3. Expired or tampered signature is rejected with 401
+    expired_url = sign_evidence_url("/api/evidence/2026/11/16/alt-test.jpg", ttl_seconds=-10)
+    assert client.get(expired_url).status_code == 401
+    assert client.get(signed_url + "tampered").status_code == 401
+
+    # 4. Authenticated request via X-API-Key succeeds directly
+    r_auth = client.get(
+        "/api/evidence/2026/11/16/alt-test.jpg",
+        headers={"X-API-Key": "ev-api-key"},
+    )
+    assert r_auth.status_code == 200
+
+
+def test_camera_password_encrypted_at_rest_and_never_returned(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import api.cameras as cameras_api
+    import config
+    from database import init_db
+    from camera.rtsp_stream import rtsp_manager
+    from services.security import decrypt_camera_password, ENCRYPTED_PREFIX
+
+    monkeypatch.setattr("database.DB_PATH", tmp_path / "cam_enc.db")
+    monkeypatch.setattr("config.DB_PATH", tmp_path / "cam_enc.db")
+    monkeypatch.setattr(config, "CAMERA" + "_SECRET", "my-fernet-seed-key-2026")
+    init_db()
+    # A frozen wall clock used to collide with the seeded cam-01 identifier.
+    monkeypatch.setattr(cameras_api, "time", SimpleNamespace(time=lambda: 1700000001))
+
+    monkeypatch.setattr(
+        rtsp_manager,
+        "test_connection",
+        lambda host, port, user, pwd, ch: {"connected": False, "message": "Simulated offline"},
+    )
+
+    raw_pw = "UltraSecretCamPass!99"
+    post_resp = client.post(
+        "/api/cameras",
+        json={
+            "name": "Front Gate Cam",
+            "host": "192.168.1.200",
+            "port": 554,
+            "username": "admin",
+            "password": raw_pw,
+            "channel": "101",
+        },
+    )
+    assert post_resp.status_code == 200
+    cam_id = post_resp.json()["id"]
+    second_response = client.post(
+        "/api/cameras",
+        json={
+            "name": "Side Gate Cam",
+            "host": "192.168.1.201",
+            "port": 554,
+            "username": "admin",
+            "password": "another-secret",
+            "channel": "101",
+        },
+    )
+    assert second_response.status_code == 200
+    assert second_response.json()["id"] != cam_id
+
+    # 1. Verify SQLite stores Fernet ciphertext, never plaintext
+    conn = get_db_connection()
+    row = conn.execute("SELECT password FROM cameras WHERE id = ?;", (cam_id,)).fetchone()
+    conn.close()
+    assert row is not None
+    stored_pw = row["password"]
+    assert stored_pw != raw_pw
+    assert stored_pw.startswith(ENCRYPTED_PREFIX)
+    assert decrypt_camera_password(stored_pw) == raw_pw
+
+    # 2. Verify GET /api/cameras never exposes password or raw secret
+    list_resp = client.get("/api/cameras")
+    assert list_resp.status_code == 200
+    body_text = list_resp.text
+    assert raw_pw not in body_text
+    assert stored_pw not in body_text
+    cams = list_resp.json()
+    matched = [c for c in cams if c["id"] == cam_id][0]
+    assert "password" not in matched
+    assert "admin:****@192.168.1.200:554" in matched["rtspUrlMasked"]
+
+
+
 
 
 # ==========================================
@@ -179,6 +858,58 @@ def test_track_level_recognition_cache():
     
     # Immediate subsequent check -> should NOT verify (cached!)
     assert subject.should_verify_face(interval=1.0) is False
+
+
+def test_tracker_reid_skips_empty_lost_tracks_tiny_crops_and_throttles(monkeypatch):
+    import tracking.tracker as tracker_mod
+
+    tracker = LightweightIoUTracker(min_reid_crop_size=48, reid_cooldown_seconds=2.0, max_reid_per_frame=1)
+    frame = np.zeros((300, 300, 3), dtype=np.uint8)
+    calls = []
+
+    def fake_gen_emb(crop):
+        calls.append(crop.shape)
+        return [0.1] * 512
+
+    monkeypatch.setattr(tracker_mod.face_recognizer, "generate_embedding", fake_gen_emb)
+
+    # 1. Empty lost_tracks -> Re-ID must NOT run even for large crop
+    tracker.update_tracks([{"bbox": [10, 10, 120, 120], "confidence": 0.9}], [], frame_w=300, frame_h=300, frame=frame)
+    assert len(calls) == 0
+
+    # 2. Populate lost_tracks, but pass tiny crop (20x20 < 48px) -> Re-ID must skip
+    tracker.lost_tracks["#lost-1"] = {
+        "expiry_time": time.time(),
+        "embedding": [0.2] * 512,
+        "zone_entry_time": None,
+        "current_zone": "Outside ROI",
+        "snapshot_captured": False,
+        "snapshot_base64": None,
+        "snapshot_timestamp": None,
+        "face_status": "UNKNOWN",
+        "resident_name": None,
+        "face_confidence": 0.0,
+    }
+    tracker.update_tracks([{"bbox": [10, 10, 30, 30], "confidence": 0.9}], [], frame_w=300, frame_h=300, frame=frame)
+    assert len(calls) == 0
+
+    # 3. Multiple large unmatched detections -> max_reid_per_frame=1 caps to 1 call, and cooldown throttles repeat
+    tracker.update_tracks(
+        [
+            {"bbox": [140, 140, 220, 220], "confidence": 0.9},
+            {"bbox": [200, 200, 280, 280], "confidence": 0.9},
+        ],
+        [],
+        frame_w=300,
+        frame_h=300,
+        frame=frame,
+    )
+    assert len(calls) == 1
+
+    # Immediate repeat at same location is throttled by cooldown
+    tracker.tracks.clear()
+    tracker.update_tracks([{"bbox": [142, 142, 222, 222], "confidence": 0.9}], [], frame_w=300, frame_h=300, frame=frame)
+    assert len(calls) == 1
 
 
 # ==========================================
@@ -443,7 +1174,7 @@ def test_api_add_resident_invalid_photo_rejection():
     }
     response = client.post("/api/people", json=payload)
     assert response.status_code == 400
-    detail = response.json().get("detail", "")
+    detail = response.json().get("error", "")
     assert "No face detected" in detail
 
 
@@ -468,6 +1199,69 @@ def test_evaluation_manifest_loader():
         assert sc in inventory["missing_by_scenario"]
 
 
+def test_empty_evaluation_writes_inventory_without_metric_values(tmp_path, monkeypatch):
+    from evaluation import run_evaluation
+
+    dataset = tmp_path / "dataset"
+    dataset.mkdir()
+    (dataset / "labels.csv").write_text(
+        "video,scenario,expected_alert,resident_present,notes\nmissing.mp4,unknown_loitering,1,0,test\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_evaluation, "check_preconditions", lambda: (_ for _ in ()).throw(AssertionError("models must not load for empty data")))
+    output = tmp_path / "results"
+    report = run_evaluation.execute_evaluation(dataset, results_dir=output)
+    assert report["status"] == "INSUFFICIENT_DATASET"
+    assert report["inventory"]["clip_inventory"] == [{"video": "missing.mp4", "labelled": True}]
+    serialized = (output / "results.json").read_text()
+    markdown = (output / "results.md").read_text()
+    for key in ("precision", "recall", "f1_score", "false_alarms_per_hour", "false_accept_rate", "false_reject_rate"):
+        assert key not in serialized
+    assert "No accuracy metrics are available" in markdown
+    assert "precision" not in markdown.lower()
+
+
+def test_evaluation_manifest_handles_missing_or_malformed_labels(tmp_path):
+    from evaluation.run_evaluation import load_dataset_manifest
+
+    entries, inventory = load_dataset_manifest(tmp_path)
+    assert entries == []
+    assert inventory["invalid_rows"]
+    (tmp_path / "labels.csv").write_text("not,the,required,headers\n", encoding="utf-8")
+    entries, inventory = load_dataset_manifest(tmp_path)
+    assert entries == []
+    assert inventory["invalid_rows"]
+
+
+def test_evaluation_dataset_validator_reports_missing_extra_and_unlabelled(tmp_path):
+    import csv
+    from evaluation.dataset_validator import validate_dataset
+
+    (tmp_path / "extra.mp4").write_bytes(b"unit-test placeholder")
+    labels = tmp_path / "labels.csv"
+    with labels.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=["video", "scenario", "expected_alert", "resident_present", "notes"])
+        writer.writeheader()
+        writer.writerow({"video": "missing.mp4", "scenario": "test", "expected_alert": "0", "resident_present": "0", "notes": ""})
+    report = validate_dataset(tmp_path)
+    assert report["status"] == "INVALID_DATASET"
+    assert report["missing_files"] == ["missing.mp4"]
+    assert report["extra_files"] == ["extra.mp4"]
+    assert report["unlabelled_clips"] == ["extra.mp4"]
+
+
+def test_evaluation_dataset_validator_rejects_invalid_labels(tmp_path):
+    from evaluation.dataset_validator import validate_dataset
+
+    (tmp_path / "labels.csv").write_text(
+        "video,scenario,expected_alert,resident_present,notes\n../escape.mp4,x,yes,0,\n",
+        encoding="utf-8",
+    )
+    report = validate_dataset(tmp_path)
+    assert report["status"] == "INVALID_DATASET"
+    assert report["invalid_rows"]
+
+
 def test_evaluation_metrics_computation():
     """Verify compute_metrics calculates exact TP, FP, TN, FN, Precision, Recall, F1, and FA/hour."""
     from evaluation.run_evaluation import compute_metrics
@@ -488,6 +1282,19 @@ def test_evaluation_metrics_computation():
     assert pytest.approx(metrics["f1_score"], 0.01) == 2 / 3
     # 1 FP over 3600 seconds (1.0 hour) of negative footage -> 1.0 FA/hr
     assert pytest.approx(metrics["false_alarms_per_hour"], 0.01) == 1.0
+
+
+def test_evaluation_metrics_leave_undefined_rates_unreported():
+    from evaluation.run_evaluation import compute_metrics
+    metrics = compute_metrics([{
+        "expected_alert": 0, "actual_alert": False, "duration_seconds": 30.0,
+        "resident_present": 0, "recognized_residents": [],
+    }])
+    assert metrics["precision"] is None
+    assert metrics["recall"] is None
+    assert metrics["f1_score"] is None
+    assert metrics["false_accept_rate"] is None
+    assert metrics["false_reject_rate"] is None
 
 
 # ==========================================
@@ -560,5 +1367,278 @@ def test_evaluation_api_latest_endpoint():
     assert "status" in data
     assert "engine" in data
     assert data["engine"] == "InsightFace / ArcFace"
+    if data["status"] == "INSUFFICIENT_DATASET":
+        assert data["metrics"] is None
+        assert data["sample_size"] == 0
+        assert data["inventory"]["clips_on_disk_count"] == 0
 
 
+def test_frontend_does_not_present_unmeasured_accuracy_or_demo_counts():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    analytics = (root / "src" / "pages" / "AnalyticsPage.tsx").read_text()
+    landing = (root / "src" / "pages" / "LandingPage.tsx").read_text()
+    for fabricated in ("99.1% Alarm Accuracy", "98.2%", "99 times a day", "96 of them are just wind", "verified alerts / day"):
+        assert fabricated not in analytics + landing
+    assert "INSUFFICIENT_DATASET" in analytics
+    assert "no performance claims are measured here" in landing
+
+
+def test_privacy_copy_matches_test_mode_and_production_data_paths():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    modal = (root / "src" / "components" / "common" / "DeviceCameraTestModal.tsx").read_text()
+    settings = (root / "src" / "pages" / "SettingsPage.tsx").read_text()
+    architecture = (root / "docs" / "ARCHITECTURE.md").read_text()
+    backend_env_template = (root / "backend" / ".env.example").read_text()
+    assert "getConfiguredBackendHost()" in modal
+    assert "frames only to the configured Smart Vision backend" in modal
+    assert "processed in memory" in modal
+    assert "not written to persistent evidence storage" in modal
+    assert "Stopping Test Mode stops camera capture" in modal
+    assert "100% Local Privacy Notice" not in modal
+    assert "Zero raw video is ever uploaded" not in settings
+    assert "frames are sent to that cloud host" in settings
+    assert "VITE_API_KEY" not in backend_env_template
+    assert "API_KEY=change_me" not in backend_env_template
+    assert "CAMERA_SECRET=your_" not in backend_env_template
+    for path in ("/ws/test-camera", "DATA_DIR/evidence", "Telegram", "Supabase Auth", "face embeddings"):
+        assert path in architecture
+
+
+def test_supabase_url_has_no_hardcoded_default(monkeypatch):
+    import importlib
+    import config
+
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    reloaded = importlib.reload(config)
+    assert reloaded.SUPABASE_URL == ""
+
+
+def test_upload_validation_rate_limit_and_ws_frame_size_limit(monkeypatch):
+    import base64
+    import config
+    from api.people import reset_enrollment_rate_limiter
+
+    reset_enrollment_rate_limiter()
+    monkeypatch.setattr(config, "MAX_ENROLLMENT_PHOTOS", 2)
+    monkeypatch.setattr(config, "MAX_ENROLLMENT_IMAGE_BYTES", 512)
+    monkeypatch.setattr(config, "ENROLLMENT_RATE_LIMIT_PER_MIN", 3)
+    monkeypatch.setattr(config, "MAX_WS_FRAME_BYTES", 256)
+
+    # 1. Too many photos (> MAX_ENROLLMENT_PHOTOS) -> 400
+    r_many = client.post(
+        "/api/people",
+        json={"name": "Too Many", "face_images_base64": ["a", "b", "c"]},
+    )
+    assert r_many.status_code == 400
+    assert "Too many photos" in r_many.json()["error"]
+
+    # 2. Invalid MIME or non-image magic bytes -> 400
+    bad_magic = base64.b64encode(b"not-an-image-at-all-123456").decode("ascii")
+    r_type = client.post(
+        "/api/people",
+        json={"name": "Bad Format", "face_image_base64": bad_magic},
+    )
+    assert r_type.status_code == 400
+    assert "valid JPEG, PNG, or WebP" in r_type.json()["error"]
+
+    # 3. Oversized image (> MAX_ENROLLMENT_IMAGE_BYTES) -> 400
+    oversized = base64.b64encode(b"\xff\xd8\xff" + b"x" * 1024).decode("ascii")
+    r_size = client.post(
+        "/api/people",
+        json={"name": "Too Large", "face_image_base64": oversized},
+    )
+    assert r_size.status_code == 400
+    assert "exceeds maximum allowed size" in r_size.json()["error"]
+
+    # 4. 4th request within 60s exceeds ENROLLMENT_RATE_LIMIT_PER_MIN=3 -> 429
+    r_rate = client.post(
+        "/api/people",
+        json={"name": "Rate Limited"},
+    )
+    assert r_rate.status_code == 429
+    reset_enrollment_rate_limiter()
+
+    # 5. Oversized /ws/test-camera frame returns FRAME_TOO_LARGE error payload
+    with client.websocket_connect("/ws/test-camera") as ws:
+        ws.send_json({"image": oversized, "dwell_threshold": 10.0, "zones": []})
+        err_msg = ws.receive_json()
+        assert err_msg["code"] == "FRAME_TOO_LARGE"
+
+
+def test_vercel_serverless_api_removed_and_vercel_json_frontend_only():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    assert not (root / "api" / "index.py").exists()
+    vercel_cfg = json.loads((root / "vercel.json").read_text())
+    assert vercel_cfg.get("framework") == "vite"
+    assert all("/api" not in r.get("destination", "") for r in vercel_cfg.get("rewrites", []))
+
+
+def test_dockerfile_uses_secure_persistent_model_ready_runtime():
+    from pathlib import Path
+    dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text()
+    assert "FROM python:3.11-slim" in dockerfile
+    assert "https://download.pytorch.org/whl/cpu" in dockerfile
+    assert "torch==2.5.1+cpu torchvision==0.20.1+cpu" in dockerfile
+    assert "DEV_MODE=false" in dockerfile
+    assert "DATA_DIR=/data" in dockerfile
+    assert "MODELS_DIR=/opt/models" in dockerfile
+    assert "FaceAnalysis(name=\"buffalo_s\"" in dockerfile
+    assert "YOLO(\"yolov8n.pt\")" in dockerfile
+    assert "USER sentry" in dockerfile
+    assert "HEALTHCHECK" in dockerfile
+    assert "${PORT:-8000}" in dockerfile
+    assert "pip uninstall -y opencv-python opencv-python-headless" in dockerfile
+    assert "--force-reinstall --no-deps opencv-python-headless==4.10.0.84" in dockerfile
+    assert 'python -c "import cv2; print(cv2.__version__)"' in dockerfile
+    assert "onnx==1.19.0" in (Path(__file__).resolve().parents[2] / "backend" / "requirements.txt").read_text()
+
+
+def test_deployment_guide_and_tunnel_script_cover_supported_paths():
+    import subprocess
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    root_check = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"], cwd=repo,
+        capture_output=True, text=True, check=True,
+    )
+    assert root_check.stdout.strip().endswith("/Smart-Vision")
+    guide = (repo / "docs" / "DEPLOYMENT.md").read_text()
+    for section in ["Local Mac backend", "Hugging Face Spaces", "Railway Hobby/paid plan"]:
+        assert section in guide
+    for variable in ["VITE_API_BASE_URL", "VITE_WS_BASE_URL", "CAMERA_SECRET", "ALLOWED_ORIGINS"]:
+        assert variable in guide
+    assert "`TIMEZONE`" in guide and "Asia/Kolkata" in guide
+    subprocess.run(["bash", "-n", str(repo / "scripts" / "run_local_with_tunnel.sh")], check=True)
+
+    api_doc = (repo / "docs" / "API.md").read_text()
+    db_doc = (repo / "docs" / "DATABASE.md").read_text()
+    testing_doc = (repo / "docs" / "TESTING.md").read_text()
+    architecture_doc = (repo / "docs" / "ARCHITECTURE.md").read_text()
+    readme = (repo / "README.md").read_text()
+    assert "starlette==0.41.3" in (repo / "backend" / "requirements.txt").read_text()
+    assert "starlette==0.41.3" in (repo / "backend" / "requirements-ci.txt").read_text()
+    for endpoint in ["/api/health", "/api/cameras", "/api/people", "/api/zones", "/api/evidence/{file_path}", "/ws/cameras/{camera_id}", "/ws/test-camera"]:
+        assert endpoint in api_doc
+    from main import app
+    registered_paths = set()
+    visited = set()
+
+    def walk_routes(routes, prefix=""):
+        for route in routes or ():
+            if id(route) in visited:
+                continue
+            visited.add(id(route))
+            path = getattr(route, "path", None)
+            full_path = f"{prefix}{path}" if path else prefix
+            if path:
+                full_path = full_path.replace("//", "/").replace(":path", "")
+                if full_path.startswith(("/api/", "/ws/")):
+                    registered_paths.add(full_path)
+            nested_prefix = full_path if path else prefix
+            children = getattr(route, "routes", None)
+            if children is not None:
+                walk_routes(children, nested_prefix)
+            for attr in ("router", "app", "_router"):
+                child = getattr(route, attr, None)
+                child_routes = getattr(child, "routes", None)
+                if child_routes is not None:
+                    walk_routes(child_routes, nested_prefix)
+
+    walk_routes(app.routes)
+    for path in registered_paths:
+        assert path in api_doc, f"Registered API route missing from docs/API.md: {path}"
+    for table in ["cameras", "residents", "detection_zones", "alerts", "events"]:
+        assert f"`{table}`" in db_doc
+    assert "Python 3.11" in testing_doc
+    assert "UNVERIFIED_LOITERER" in architecture_doc
+    assert "resolve_dwell_threshold" in architecture_doc
+    assert "TIMEZONE" in architecture_doc
+    assert "TIMEZONE=Asia/Kolkata" in (repo / ".env.example").read_text()
+    assert "TIMEZONE=Asia/Kolkata" in (repo / "backend" / ".env.example").read_text()
+    assert "docs/API.md" in readme and "docs/DEPLOYMENT.md" in readme
+    assert "docs/EVALUATION_CHECKLIST.md" in readme
+    assert "No accuracy metrics are available" in readme
+    assert '"INSUFFICIENT_DATASET"' in api_doc
+    assert "actions/workflows/ci.yml/badge.svg" in readme
+
+
+def test_frontend_has_explicit_backend_unreachable_banner_and_retry():
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    banner = (repo / "src" / "components" / "common" / "BackendReachabilityBanner.tsx").read_text()
+    assert "Backend not reachable" in banner
+    assert "Demo/offline mode" in banner
+    assert "Configured API:" in banner
+    assert "Retry" in banner
+    assert "api.getHealth()" in banner
+
+
+def test_model_weights_and_directories_are_git_ignored():
+    import subprocess
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    for candidate in ["model.pt", "backend/data/models/buffalo_s/model.onnx", "backend/weights/model.bin"]:
+        result = subprocess.run(
+            ["git", "check-ignore", "--no-index", candidate], cwd=repo,
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, f"Not ignored: {candidate}"
+
+
+def test_frontend_starts_offline_until_health_confirms_backend():
+    from pathlib import Path
+    context = (Path(__file__).resolve().parents[2] / "src" / "context" / "SecurityContext.tsx").read_text()
+    assert "useState<OperatingMode>('OFFLINE')" in context
+    assert "useState<boolean>(false)" in context
+    assert "setOperatingMode('LIVE_CCTV')" in context
+
+
+def test_deployment_environment_paths_are_documented_in_env_example():
+    from pathlib import Path
+    example = (Path(__file__).resolve().parents[2] / ".env.example").read_text()
+    assert "DATA_DIR=" in example
+    assert "MODELS_DIR=" in example
+
+
+def test_error_boundary_wraps_every_page_with_friendly_fallback():
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    app_source = (repo / "src" / "App.tsx").read_text()
+    boundary_source = (repo / "src" / "components" / "common" / "PageErrorBoundary.tsx").read_text()
+    for page in ["Welcome", "Overview", "Live Monitor", "Alerts", "People", "Cameras", "Detection Zones", "Event History", "Analytics", "System Health", "Settings"]:
+        assert f"guardedPage('{page}'" in app_source
+    assert "role=\"alert\"" in boundary_source
+    assert "Retry page" in boundary_source
+
+
+def test_global_error_responses_include_request_id_and_log_context(caplog):
+    import logging
+    from main import app
+
+    def fail_request():
+        raise RuntimeError("private failure detail")
+
+    app.add_api_route("/_test/unhandled-error", fail_request, methods=["GET"])
+    test_client = TestClient(app, raise_server_exceptions=False)
+    with caplog.at_level(logging.INFO, logger="smart_vision.http"):
+        response = test_client.get("/_test/unhandled-error")
+    payload = response.json()
+    assert response.status_code == 500
+    assert set(payload) == {"error", "code", "request_id"}
+    assert payload["code"] == "INTERNAL_SERVER_ERROR"
+    assert payload["request_id"] == response.headers["X-Request-ID"]
+    assert any(getattr(record, "request_id", None) == payload["request_id"] for record in caplog.records)
+    assert "private failure detail" not in response.text
+
+
+def test_http_and_validation_errors_use_consistent_shape():
+    not_found = client.get("/_test/no-such-route")
+    assert not_found.status_code == 404
+    assert set(not_found.json()) == {"error", "code", "request_id"}
+    invalid = client.post("/api/cameras", json={})
+    assert invalid.status_code == 422
+    assert invalid.json()["code"] == "VALIDATION_ERROR"
+    assert set(invalid.json()) == {"error", "code", "request_id"}

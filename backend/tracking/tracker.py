@@ -98,12 +98,47 @@ class LightweightIoUTracker:
     Performs frame-to-frame bounding box association, maintains independent track IDs,
     dwell timers, track recognition cache, and cleans up stale tracks.
     """
-    def __init__(self, iou_threshold: float = 0.15, max_staleness_seconds: float = 2.0):
+    def __init__(
+        self,
+        iou_threshold: float = 0.15,
+        max_staleness_seconds: float = 2.0,
+        min_reid_crop_size: int = 48,
+        reid_cooldown_seconds: float = 1.0,
+        max_reid_per_frame: int = 2,
+    ):
         self.tracks: Dict[str, TrackedSubject] = {}
         self.lost_tracks: Dict[str, dict] = {}
         self.next_id_counter = 1
         self.iou_threshold = iou_threshold
         self.max_staleness_seconds = max_staleness_seconds
+        self.min_reid_crop_size = min_reid_crop_size
+        self.reid_cooldown_seconds = reid_cooldown_seconds
+        self.max_reid_per_frame = max_reid_per_frame
+        self._reid_last_attempt: Dict[tuple, float] = {}
+
+    def _should_attempt_reid(self, det_bbox: List[float], crop: np.ndarray, now: float) -> bool:
+        if crop is None or crop.size == 0:
+            return False
+        crop_h, crop_w = crop.shape[:2]
+        if crop_w < self.min_reid_crop_size or crop_h < self.min_reid_crop_size:
+            return False
+
+        # Quantize bbox center to a 40px grid to throttle repeated Re-ID attempts on the same detection
+        cx = int(((det_bbox[0] + det_bbox[2]) * 0.5) // 40)
+        cy = int(((det_bbox[1] + det_bbox[3]) * 0.5) // 40)
+        cell_key = (cx, cy)
+
+        # Prune old cooldown entries
+        expired = [k for k, ts in self._reid_last_attempt.items() if (now - ts) > self.reid_cooldown_seconds * 5.0]
+        for k in expired:
+            del self._reid_last_attempt[k]
+
+        last_ts = self._reid_last_attempt.get(cell_key)
+        if last_ts is not None and (now - last_ts) < self.reid_cooldown_seconds:
+            return False
+
+        self._reid_last_attempt[cell_key] = now
+        return True
 
     def update_tracks(
         self,
@@ -176,7 +211,8 @@ class LightweightIoUTracker:
                 matched_tracks.add(best_tid)
                 unmatched_detections.remove(det_idx)
 
-        # 3. Create new tracks for unmatched detections with ArcFace Re-ID attempt
+        # 3. Create new tracks for unmatched detections with throttled ArcFace Re-ID attempt
+        reid_attempts_this_frame = 0
         for det_idx in unmatched_detections:
             det = detections[det_idx]
             det_bbox = det.get("bbox")
@@ -186,15 +222,20 @@ class LightweightIoUTracker:
 
             matched_zones = check_person_zones(det_bbox, frame_w, frame_h, zones)
             zone_name = matched_zones[0]["name"] if matched_zones else "Outside ROI"
-            
-            # Re-ID logic using ArcFace cosine similarity
+
+            # Re-ID logic: only when lost_tracks is non-empty, crop is large enough, and within throttle budget
             best_lost_tid = None
             highest_sim = 0.0
             new_emb = None
-            if frame is not None and self.lost_tracks:
+            if (
+                frame is not None
+                and self.lost_tracks
+                and reid_attempts_this_frame < self.max_reid_per_frame
+            ):
                 x1, y1, x2, y2 = [int(v) for v in det_bbox]
                 crop = frame[max(0, y1):min(frame_h, y2), max(0, x1):min(frame_w, x2)]
-                if crop.size > 0:
+                if self._should_attempt_reid(det_bbox, crop, now):
+                    reid_attempts_this_frame += 1
                     new_emb = face_recognizer.generate_embedding(crop)
                     if new_emb and len(new_emb) > 0:
                         crop_vec = np.array(new_emb, dtype=np.float32)
@@ -206,7 +247,7 @@ class LightweightIoUTracker:
                             if sim > highest_sim:
                                 highest_sim = sim
                                 best_lost_tid = l_tid
-            
+
             if best_lost_tid is not None and highest_sim >= 0.60:
                 # Re-attach to lost track history
                 track_id = best_lost_tid

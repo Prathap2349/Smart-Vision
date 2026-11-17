@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from database import get_db_connection
+from services.security import sign_evidence_url
 
 router = APIRouter(tags=["alerts"])
 
@@ -31,6 +32,8 @@ def get_alerts():
             f"Human detected ({int(r['confidence'] * 100)}%), dwelt for {int(r['dwell_duration'])}s, "
             f"face status: {r['face_status']}."
         )
+        raw_snap = r["snapshot_path"]
+        signed_snap = sign_evidence_url(raw_snap) if raw_snap else None
         result.append({
             "id": r["id"],
             "timestamp": r["timestamp"],
@@ -44,7 +47,7 @@ def get_alerts():
             "confidence": r["confidence"],
             "severity": r["severity"],
             "status": r["status"],
-            "snapshotUrl": r["snapshot_path"],
+            "snapshotUrl": signed_snap,
             "telegramDelivered": bool(r["telegram_delivered"]),
             "telegramLatency": r["telegram_latency"],
             "falsePositiveReason": r["false_positive_reason"],

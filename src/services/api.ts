@@ -1,4 +1,5 @@
 import { SecurityAlert, ResidentPerson, UnknownPerson, CameraDevice, DetectionZone, SystemMetrics } from '../types';
+import { supabase } from './supabase';
 
 const getApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
@@ -14,6 +15,48 @@ const getApiBase = () => {
 };
 
 export const API_BASE = getApiBase();
+
+export async function getAccessToken(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      return data.session.access_token;
+    }
+  } catch {
+    // Ignore session lookup errors in offline/dev mode
+  }
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('svs_access_token');
+    if (stored) return stored;
+  }
+  return null;
+}
+
+export async function getAuthHeaders(extraHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extraHeaders };
+  const token = await getAccessToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+export async function appendAuthQuery(url: string): Promise<string> {
+  const params = new URLSearchParams();
+  const token = await getAccessToken();
+  if (token) {
+    params.set('token', token);
+  }
+  const qs = params.toString();
+  if (!qs) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}${qs}`;
+}
+
+async function authFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const existingHeaders = (init.headers as Record<string, string>) || {};
+  const headers = await getAuthHeaders(existingHeaders);
+  return fetch(url, { ...init, headers });
+}
 
 export const api = {
   async getHealth() {
@@ -50,7 +93,7 @@ export const api = {
   async getCameras(userId?: string): Promise<CameraDevice[]> {
     try {
       const url = userId ? `${API_BASE}/cameras?user_id=${encodeURIComponent(userId)}` : `${API_BASE}/cameras`;
-      const res = await fetch(url);
+      const res = await authFetch(url);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {
@@ -60,7 +103,7 @@ export const api = {
 
   async addCamera(camData: any) {
     try {
-      const res = await fetch(`${API_BASE}/cameras`, {
+      const res = await authFetch(`${API_BASE}/cameras`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(camData),
@@ -76,7 +119,7 @@ export const api = {
     cameraId = 'cam-01'
   ) {
     try {
-      const res = await fetch(`${API_BASE}/cameras/${cameraId}/test`, {
+      const res = await authFetch(`${API_BASE}/cameras/${cameraId}/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(camData),
@@ -93,7 +136,7 @@ export const api = {
 
   async getAnalytics() {
     try {
-      const res = await fetch(`${API_BASE}/analytics`);
+      const res = await authFetch(`${API_BASE}/analytics`);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {
@@ -119,7 +162,7 @@ export const api = {
 
   async scanOnvifNetwork() {
     try {
-      const res = await fetch(`${API_BASE}/cameras/onvif/scan`);
+      const res = await authFetch(`${API_BASE}/cameras/onvif/scan`);
       if (!res.ok) throw new Error('Scan failed');
       return await res.json();
     } catch {
@@ -129,7 +172,7 @@ export const api = {
 
   async getAlerts(): Promise<SecurityAlert[]> {
     try {
-      const res = await fetch(`${API_BASE}/alerts`);
+      const res = await authFetch(`${API_BASE}/alerts`);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {
@@ -139,7 +182,7 @@ export const api = {
 
   async sendFalsePositiveFeedback(alertId: string, reason: string) {
     try {
-      const res = await fetch(`${API_BASE}/alerts/${alertId}/feedback`, {
+      const res = await authFetch(`${API_BASE}/alerts/${alertId}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason }),
@@ -152,7 +195,7 @@ export const api = {
 
   async getPeople(): Promise<{ residents: ResidentPerson[]; unknownPersons: UnknownPerson[] }> {
     try {
-      const res = await fetch(`${API_BASE}/people`);
+      const res = await authFetch(`${API_BASE}/people`);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {
@@ -162,7 +205,7 @@ export const api = {
 
   async addResident(residentData: { name: string; role?: string; avatar_url?: string; face_image_base64?: string }) {
     try {
-      const res = await fetch(`${API_BASE}/people`, {
+      const res = await authFetch(`${API_BASE}/people`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(residentData),
@@ -175,7 +218,7 @@ export const api = {
 
   async deleteResident(id: string) {
     try {
-      const res = await fetch(`${API_BASE}/people/${id}`, {
+      const res = await authFetch(`${API_BASE}/people/${id}`, {
         method: 'DELETE',
       });
       return await res.json();
@@ -186,7 +229,7 @@ export const api = {
 
   async getZones(): Promise<DetectionZone[]> {
     try {
-      const res = await fetch(`${API_BASE}/zones`);
+      const res = await authFetch(`${API_BASE}/zones`);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {
@@ -196,7 +239,7 @@ export const api = {
 
   async getSystemMetrics(): Promise<SystemMetrics> {
     try {
-      const res = await fetch(`${API_BASE}/system/metrics`);
+      const res = await authFetch(`${API_BASE}/system/metrics`);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {
@@ -224,7 +267,7 @@ export const api = {
 
   async getIntegrationsStatus() {
     try {
-      const res = await fetch(`${API_BASE}/integrations/hikconnect`);
+      const res = await authFetch(`${API_BASE}/integrations/hikconnect`);
       return await res.json();
     } catch {
       return {
@@ -237,7 +280,7 @@ export const api = {
 
   async getLatestEvaluation() {
     try {
-      const res = await fetch(`${API_BASE}/evaluation/latest`);
+      const res = await authFetch(`${API_BASE}/evaluation/latest`);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch {

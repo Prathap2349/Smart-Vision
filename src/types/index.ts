@@ -116,7 +116,7 @@ export interface PipelineGateState {
   gate1Human: { pass: boolean; confidence: number; label: string };
   gate2Dwell: { pass: boolean; dwellSeconds: number; thresholdSeconds: number; label: string };
   gate3Unknown: { pass: boolean; faceStatus: string; label: string };
-  finalDecision: 'VERIFIED_THREAT' | 'SAFE_RESIDENT' | 'MONITORING' | 'ENVIRONMENTAL_MOTION';
+  finalDecision: 'VERIFIED_THREAT' | 'UNVERIFIED_LOITERER' | 'SAFE_RESIDENT' | 'MONITORING' | 'ENVIRONMENTAL_MOTION';
 }
 
 export interface AISettings {

@@ -1,0 +1,138 @@
+{
+  "status": "INSUFFICIENT_DATASET",
+  "inventory": {
+    "total_manifest_entries": 20,
+    "existing_clips_count": 0,
+    "missing_clips_count": 20,
+    "existing_by_scenario": {
+      "empty_corridor": 0,
+      "shadows_wind": 0,
+      "animals": 0,
+      "resident": 0,
+      "resident_lingering": 0,
+      "delivery_person": 0,
+      "unknown_loitering": 0,
+      "night_low_light": 0,
+      "multiple_people": 0,
+      "occlusion": 0,
+      "mask_cap": 0
+    },
+    "missing_by_scenario": {
+      "empty_corridor": 2,
+      "shadows_wind": 2,
+      "animals": 2,
+      "resident": 2,
+      "resident_lingering": 2,
+      "delivery_person": 2,
+      "unknown_loitering": 2,
+      "night_low_light": 2,
+      "multiple_people": 2,
+      "occlusion": 1,
+      "mask_cap": 1
+    },
+    "missing_scenarios": [
+      "empty_corridor",
+      "shadows_wind",
+      "animals",
+      "resident",
+      "resident_lingering",
+      "delivery_person",
+      "unknown_loitering",
+      "night_low_light",
+      "multiple_people",
+      "occlusion",
+      "mask_cap"
+    ],
+    "clip_inventory": [
+      {
+        "video": "animals/clip_01_cat_passage.mp4",
+        "labelled": true
+      },
+      {
+        "video": "animals/clip_02_dog_running.mp4",
+        "labelled": true
+      },
+      {
+        "video": "delivery_person/clip_01_courier_drop.mp4",
+        "labelled": true
+      },
+      {
+        "video": "delivery_person/clip_02_food_delivery.mp4",
+        "labelled": true
+      },
+      {
+        "video": "empty_corridor/clip_01_empty.mp4",
+        "labelled": true
+      },
+      {
+        "video": "empty_corridor/clip_02_empty.mp4",
+        "labelled": true
+      },
+      {
+        "video": "mask_cap/clip_01_masked_intruder.mp4",
+        "labelled": true
+      },
+      {
+        "video": "multiple_people/clip_01_resident_plus_guest.mp4",
+        "labelled": true
+      },
+      {
+        "video": "multiple_people/clip_02_two_strangers_loiter.mp4",
+        "labelled": true
+      },
+      {
+        "video": "night_low_light/clip_01_night_loiter.mp4",
+        "labelled": true
+      },
+      {
+        "video": "night_low_light/clip_02_ir_walkby.mp4",
+        "labelled": true
+      },
+      {
+        "video": "occlusion/clip_01_pillar_hide.mp4",
+        "labelled": true
+      },
+      {
+        "video": "resident/clip_01_alice_passage.mp4",
+        "labelled": true
+      },
+      {
+        "video": "resident/clip_02_bob_passage.mp4",
+        "labelled": true
+      },
+      {
+        "video": "resident_lingering/clip_01_alice_loiter.mp4",
+        "labelled": true
+      },
+      {
+        "video": "resident_lingering/clip_02_bob_loiter.mp4",
+        "labelled": true
+      },
+      {
+        "video": "shadows_wind/clip_01_shadows.mp4",
+        "labelled": true
+      },
+      {
+        "video": "shadows_wind/clip_02_sunlight.mp4",
+        "labelled": true
+      },
+      {
+        "video": "unknown_loitering/clip_01_stranger_door.mp4",
+        "labelled": true
+      },
+      {
+        "video": "unknown_loitering/clip_02_stranger_vestibule.mp4",
+        "labelled": true
+      }
+    ],
+    "extra_files": [],
+    "unlabelled_clips": [],
+    "invalid_rows": []
+  },
+  "sample_sizes": {
+    "labelled_clips_on_disk": 0,
+    "tuning": 0,
+    "held_out": 0
+  },
+  "warning": "At least two real, labelled clips are required to create disjoint tuning and held-out splits; 10-12 clips are recommended for a small first evaluation."
+}

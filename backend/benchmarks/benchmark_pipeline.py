@@ -385,7 +385,13 @@ def run_stream_worker(
     """Worker function executing single pipeline instance in concurrent multi-stream mode."""
     source = FrameSource(source_path)
     tracker = LightweightIoUTracker()
-    zones = [{"id": "z1", "name": "Zone", "type": "CORRIDOR", "dwell_threshold": 20, "polygonPoints": []}]
+    zones = [{
+        "id": "z1",
+        "name": "Corridor Protection Zone",
+        "type": "CORRIDOR",
+        "dwell_threshold": 20,
+        "polygonPoints": [{"x": 10, "y": 10}, {"x": 90, "y": 10}, {"x": 90, "y": 90}, {"x": 10, "y": 90}],
+    }]
     
     latencies = []
     t_start = time.perf_counter()
@@ -514,6 +520,13 @@ def run_endurance_mode(duration_seconds: int = 1800, source_path: Optional[str] 
     start_time = time.perf_counter()
     interval_start = start_time
 
+    zones = [{
+        "id": "z1",
+        "name": "Corridor Protection Zone",
+        "type": "CORRIDOR",
+        "dwell_threshold": 20,
+        "polygonPoints": [{"x": 10, "y": 10}, {"x": 90, "y": 10}, {"x": 90, "y": 90}, {"x": 10, "y": 90}],
+    }]
     while (time.perf_counter() - start_time) < duration_seconds:
         ret, frame = source.read_frame()
         if not ret or frame is None:
@@ -522,7 +535,7 @@ def run_endurance_mode(duration_seconds: int = 1800, source_path: Optional[str] 
 
         h, w = frame.shape[:2]
         dets = yolo_detector.detect(frame, conf_threshold=0.60)
-        tracks = tracker.update_tracks(dets, [], frame_w=w, frame_h=h)
+        tracks = tracker.update_tracks(dets, zones, frame_w=w, frame_h=h, frame=frame)
         for t in tracks:
             if t.should_verify_face(interval=TRACK_RECOGNITION_INTERVAL):
                 x1, y1, x2, y2 = [int(v) for v in t.bbox]
