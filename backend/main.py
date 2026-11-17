@@ -1,11 +1,15 @@
 import asyncio
+import logging
 import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import config
 from config import EVIDENCE_DIR, ALLOWED_ORIGINS
@@ -22,6 +26,21 @@ from ai.decision_engine import decision_engine
 from alerts.alert_manager import alert_manager
 from camera.rtsp_stream import rtsp_manager
 from detection_loop import detection_loop, pipeline_registry
+
+logger = logging.getLogger("smart_vision.http")
+
+
+def _request_id(request: Request) -> str:
+    return getattr(request.state, "request_id", None) or str(uuid.uuid4())
+
+
+def _error_response(request: Request, status_code: int, error: str, code: str) -> JSONResponse:
+    request_id = _request_id(request)
+    return JSONResponse(
+        status_code=status_code,
+        content={"error": error, "code": code, "request_id": request_id},
+        headers={"X-Request-ID": request_id},
+    )
 
 
 @asynccontextmanager
@@ -62,7 +81,7 @@ async def auth_middleware(request: Request, call_next):
         and not path.startswith("/api/evidence/")
     ):
         if not is_request_authenticated(request):
-            return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+            return _error_response(request, 401, "Authentication required", "AUTHENTICATION_REQUIRED")
     return await call_next(request)
 
 
@@ -74,6 +93,51 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    detail = exc.detail if isinstance(exc.detail, str) else "Request failed"
+    return _error_response(request, exc.status_code, detail, f"HTTP_{exc.status_code}")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return _error_response(request, 422, "Request validation failed", "VALIDATION_ERROR")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    request_id = _request_id(request)
+    logger.exception(
+        "unhandled_request_error",
+        extra={"request_id": request_id, "method": request.method, "path": request.url.path},
+    )
+    return _error_response(request, 500, "Internal server error", "INTERNAL_SERVER_ERROR")
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    started = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        logger.info(
+            "http_request",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": status_code,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            },
+        )
 
 
 @app.get("/api/evidence/{file_path:path}")

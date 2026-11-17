@@ -590,6 +590,8 @@ def test_auth_required_when_dev_mode_disabled_and_health_public(monkeypatch):
     for path in ["/api/cameras", "/api/alerts", "/api/people", "/api/zones", "/api/system/metrics"]:
         resp = client.get(path)
         assert resp.status_code == 401
+        assert set(resp.json()) == {"error", "code", "request_id"}
+        assert resp.headers["X-Request-ID"] == resp.json()["request_id"]
 
     # 3. Valid X-API-Key header succeeds
     assert client.get("/api/cameras", headers={"X-API-Key": "test-api-key-999"}).status_code == 200
@@ -1120,7 +1122,7 @@ def test_api_add_resident_invalid_photo_rejection():
     }
     response = client.post("/api/people", json=payload)
     assert response.status_code == 400
-    detail = response.json().get("detail", "")
+    detail = response.json().get("error", "")
     assert "No face detected" in detail
 
 
@@ -1265,7 +1267,7 @@ def test_upload_validation_rate_limit_and_ws_frame_size_limit(monkeypatch):
         json={"name": "Too Many", "face_images_base64": ["a", "b", "c"]},
     )
     assert r_many.status_code == 400
-    assert "Too many photos" in r_many.json()["detail"]
+    assert "Too many photos" in r_many.json()["error"]
 
     # 2. Invalid MIME or non-image magic bytes -> 400
     bad_magic = base64.b64encode(b"not-an-image-at-all-123456").decode("ascii")
@@ -1274,7 +1276,7 @@ def test_upload_validation_rate_limit_and_ws_frame_size_limit(monkeypatch):
         json={"name": "Bad Format", "face_image_base64": bad_magic},
     )
     assert r_type.status_code == 400
-    assert "valid JPEG, PNG, or WebP" in r_type.json()["detail"]
+    assert "valid JPEG, PNG, or WebP" in r_type.json()["error"]
 
     # 3. Oversized image (> MAX_ENROLLMENT_IMAGE_BYTES) -> 400
     oversized = base64.b64encode(b"\xff\xd8\xff" + b"x" * 1024).decode("ascii")
@@ -1283,7 +1285,7 @@ def test_upload_validation_rate_limit_and_ws_frame_size_limit(monkeypatch):
         json={"name": "Too Large", "face_image_base64": oversized},
     )
     assert r_size.status_code == 400
-    assert "exceeds maximum allowed size" in r_size.json()["detail"]
+    assert "exceeds maximum allowed size" in r_size.json()["error"]
 
     # 4. 4th request within 60s exceeds ENROLLMENT_RATE_LIMIT_PER_MIN=3 -> 429
     r_rate = client.post(
@@ -1387,3 +1389,33 @@ def test_error_boundary_wraps_every_page_with_friendly_fallback():
         assert f"guardedPage('{page}'" in app_source
     assert "role=\"alert\"" in boundary_source
     assert "Retry page" in boundary_source
+
+
+def test_global_error_responses_include_request_id_and_log_context(caplog):
+    import logging
+    from main import app
+
+    def fail_request():
+        raise RuntimeError("private failure detail")
+
+    app.add_api_route("/_test/unhandled-error", fail_request, methods=["GET"])
+    test_client = TestClient(app, raise_server_exceptions=False)
+    with caplog.at_level(logging.INFO, logger="smart_vision.http"):
+        response = test_client.get("/_test/unhandled-error")
+    payload = response.json()
+    assert response.status_code == 500
+    assert set(payload) == {"error", "code", "request_id"}
+    assert payload["code"] == "INTERNAL_SERVER_ERROR"
+    assert payload["request_id"] == response.headers["X-Request-ID"]
+    assert any(getattr(record, "request_id", None) == payload["request_id"] for record in caplog.records)
+    assert "private failure detail" not in response.text
+
+
+def test_http_and_validation_errors_use_consistent_shape():
+    not_found = client.get("/_test/no-such-route")
+    assert not_found.status_code == 404
+    assert set(not_found.json()) == {"error", "code", "request_id"}
+    invalid = client.post("/api/cameras", json={})
+    assert invalid.status_code == 422
+    assert invalid.json()["code"] == "VALIDATION_ERROR"
+    assert set(invalid.json()) == {"error", "code", "request_id"}
