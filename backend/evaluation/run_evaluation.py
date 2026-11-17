@@ -96,9 +96,23 @@ def load_dataset_manifest(dataset_dir: Path) -> Tuple[List[Dict[str, Any]], Dict
     Returns:
         (registered_clips, dataset_inventory_report)
     """
+    from evaluation.dataset_validator import validate_dataset
+    try:
+        disk_audit = validate_dataset(dataset_dir)
+    except (OSError, ValueError) as exc:
+        return [], {
+            "total_manifest_entries": 0,
+            "existing_clips_count": 0,
+            "missing_clips_count": 0,
+            "existing_by_scenario": {s: 0 for s in ALL_REQUIRED_SCENARIOS},
+            "missing_by_scenario": {s: 0 for s in ALL_REQUIRED_SCENARIOS},
+            "missing_scenarios": list(ALL_REQUIRED_SCENARIOS),
+            "clip_inventory": [],
+            "extra_files": [],
+            "unlabelled_clips": [],
+            "invalid_rows": [{"reason": str(exc)}],
+        }
     labels_file = dataset_dir / "labels.csv"
-    if not labels_file.exists():
-        return [], {"error": f"labels.csv not found at {labels_file}"}
 
     manifest_entries = []
     with open(labels_file, "r") as f:
@@ -128,8 +142,6 @@ def load_dataset_manifest(dataset_dir: Path) -> Tuple[List[Dict[str, Any]], Dict
             else:
                 missing_by_scenario[scen] += 1
 
-    from evaluation.dataset_validator import validate_dataset
-    disk_audit = validate_dataset(dataset_dir)
     inventory = {
         "total_manifest_entries": len(manifest_entries),
         "existing_clips_count": sum(existing_by_scenario.values()),

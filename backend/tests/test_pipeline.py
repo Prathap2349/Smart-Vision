@@ -1179,6 +1179,18 @@ def test_empty_evaluation_writes_inventory_without_metric_values(tmp_path, monke
     assert "precision" not in markdown.lower()
 
 
+def test_evaluation_manifest_handles_missing_or_malformed_labels(tmp_path):
+    from evaluation.run_evaluation import load_dataset_manifest
+
+    entries, inventory = load_dataset_manifest(tmp_path)
+    assert entries == []
+    assert inventory["invalid_rows"]
+    (tmp_path / "labels.csv").write_text("not,the,required,headers\n", encoding="utf-8")
+    entries, inventory = load_dataset_manifest(tmp_path)
+    assert entries == []
+    assert inventory["invalid_rows"]
+
+
 def test_evaluation_dataset_validator_reports_missing_extra_and_unlabelled(tmp_path):
     import csv
     from evaluation.dataset_validator import validate_dataset
