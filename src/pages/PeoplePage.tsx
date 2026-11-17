@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 
 export const PeoplePage: React.FC = () => {
-  const { residents, unknownPersons, addResident, deleteResident } = useSecurity();
+  const { residents, unknownPersons, addResident, deleteResident, operatingMode } = useSecurity();
+  const isOffline = operatingMode === 'OFFLINE';
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [newName, setNewName] = useState<string>('');
@@ -87,7 +88,7 @@ export const PeoplePage: React.FC = () => {
           }
         />
 
-        {residents.length === 0 ? (
+        {isOffline ? <Card className="p-4 text-sm text-text-secondary">Household records unavailable — backend status is unknown.</Card> : residents.length === 0 ? (
           <EmptyState
             title="No Household Members Added"
             description="Add your family members or roommates so Smart Vision recognizes them and never sends unnecessary false alarms when they are at home."
@@ -171,7 +172,7 @@ export const PeoplePage: React.FC = () => {
           icon={<UserX className="w-5 h-5" />}
         />
 
-        {unknownPersons.length === 0 ? (
+        {isOffline ? <Card className="p-4 text-sm text-text-secondary">Visitor history unavailable — backend status is unknown.</Card> : unknownPersons.length === 0 ? (
           <EmptyState
             title="No Unrecognized Persons"
             description="No unfamiliar people have been spotted in your protected areas."

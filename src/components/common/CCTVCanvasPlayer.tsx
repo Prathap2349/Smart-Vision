@@ -15,6 +15,7 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
     zones,
     isRealCameraMode,
     isSimulating,
+    operatingMode,
     cameras,
     metrics,
     setDeviceCameraModalOpen,
@@ -133,7 +134,10 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
       const camLabel = activeCamera?.name ?? 'Camera';
       ctx.fillStyle = '#ffffff';
       ctx.font = '600 11px Inter, sans-serif';
-      ctx.fillText(`● LIVE — ${camLabel}`, 12, 20);
+      const feedLabel = operatingMode === 'OFFLINE' || operatingMode === 'DEMO_SIMULATION'
+        ? 'DEMO PREVIEW • SIMULATED'
+        : operatingMode === 'DEVICE_CAMERA_TEST' ? 'CAMERA TEST' : `LIVE — ${camLabel}`;
+      ctx.fillText(feedLabel, 12, 20);
 
       const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
       ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -152,6 +156,7 @@ export const CCTVCanvasPlayer: React.FC<CCTVCanvasPlayerProps> = ({ cameraId: ca
     zones,
     isRealCameraMode,
     isSimulating,
+    operatingMode,
     showDemoOverlay,
     activeCamera,
     cameraId,
