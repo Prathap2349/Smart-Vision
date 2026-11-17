@@ -1358,6 +1358,14 @@ def test_deployment_guide_and_tunnel_script_cover_supported_paths():
     readme = (repo / "README.md").read_text()
     for endpoint in ["/api/health", "/api/cameras", "/api/people", "/api/zones", "/api/evidence/{file_path}", "/ws/cameras/{camera_id}", "/ws/test-camera"]:
         assert endpoint in api_doc
+    from main import app
+    registered_paths = {
+        route.path.replace(":path", "")
+        for route in app.routes
+        if route.path.startswith(("/api/", "/ws/"))
+    }
+    for path in registered_paths:
+        assert path in api_doc, f"Registered API route missing from docs/API.md: {path}"
     for table in ["cameras", "residents", "detection_zones", "alerts", "events"]:
         assert f"`{table}`" in db_doc
     assert "Python 3.11" in testing_doc
