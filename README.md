@@ -242,7 +242,7 @@ npm ci && npm run build
 scripts/run_local_with_tunnel.sh
 ```
 
-Read [Deployment](docs/DEPLOYMENT.md) for host setup, environment variables, and the HTTPS/WSS mixed-content requirement. API auth and evidence URLs are described in [API](docs/API.md). See [Database](docs/DATABASE.md), [Testing](docs/TESTING.md), and [Architecture](docs/ARCHITECTURE.md) for implementation details.
+Read [Deployment](docs/DEPLOYMENT.md) for host setup, environment variables, and the HTTPS/WSS mixed-content requirement. API auth and evidence URLs are described in [API](docs/API.md). See [Database](docs/DATABASE.md), [Testing](docs/TESTING.md), [Architecture](docs/ARCHITECTURE.md), and the [Phase 3 submission report](docs/PHASE3_REPORT.md). Release history is in [CHANGELOG.md](CHANGELOG.md).
 
 The CI workflow tests the backend on Python 3.11, builds the frontend, and runs a separate Docker image build job.
 
