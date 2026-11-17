@@ -1,5 +1,6 @@
 import datetime
-from typing import Dict, Any, Optional
+from typing import Callable, Dict, Any, Optional
+from zoneinfo import ZoneInfo
 from config import (
     ENABLE_SCHEDULED_PROFILES,
     NIGHT_START_HOUR,
@@ -8,10 +9,15 @@ from config import (
     DAY_DWELL_THRESHOLD,
     ALERT_ON_UNVERIFIED_FACE,
     GATE_HUMAN_CONFIDENCE_THRESHOLD,
+    TIMEZONE,
 )
 
 
 class DecisionEngine:
+    def __init__(self, clock: Optional[Callable[[datetime.tzinfo], datetime.datetime]] = None):
+        # Clock injection keeps schedule decisions deterministic in tests.
+        self._clock = clock or datetime.datetime.now
+
     def get_current_schedule_profile(self) -> Dict[str, Any]:
         """
         Scheduled Sensitivity Profiles:
@@ -20,7 +26,7 @@ class DecisionEngine:
         if not ENABLE_SCHEDULED_PROFILES:
             return {"name": "STANDARD", "dwell_threshold": DAY_DWELL_THRESHOLD}
 
-        current_hour = datetime.datetime.now().hour
+        current_hour = self._clock(ZoneInfo(TIMEZONE)).hour
         is_night = (current_hour >= NIGHT_START_HOUR) or (current_hour < NIGHT_END_HOUR)
 
         if is_night:

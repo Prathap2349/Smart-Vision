@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "data"))).expanduser()
@@ -18,6 +19,9 @@ except ImportError:
     pass
 
 DB_PATH = DATA_DIR / "smart_vision.db"
+TIMEZONE = os.getenv("TIMEZONE", "Asia/Kolkata")
+# Validate the configured IANA timezone during startup rather than on first request.
+ZoneInfo(TIMEZONE)
 
 # Default Hikvision Environment settings
 HIKVISION_HOST = os.getenv("HIKVISION_HOST", "192.168.1.104")

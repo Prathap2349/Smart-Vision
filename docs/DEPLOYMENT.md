@@ -30,6 +30,7 @@ Set backend secrets in the host's secret manager, not in source control. `DEV_MO
 | `ALLOWED_ORIGINS` | Comma-separated exact frontend origins, for example `https://your-app.vercel.app`. |
 | `DATA_DIR` | Writable persistent data directory; defaults to `backend/data` locally. Container default is `/data`. |
 | `MODELS_DIR` | Model storage path; defaults to `${DATA_DIR}/models`. Container uses baked models under `/opt/models`. |
+| `TIMEZONE` | IANA timezone for scheduled day/night sensitivity profiles; defaults to `Asia/Kolkata`. |
 | `HIKVISION_HOST` | Local camera host/IP. Cloud hosts cannot reach a private `192.168.x.x` LAN address. |
 | `HIKVISION_RTSP_PORT` | RTSP port (default `554`). |
 | `HIKVISION_USERNAME` / `HIKVISION_PASSWORD` | Camera credentials used by local setup defaults. Prefer adding credentials through the authenticated camera API. |

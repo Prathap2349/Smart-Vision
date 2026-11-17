@@ -56,3 +56,5 @@ The Test Mode banner identifies the configured WebSocket backend host. Hosting t
 ## Configuration thresholds
 
 The runtime values are defined in `backend/config.py`: detector confidence `0.65`, Gate 1 human confidence `0.70`, face embedding similarity `0.50`, minimum face size `32` px, minimum blur score `30`, and face recognition interval `1.0` second by default. Confidence cutoffs refer to different pipeline stages and should not be interchanged.
+
+The day/night schedule reads the current time in the configured IANA `TIMEZONE` (default `Asia/Kolkata`), not the container's host-local timezone. Set `TIMEZONE` in the backend environment when the property uses a different timezone.
