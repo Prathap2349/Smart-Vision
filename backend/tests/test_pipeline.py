@@ -1342,6 +1342,23 @@ def test_frontend_does_not_present_unmeasured_accuracy_or_demo_counts():
     assert "no performance claims are measured here" in landing
 
 
+def test_privacy_copy_matches_test_mode_and_production_data_paths():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    modal = (root / "src" / "components" / "common" / "DeviceCameraTestModal.tsx").read_text()
+    settings = (root / "src" / "pages" / "SettingsPage.tsx").read_text()
+    architecture = (root / "docs" / "ARCHITECTURE.md").read_text()
+    assert "getConfiguredBackendHost()" in modal
+    assert "processed in memory" in modal
+    assert "not written to persistent evidence storage" in modal
+    assert "Stopping Test Mode stops camera capture" in modal
+    assert "100% Local Privacy Notice" not in modal
+    assert "Zero raw video is ever uploaded" not in settings
+    assert "frames are sent to that cloud host" in settings
+    for path in ("/ws/test-camera", "DATA_DIR/evidence", "Telegram", "Supabase Auth", "face embeddings"):
+        assert path in architecture
+
+
 def test_supabase_url_has_no_hardcoded_default(monkeypatch):
     import importlib
     import config

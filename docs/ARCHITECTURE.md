@@ -42,6 +42,17 @@ An alert requires Gate 1 and Gate 2 and an eligible Gate 3 state. If a known res
 
 The default zones seeded in SQLite have a 20-second explicit value, so they resolve to 20 seconds in the day profile and 10 seconds at night. The camera-test WebSocket has its own request dwell value (default 10 seconds) and passes that value to the decision engine.
 
+## Data flow and privacy
+
+Processing location depends on the configured backend. In the recommended local Mac plus tunnel setup, inference runs on the Mac; with Hugging Face Spaces or Railway, browser webcam frames sent for Test Mode reach that hosted backend.
+
+- **Test Mode frames:** the browser sends webcam JPEG frames over `/ws/test-camera` to the configured backend. The handler decodes and processes them in memory; its snapshots are returned to the browser over the WebSocket. This route does not write snapshots to the persistent evidence directory or create alert records. Stopping Test Mode stops browser camera tracks and closes the WebSocket.
+- **Production camera alerts:** the backend writes an alert snapshot under `DATA_DIR/evidence`, stores alert/event metadata in its database, and queues a Telegram notification. When Telegram is configured, the alert text and snapshot are sent to Telegram.
+- **Supabase Auth:** sign-in and session operations communicate with the configured Supabase project. The browser retains the signed-in session, and API requests send its access token to the backend for authorization.
+- **Optional backend Supabase sync:** when `SUPABASE_URL` and `SUPABASE_KEY` are configured, resident create/re-enrollment operations sync resident records, including face embeddings, to the Supabase `residents` table; deletion syncs the delete. Camera API requests also send camera settings and credentials to the configured backend, where camera passwords are encrypted before database storage.
+
+The Test Mode banner identifies the configured WebSocket backend host. Hosting the backend in the cloud means webcam frames are transmitted to that cloud host; use the local Mac backend and tunnel when local inference is required.
+
 ## Configuration thresholds
 
 The runtime values are defined in `backend/config.py`: detector confidence `0.65`, Gate 1 human confidence `0.70`, face embedding similarity `0.50`, minimum face size `32` px, minimum blur score `30`, and face recognition interval `1.0` second by default. Confidence cutoffs refer to different pipeline stages and should not be interchanged.

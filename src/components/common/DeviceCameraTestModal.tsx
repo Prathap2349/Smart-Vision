@@ -171,6 +171,17 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     return null; // Deployed HTTPS Vercel without VITE_WS_BASE_URL configured
   };
 
+  const getConfiguredBackendHost = (): string => {
+    const socketUrl = getWebSocketUrl();
+    if (!socketUrl) return 'not configured';
+    try {
+      const parsed = new URL(socketUrl);
+      return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+      return socketUrl;
+    }
+  };
+
   const startSelfTestAndCamera = async () => {
     setPermissionError(null);
     setSummaryData(null);
@@ -450,6 +461,11 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+
+    // Test snapshots exist only in the browser state and the test WebSocket's
+    // in-memory tracker. Clear browser references when the session stops.
+    setSnapshotGallery([]);
+    setSelectedSnapshot(null);
 
     const stats = sessionStatsRef.current;
     if (stats.startTime > 0 && stats.framesProcessed > 0) {
@@ -1146,7 +1162,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
               </div>
 
               <p className="text-[11px] text-text-muted bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                ℹ️ <strong>Temporary Storage Note:</strong> This webcam snapshot is saved only in local application memory for test verification and will be auto-deleted when test mode is exited.
+                ℹ️ <strong>Test Snapshot Note:</strong> The configured backend returns this snapshot to the browser over the test WebSocket. It is held in session memory and is not written to persistent evidence storage by Test Mode.
               </p>
             </div>
           </div>
@@ -1193,7 +1209,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
             </div>
 
             <p className="text-xs text-text-muted bg-slate-950 p-3 rounded-xl border border-slate-800">
-              ℹ️ <strong>Honest Evaluation Note:</strong> Live webcam frames were processed locally by FastAPI Edge AI Engine. Temporary test snapshots have been purged from active memory.
+              ℹ️ <strong>Test Session Note:</strong> Frames were processed by the configured FastAPI backend. Stopping Test Mode closed the camera and WebSocket session and cleared the test snapshot gallery.
             </p>
           </div>
         )}
@@ -1202,7 +1218,7 @@ export const DeviceCameraTestModal: React.FC<DeviceCameraTestModalProps> = ({ is
         <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3 text-xs text-text-muted">
           <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
           <p className="leading-tight">
-            <strong>100% Local Privacy Notice:</strong> Camera frames are processed locally by the Edge AI engine and are not uploaded to cloud storage. Camera access ends immediately when Test Mode is stopped.
+            <strong>Test Mode data flow:</strong> Webcam frames are sent to the configured Smart Vision backend at <code className="font-mono text-text-primary">{getConfiguredBackendHost()}</code> and processed in memory. Test snapshots are returned to this browser and are not written to persistent evidence storage by <code>/ws/test-camera</code>. Production camera alerts use a separate path that saves evidence on the backend and can send alert text and snapshots to Telegram when enabled. Stopping Test Mode stops camera capture, closes the WebSocket, and clears the test snapshot gallery.
           </p>
         </div>
       </div>

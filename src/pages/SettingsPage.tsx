@@ -176,15 +176,15 @@ export const SettingsPage: React.FC = () => {
               Manage how camera video and facial recognition data are stored and protected.
             </p>
           </div>
-          <StatusBadge variant="success" label="Local-first" />
+              <StatusBadge variant="info" label="Backend-dependent" />
         </div>
 
         <div className="space-y-3 text-xs">
           <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 rounded-xl border border-emerald-400/20">
             <div>
-              <p className="font-bold text-emerald-900">Local-first Video Processing</p>
+              <p className="font-bold text-emerald-900">Video Processing Location</p>
               <p className="text-emerald-300 text-[11px] mt-0.5">
-                Your camera video is analyzed locally on your device. Zero raw video is ever uploaded to public clouds.
+                Camera streams and Test Mode frames are processed by the configured backend. With a local Mac backend they stay on that machine; with a hosted backend frames are sent to that cloud host. Production alert snapshots are saved by the backend, and Telegram may receive alert text and a snapshot when enabled.
               </p>
             </div>
             <StatusBadge variant="success" label="Enforced" size="sm" />
