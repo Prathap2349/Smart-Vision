@@ -87,6 +87,15 @@ def test_detector_empty_frame():
     assert yolo_detector.detect(empty_arr) == []
 
 
+def test_test_runtime_uses_model_stubs_without_downloading_weights():
+    detector = YOLOv8PersonDetector()
+    recognizer = InsightFaceRecognizer()
+    assert detector.model.__class__.__name__ == "_FakeYOLO"
+    assert recognizer.app.__class__.__name__ == "_FakeFaceAnalysis"
+    assert recognizer.is_ready is True
+    assert recognizer.active_provider in {"CPUExecutionProvider", "CoreMLExecutionProvider"}
+
+
 def test_detector_valid_frame_schema():
     """Verify detector returns standardized detection output structure."""
     test_frame = np.zeros((480, 640, 3), dtype=np.uint8)
