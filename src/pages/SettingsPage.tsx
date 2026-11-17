@@ -176,13 +176,13 @@ export const SettingsPage: React.FC = () => {
               Manage how camera video and facial recognition data are stored and protected.
             </p>
           </div>
-          <StatusBadge variant="success" label="100% Local" />
+          <StatusBadge variant="success" label="Local-first" />
         </div>
 
         <div className="space-y-3 text-xs">
           <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 rounded-xl border border-emerald-400/20">
             <div>
-              <p className="font-bold text-emerald-900">100% Local Video Processing</p>
+              <p className="font-bold text-emerald-900">Local-first Video Processing</p>
               <p className="text-emerald-300 text-[11px] mt-0.5">
                 Your camera video is analyzed locally on your device. Zero raw video is ever uploaded to public clouds.
               </p>

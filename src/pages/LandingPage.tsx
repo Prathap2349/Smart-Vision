@@ -170,7 +170,7 @@ export const LandingPage: React.FC = () => {
           <p>Smart Vision • Intelligent Home Security Application</p>
           <div className="flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1 text-brand-success font-medium">
-              <Lock className="w-3.5 h-3.5" /> 100% Local Edge Privacy
+              <Lock className="w-3.5 h-3.5" /> Local-first video processing
             </span>
             <span>FastAPI + React</span>
           </div>
