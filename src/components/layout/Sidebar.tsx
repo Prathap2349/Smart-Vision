@@ -42,7 +42,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
   const allOnline = cameras.length > 0 && onlineCameras === cameras.length;
   const isOffline = operatingMode === 'OFFLINE';
   const displayName = user?.name || 'Homeowner';
-  const maskedName = /^\+?[\d\s().-]+$/.test(displayName) ? `Resident (****${displayName.replace(/\D/g, '').slice(-4)})` : displayName;
+  const phoneDigits = displayName.replace(/\D/g, '');
+  const maskedName = phoneDigits.length >= 7 ? `Resident (****${phoneDigits.slice(-4)})` : displayName;
 
   const primaryNav = [
     { id: 'overview', label: 'Home', icon: Home },
